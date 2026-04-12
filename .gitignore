@@ -1,5 +1,5 @@
 # IDE / Claude Code
-.claude/settings.local.json
+.claude/
 
 # Application
 web/app/plugins/*
