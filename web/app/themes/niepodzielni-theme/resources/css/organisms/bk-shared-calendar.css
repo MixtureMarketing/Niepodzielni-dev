@@ -1,0 +1,602 @@
+/* ============================================================
+   Shared Bookero Calendar — bk-shared-cal
+   3-column UX: kalendarz | godziny | specjaliści
+   ============================================================ */
+
+.bk-shared-cal {
+    position: relative;
+    background: var(--mix-color-background-light);
+    border-radius: var(--mix-radius-xl);
+    padding: 28px 32px 36px;
+    box-shadow: var(--mix-shadow-card);
+    width: 100%;
+    min-height: 320px;
+    box-sizing: border-box;
+}
+
+/* Loading overlay */
+.bk-shared-cal.bk-sc--loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--mix-radius-xl);
+    background: rgba(255, 255, 255, .65);
+    backdrop-filter: blur(2px);
+    z-index: 1;
+}
+.bk-shared-cal.bk-sc--loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    margin: -18px 0 0 -18px;
+    border: 3px solid var(--mix-color-background-grey-medium);
+    border-top-color: var(--mix-color-brand-secondary);
+    border-radius: 50%;
+    animation: bksc-spin .7s linear infinite;
+}
+@keyframes bksc-spin { to { transform: rotate(360deg); } }
+
+/* ─── Layout: domyślnie 2 kolumny (bez godzin) ───────────── */
+.bk-sc__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 420px) 1fr;
+    gap: 36px;
+    align-items: start;
+}
+
+/* 3 kolumny gdy środkowa (godziny) jest widoczna */
+.bk-sc__layout--hours-open {
+    grid-template-columns: minmax(0, 420px) minmax(100px, 160px) 1fr;
+}
+
+.bk-sc__cal-col {
+    min-width: 0;
+}
+
+/* ─── Navigation ─────────────────────────────────────────── */
+.bk-sc__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.bk-sc__title {
+    font-weight: var(--mix-font-weight-bold);
+    font-size: 1rem;
+    color: var(--mix-color-text-dark);
+    letter-spacing: .02em;
+}
+
+.bk-sc__prev,
+.bk-sc__next {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--mix-color-brand-secondary);
+    padding: 4px 10px;
+    border-radius: var(--mix-radius-small);
+    transition: background var(--mix-transition-fast);
+}
+.bk-sc__prev:hover:not(:disabled),
+.bk-sc__next:hover:not(:disabled) {
+    background: var(--mix-color-background-grey-light);
+}
+.bk-sc__prev:disabled,
+.bk-sc__next:disabled {
+    color: var(--mix-color-background-grey-medium);
+    cursor: default;
+}
+
+/* ─── Weekday headers ────────────────────────────────────── */
+.bk-sc__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 8px;
+}
+.bk-sc__weekdays span {
+    text-align: center;
+    font-size: .72rem;
+    font-weight: var(--mix-font-weight-bold);
+    color: var(--mix-color-text-subtle);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding-bottom: 6px;
+}
+
+/* ─── Day grid ───────────────────────────────────────────── */
+.bk-sc__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.bk-sc__day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: none;
+    border-radius: var(--mix-radius-medium);
+    font-size: .875rem;
+    font-weight: var(--mix-font-weight-medium);
+    cursor: pointer;
+    background: transparent;
+    color: var(--mix-color-text-dark);
+    transition: background var(--mix-transition-fast), color var(--mix-transition-fast);
+    padding-bottom: 4px;
+}
+.bk-sc__day--blank   { pointer-events: none; }
+.bk-sc__day--past    { color: var(--mix-color-background-grey-medium); cursor: default; }
+.bk-sc__day--empty   { color: var(--mix-color-background-grey-medium); cursor: default; }
+.bk-sc__day--today   { outline: 2px solid var(--mix-color-brand-secondary); outline-offset: -2px; }
+
+.bk-sc__day--available {
+    background: var(--mix-color-primary-light);
+    color: var(--mix-color-brand-secondary);
+    font-weight: var(--mix-font-weight-bold);
+}
+.bk-sc__day--available:hover,
+.bk-sc__day--selected {
+    background: var(--mix-color-brand-secondary);
+    color: #fff;
+}
+
+/* Wskaźniki dostępności — kolorowa kropka pod liczbą dnia */
+.bk-sc__day--available::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.bk-sc__day--avail-low::after    { background: #e53935; }
+.bk-sc__day--avail-medium::after { background: #f9a825; }
+.bk-sc__day--avail-high::after   { background: #43a047; }
+
+/* Na wybranym/hover dzień — kropka biała żeby nie znikała */
+.bk-sc__day--selected::after,
+.bk-sc__day--available:hover::after { background: rgba(255,255,255,.7); }
+
+/* ─── Kolumna godzin (środkowa) ──────────────────────────── */
+.bk-sc__hours-col {
+    min-width: 0;
+    border-left: 1px solid var(--mix-color-background-grey-medium);
+    padding-left: 24px;
+}
+
+.bk-sc__hours-header {
+    margin-bottom: 16px;
+}
+
+.bk-sc__hours-date-label {
+    display: block;
+    font-weight: var(--mix-font-weight-bold);
+    font-size: .875rem;
+    color: var(--mix-color-text-dark);
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.bk-sc__hours-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: .75rem;
+    color: var(--mix-color-brand-secondary);
+    font-weight: var(--mix-font-weight-bold);
+    padding: 0;
+    font-family: inherit;
+    text-decoration: underline;
+    display: inline-block;
+}
+.bk-sc__hours-clear:hover { opacity: .75; }
+
+.bk-sc__hours-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Przycisk godziny */
+.bk-sc__hour-btn {
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: var(--mix-radius-medium);
+    border: 2px solid var(--mix-color-brand-secondary);
+    background: transparent;
+    color: var(--mix-color-brand-secondary);
+    font-size: .875rem;
+    font-weight: var(--mix-font-weight-bold);
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+    transition: background var(--mix-transition-fast), color var(--mix-transition-fast);
+    line-height: 1;
+}
+.bk-sc__hour-btn:hover {
+    background: var(--mix-color-primary-light);
+}
+.bk-sc__hour-btn--active {
+    background: var(--mix-color-brand-secondary);
+    color: #fff;
+}
+
+/* ─── Prawa kolumna (panel specjalistów / najbliższe) ────── */
+.bk-sc__panel {
+    min-height: 200px;
+}
+
+.bk-sc__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    font-weight: var(--mix-font-weight-bold);
+    font-size: .9rem;
+    color: var(--mix-color-text-dark);
+    min-height: 28px;
+}
+
+.bk-sc__panel-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: .78rem;
+    color: var(--mix-color-brand-secondary);
+    font-weight: var(--mix-font-weight-bold);
+    padding: 0;
+    text-decoration: underline;
+    font-family: inherit;
+}
+.bk-sc__panel-clear:hover { opacity: .75; }
+
+.bk-sc__panel-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ─── Slot card ──────────────────────────────────────────── */
+.bk-sc__slot-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: var(--mix-radius-large);
+    background: var(--mix-color-background-grey-light);
+    border: 2px solid transparent;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+    transition: border-color var(--mix-transition-fast), background var(--mix-transition-fast), box-shadow var(--mix-transition-fast);
+}
+.bk-sc__slot-card:hover {
+    border-color: var(--mix-color-brand-secondary);
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+}
+
+.bk-sc__slot-card-arrow {
+    margin-left: auto;
+    font-size: 1.4rem;
+    color: var(--mix-color-brand-secondary);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity var(--mix-transition-fast);
+}
+.bk-sc__slot-card:hover .bk-sc__slot-card-arrow { opacity: 1; }
+
+/* ─── Stale data notice ──────────────────────────────────── */
+.bk-sc__stale {
+    font-size: .75rem;
+    color: var(--mix-color-text-subtle);
+    text-align: center;
+    margin: 0 0 10px;
+    grid-column: 1 / -1;
+}
+
+/* ─── Info / Error / Prompt states ──────────────────────── */
+.bk-sc__info,
+.bk-sc__error {
+    text-align: center;
+    color: var(--mix-color-text-subtle);
+    font-size: .875rem;
+    padding: 24px 0;
+    grid-column: 1 / -1;
+}
+.bk-sc__error { color: #c62828; }
+
+.bk-sc__info--prompt {
+    font-style: italic;
+    padding: 32px 0;
+}
+
+/* ─── Visit type badges ──────────────────────────────────── */
+.bk-sc__visit-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.bk-sc__visit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .7rem;
+    font-weight: var(--mix-font-weight-bold);
+    padding: 2px 8px;
+    border-radius: var(--mix-radius-pill);
+    letter-spacing: .02em;
+}
+.bk-sc__visit-badge--online      { background: #e8f4fd; color: #1a73b4; }
+.bk-sc__visit-badge--stationary  { background: #edf7ee; color: #2e7d32; }
+
+/* ─── Booking view ───────────────────────────────────────── */
+.bk-sc__booking-back {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: .875rem;
+    color: var(--mix-color-brand-secondary);
+    font-weight: var(--mix-font-weight-bold);
+    padding: 0 0 16px;
+    display: block;
+    font-family: inherit;
+}
+.bk-sc__booking-back:hover { text-decoration: underline; }
+
+.bk-sc__booking-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: var(--mix-radius-large);
+    background: var(--mix-color-background-grey-light);
+    margin-bottom: 20px;
+}
+
+.bk-sc__booking-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.bk-sc__booking-avatar--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mix-color-brand-secondary);
+    color: #fff;
+    font-weight: var(--mix-font-weight-bold);
+    font-size: 1.1rem;
+}
+
+.bk-sc__booking-datetime  { font-size: .875rem; color: var(--mix-color-text-subtle); margin-bottom: 4px; }
+.bk-sc__booking-specialist { font-weight: var(--mix-font-weight-bold); font-size: .95rem; color: var(--mix-color-text-dark); }
+.bk-sc__booking-price      { font-size: .8rem; color: var(--mix-color-text-subtle); margin-top: 4px; }
+.bk-sc__booking-note       { text-align: center; font-size: .78rem; color: var(--mix-color-text-subtle); margin-top: 10px; }
+
+/* ─── Booking form ───────────────────────────────────────── */
+.bk-sc__booking-form { margin-top: 4px; }
+
+.bk-sc__form-row { margin-bottom: 12px; }
+
+.bk-sc__form-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 0;
+}
+.bk-sc__form-row-2col .bk-sc__form-row { margin-bottom: 12px; }
+
+.bk-sc__form-textarea { resize: vertical; min-height: 56px; }
+
+.bk-sc__form-privacy {
+    font-size: .72rem;
+    color: var(--mix-color-text-subtle);
+    line-height: 1.5;
+    margin: 4px 0 12px;
+    padding: 10px 12px;
+    background: var(--mix-color-background-grey-light);
+    border-radius: var(--mix-radius-medium);
+}
+.bk-sc__form-privacy a { color: var(--mix-color-brand-secondary); text-decoration: underline; }
+
+.bk-sc__form-label {
+    display: block;
+    font-size: .78rem;
+    font-weight: var(--mix-font-weight-bold);
+    color: var(--mix-color-text-dark);
+    margin-bottom: 4px;
+    letter-spacing: .02em;
+}
+
+.bk-sc__form-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--mix-color-background-grey-medium);
+    border-radius: var(--mix-radius-medium);
+    font-size: .875rem;
+    color: var(--mix-color-text-dark);
+    background: #fff;
+    transition: border-color var(--mix-transition-fast);
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.bk-sc__form-input:focus {
+    outline: none;
+    border-color: var(--mix-color-brand-secondary);
+}
+.bk-sc__form-input::placeholder { color: var(--mix-color-background-grey-medium); }
+
+.bk-sc__form-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: .78rem;
+    color: var(--mix-color-text-dark);
+    line-height: 1.4;
+}
+.bk-sc__form-check input[type=checkbox] {
+    flex-shrink: 0;
+    margin-top: 2px;
+    width: 15px;
+    height: 15px;
+    accent-color: var(--mix-color-brand-secondary);
+    cursor: pointer;
+}
+.bk-sc__form-check a { color: var(--mix-color-brand-secondary); text-decoration: underline; }
+
+.bk-sc__form-error {
+    color: #c62828;
+    font-size: .8rem;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: #fdecea;
+    border-radius: var(--mix-radius-medium);
+    border-left: 3px solid #c62828;
+}
+
+.bk-sc__booking-cta {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+    font-weight: var(--mix-font-weight-bold);
+    font-size: .9rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    border-radius: var(--mix-radius-pill);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background var(--mix-transition-fast);
+    margin-top: 4px;
+}
+.bk-sc__booking-cta:hover:not(:disabled) {
+    background: var(--mix-color-brand-primary-hover);
+    color: #fff;
+}
+.bk-sc__booking-cta:disabled { opacity: .65; cursor: default; }
+
+/* ─── Slot card — weryfikacja w tle ─────────────────────── */
+/* Karty podczas weryfikacji dostępności (fire-and-forget) */
+.bk-sc__panel-cards--verifying {
+    position: relative;
+    pointer-events: none;
+}
+.bk-sc__panel-cards--verifying .bk-sc__slot-card {
+    opacity: 0.65;
+}
+.bk-sc__panel-cards--verifying::after {
+    content: 'Weryfikacja terminów\2026';
+    display: block;
+    text-align: center;
+    font-size: .75rem;
+    color: var(--mix-color-text-subtle);
+    padding: 10px 0 2px;
+    letter-spacing: .02em;
+}
+
+/* Godzina bez dostępnych specjalistów (po weryfikacji API) */
+.bk-sc__hour-btn--gone {
+    opacity: 0;
+    pointer-events: none;
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+    border-width: 0;
+    overflow: hidden;
+    transition: opacity .3s ease, height .3s ease, padding .3s ease, margin .3s ease, border-width .3s ease;
+}
+
+/* ─── Slot card — weryfikacja w tle ─────────────────────── */
+.bk-sc__slot-card--removed {
+    opacity: 0;
+    transform: translateX(12px);
+    pointer-events: none;
+    transition: opacity .35s ease, transform .35s ease;
+}
+
+.bk-sc__info--warn {
+    color: #b71c1c;
+    background: #fdecea;
+    border-radius: var(--mix-radius-medium);
+    padding: 16px 20px;
+    font-style: normal;
+    font-size: .875rem;
+    text-align: center;
+}
+
+/* ─── Responsive ─────────────────────────────────────────── */
+
+/* Tablet: 3 kolumny stają się za ciasne — godziny idą pod kalendarz */
+@media (max-width: 900px) {
+    .bk-sc__layout--hours-open {
+        grid-template-columns: minmax(0, 420px) 1fr;
+    }
+
+    /* Kolumna godzin rozciąga się na całą szerokość i pokazuje poziomo */
+    .bk-sc__layout--hours-open .bk-sc__hours-col {
+        grid-column: 1 / -1;
+        border-left: none;
+        border-top: 1px solid var(--mix-color-background-grey-medium);
+        padding-left: 0;
+        padding-top: 20px;
+    }
+
+    .bk-sc__hours-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .bk-sc__hour-btn {
+        width: auto;
+        padding: 7px 16px;
+    }
+}
+
+/* Mobile: pełna kolumna */
+@media (max-width: 640px) {
+    .bk-shared-cal {
+        padding: 20px 18px 28px;
+    }
+
+    .bk-sc__layout,
+    .bk-sc__layout--hours-open {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .bk-sc__layout--hours-open .bk-sc__hours-col {
+        grid-column: 1;
+        border-top: 1px solid var(--mix-color-background-grey-medium);
+        padding-top: 20px;
+    }
+
+    .bk-sc__panel {
+        border-top: 1px solid var(--mix-color-background-grey-medium);
+        padding-top: 20px;
+    }
+
+    .bk-sc__form-row-2col {
+        grid-template-columns: 1fr;
+    }
+}

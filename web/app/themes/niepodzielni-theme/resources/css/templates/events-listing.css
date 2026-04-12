@@ -1,0 +1,244 @@
+/* ============================================================
+   Events Listing — layout for all 4 listing page templates.
+   Covers: hero, tabs bar, grid, active/inactive sections.
+   ============================================================ */
+
+/* --- Page wrapper --- */
+.nlisting-page {
+    background: var(--mix-color-background-page);
+    min-height: 60vh;
+}
+
+/* --- Shared container --- */
+.nlisting-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.nlisting-hero {
+    background: var(--mix-color-background-light);
+    padding: 60px 0 50px;
+}
+
+.nlisting-hero__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+}
+
+.nlisting-hero__content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.nlisting-hero__badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: var(--mix-font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mix-color-brand-secondary);
+    background: rgba(21, 0, 187, 0.08);
+    padding: 4px 12px;
+    border-radius: var(--mix-radius-pill);
+    align-self: flex-start;
+}
+
+.nlisting-hero__title {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: var(--mix-font-weight-black);
+    color: var(--mix-color-brand-primary);
+    line-height: 1.15;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.nlisting-hero__desc {
+    font-size: 0.95rem;
+    color: var(--mix-color-text-base);
+    line-height: 1.7;
+    max-width: 520px;
+}
+
+.nlisting-hero__desc p { margin: 0; }
+
+.nlisting-hero__btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.nlisting-hero__image {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.nlisting-hero__image img {
+    max-width: 100%;
+    max-height: 340px;
+    object-fit: contain;
+}
+
+/* ============================================================
+   TABS BAR
+   ============================================================ */
+.nlisting-tabs {
+    background: var(--mix-color-brand-secondary);
+    padding: 0;
+    position: sticky;
+    top: var(--mix-header-height, 80px);
+    z-index: 100;
+}
+
+.nlisting-tabs__inner {
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.nlisting-tabs__inner::-webkit-scrollbar { display: none; }
+
+.nlisting-tabs__tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 14px 22px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    font-weight: var(--mix-font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--mix-transition-fast), background var(--mix-transition-fast);
+    border-bottom: 3px solid transparent;
+    user-select: none;
+}
+
+.nlisting-tabs__tab:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.nlisting-tabs__tab.is-active,
+.nlisting-tabs__radio:checked + * {
+    color: #fff;
+    border-bottom-color: var(--mix-color-brand-primary);
+}
+
+/* Hide actual radio inputs visually */
+.nlisting-tabs__radio {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+/* ============================================================
+   LISTING BODY
+   ============================================================ */
+.nlisting-body {
+    padding: 48px 0 80px;
+}
+
+/* --- Section headers (Aktywne / Nieaktywne) --- */
+.nlisting-section {
+    margin-bottom: 48px;
+}
+
+.nlisting-section__title {
+    font-size: 0.8rem;
+    font-weight: var(--mix-font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mix-color-text-subtle);
+    margin: 0 0 20px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--mix-color-border-light);
+}
+
+/* --- Grid --- */
+.nlisting-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+/* --- No results --- */
+.nlisting-no-results {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--mix-color-text-subtle);
+    font-size: 1rem;
+}
+
+/* --- Pagination --- */
+.nlisting-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+}
+
+.nlisting-page-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--mix-color-border-light);
+    background: var(--mix-color-background-light);
+    color: var(--mix-color-text-dark);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background var(--mix-transition-fast), color var(--mix-transition-fast);
+}
+
+.nlisting-page-btn:hover,
+.nlisting-page-btn.is-active {
+    background: var(--mix-color-brand-secondary);
+    color: #fff;
+    border-color: var(--mix-color-brand-secondary);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+    .nlisting-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .nlisting-hero__row {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .nlisting-hero__image {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .nlisting-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nlisting-hero {
+        padding: 40px 0 32px;
+    }
+
+    .nlisting-tabs__tab {
+        padding: 12px 16px;
+        font-size: 0.72rem;
+    }
+}

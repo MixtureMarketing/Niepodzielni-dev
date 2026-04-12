@@ -1,0 +1,158 @@
+/* --- Style dla języków z flagami --- */
+.jezyki_contener {
+    display: table-row;
+}
+.jezyki_lewa_czesc, .jezyki_prawa_czesc {
+    display: table-cell;
+    vertical-align: middle;
+}
+.jezyki_lewa_czesc {
+    padding-right: 8px;
+}
+.takie_jezyki {
+    display: inline-block !important;
+    margin-right: 10px;
+    font-family: var(--mix-font-family-primary);
+    font-weight: var(--mix-font-weight-regular);
+    line-height: 15px;
+    text-align: left;
+    text-underline-position: from-font;
+}
+.jezyk_flaga {
+    max-width: 30px;
+    display: inline-block !important;
+}
+.jezyk_flaga img {
+    width: 100%;
+    height: auto;
+}
+.jeden_jezyk {
+    display: inline-block !important;
+    padding: 0px;
+    margin-right: 10px;
+    margin-bottom: 9px;
+    position: relative;
+    padding-top: 9px;
+}
+.jeden_jezyk:hover .opis_jezyka_przy_obrazie {
+    color: black;
+    transition: all var(--mix-transition-duration-slow);
+    transform: scale(1);
+}
+.opis_jezyka_przy_obrazie {
+    color: var(--mix-color-text-light);
+    position: absolute;
+    transform: scale(0,0);
+    margin-right: 10px;
+    overflow: hidden;
+    font-family: var(--mix-font-family-secondary);
+    font-size: 14px;
+    font-weight: var(--mix-font-weight-regular);
+    line-height: 24.2px;
+    text-align: left;
+    transition: all var(--mix-transition-duration-slow);
+    background-color: var(--mix-color-background-light);
+    padding: 2px 5px;
+    border-radius: var(--mix-radius-medium);
+    bottom: -21px;
+    background-color: transparent;
+}
+
+.kwadrat {
+    aspect-ratio: 1;
+}
+
+.rodzaj-wizyty-flex {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.rodzaj-wizyty-flex .rodzaj-wizyty-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain !important;
+}
+
+.hover-underline-animation {
+    position: relative;
+    padding-bottom: 8px;
+}
+.hover-underline-animation::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    transform: scaleX(0);
+    height: 2px;
+    bottom: 0;
+    left: 0;
+    background-color: var(--mix-color-text-light);
+    transform-origin: bottom right;
+    transition: transform var(--mix-transition-duration-fast) ease-out;
+}
+.hover-underline-animation:hover::after {
+    transform: scaleX(1);
+    transform-origin: bottom left;
+}
+.hover-underline-animation.is-clicked::after {
+    background-color: var(--mix-color-brand-primary);
+    transform: scaleX(1);
+}
+
+html {
+    scrollbar-gutter: stable;
+}
+
+/* --- ATOMS BUTTONS --- */
+.psy-btn { padding: 14px 35px; border-radius: 50px; font-weight: 700; text-transform: uppercase; font-size: 12px; text-decoration: none; transition: 0.3s; display: inline-block; cursor: pointer; border: none; letter-spacing: 1px; text-align: center; }
+.psy-btn-green, .psy-btn-card { background: var(--mix-color-brand-primary); color: #fff !important; }
+.psy-btn-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(1,190,74,0.3); }
+.psy-btn-green:hover { background: #01a040; color: #fff !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(1,190,74,0.3); }
+.psy-btn-outline { border: 2px solid var(--mix-color-brand-primary); color: var(--mix-color-brand-primary) !important; background: transparent; }
+.psy-btn-outline:hover { background: var(--mix-color-brand-primary); color: #fff !important; }
+.psy-btn-white { border: 2px solid #fff; color: #fff !important; background: transparent; }
+.psy-btn-white:hover { background: #fff; color: var(--mix-color-brand-primary) !important; }
+
+/* ==========================================================================
+   PAGE NAV — pigułkowe przyciski nawigacji wewnątrz strony
+   Używaj: <nav class="page-nav"><a class="page-nav__btn">LABEL</a></nav>
+   Wariant jasny (domyślny): border + tekst = brand-primary
+   Wariant ciemny (.page-nav--light-bg→false / na ciemnym tle): użyj .page-nav--on-dark
+   ========================================================================== */
+
+.page-nav {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.page-nav__btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 2px solid var(--mix-color-brand-primary);
+    border-radius: 36px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--mix-color-brand-primary);
+    text-decoration: none;
+    background: transparent;
+    transition: background 0.2s, color 0.2s;
+}
+
+.page-nav__btn:hover,
+.page-nav__btn--active {
+    background: var(--mix-color-brand-primary);
+    color: #fff !important;
+}
+
+/* Wariant na ciemnym/zdjęciowym tle */
+.page-nav--on-dark .page-nav__btn {
+    border-color: #fff;
+    color: #fff;
+}
+
+.page-nav--on-dark .page-nav__btn:hover,
+.page-nav--on-dark .page-nav__btn--active {
+    background: #fff;
+    color: var(--mix-color-brand-primary) !important;
+}

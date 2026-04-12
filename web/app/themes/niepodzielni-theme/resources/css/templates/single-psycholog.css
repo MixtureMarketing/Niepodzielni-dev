@@ -1,0 +1,173 @@
+/* 
+    FINAL PRODUCTION MATCH v10 - DETALE I KOLORY MARKI
+*/
+
+.osoba-template {
+    width: 80% !important;
+    margin: 40px auto !important;
+    font-family: 'Roboto', sans-serif !important;
+    box-sizing: border-box;
+}
+
+/* GŁÓWNA KARTA Z CIENIEM */
+.psy-profile-card {
+    background: #ffffff;
+    border-radius: 60px;
+    padding: 80px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid #f2f2f2;
+    position: relative;
+    width: 100%;
+}
+
+/* NAGŁÓWEK */
+.psy-card-header {
+    display: flex !important;
+    gap: 50px;
+    margin-bottom: 60px;
+}
+
+.psy-card-photo {
+    width: 200px !important;
+    height: 200px !important;
+    min-width: 200px;
+    border-radius: 30px;
+    overflow: hidden;
+}
+
+/* NAZWISKO */
+.psy-name-h1 {
+    font-size: 42px !important;
+    color: #1c2e4a !important;
+    font-weight: 500 !important;
+    margin: 0 0 15px 0 !important;
+}
+
+/* TAG PSYCHOLOG - ZIELONY W RAMCE */
+.psy-tag-profession {
+    display: inline-block;
+    border: 1px solid #01BE4A !important;
+    color: #01BE4A !important;
+    padding: 5px 18px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    background: transparent !important;
+}
+
+/* PLACEHOLDER ZDJĘCIA — inicjały */
+.psy-card-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    background: var(--mix-color-brand-secondary, #e6f9ef);
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    font-weight: 700;
+    color: #01BE4A;
+    text-transform: uppercase;
+}
+
+/* SPECJALIZACJE POD ZAWODEM */
+.psy-specializations-row {
+    margin-top: 10px;
+}
+
+/* NURTY TERAPEUTYCZNE */
+.psy-nurty-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* NAJBLIŻSZY TERMIN W META */
+.psy-header-termin {
+    font-size: 13px;
+    color: #828282;
+}
+.psy-header-termin .bookero-date-value {
+    font-weight: 600;
+    color: #1c2e4a;
+}
+
+/* BLOK META (ONLINE + CENA) PO PRAWEJ */
+.psy-header-meta {
+    position: absolute;
+    top: 80px;
+    right: 80px;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.psy-status-online {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    color: #323232;
+    font-size: 18px;
+}
+
+.psy-header-price .dynamic-rate-price {
+    color: #01BE4A !important;
+    font-weight: 700 !important;
+    font-size: 20px;
+}
+
+/* ZAKŁADKI */
+.psy-tabs-nav {
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+    margin-bottom: 50px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.psy-tab-btn {
+    background: none !important;
+    border: none !important;
+    padding: 15px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #828282 !important;
+    cursor: pointer;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.psy-tab-btn.is-active { color: #01BE4A !important; }
+.psy-tab-btn.is-active::after {
+    content: "";
+    position: absolute;
+    bottom: -1px; left: 0; width: 100%; height: 3px;
+    background: #01BE4A;
+}
+
+/* ZIELONE NAGŁÓWKI W TREŚCI */
+.psy-tab-content h4 {
+    color: #01BE4A !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    margin: 30px 0 20px 0 !important;
+}
+
+/* INSTRUKCJA */
+.psy-how-to-book {
+    background: #F9F8F6;
+    border-radius: 40px;
+    padding: 50px;
+    margin-top: 60px;
+}
+.psy-how-to-book h2 { color: #01BE4A !important; font-weight: 700; }
+
+@media (max-width: 768px) {
+    .osoba-template { width: 95% !important; }
+    .psy-profile-card { padding: 40px 20px; }
+    .psy-header-meta { position: static; text-align: center; align-items: center; margin-top: 20px; }
+    .psy-card-header { flex-direction: column; align-items: center; text-align: center; }
+}

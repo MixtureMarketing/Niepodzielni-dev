@@ -1,0 +1,133 @@
+/* --- SEKCJA 1: UKŁAD GŁÓWNEGO KONTENERA KART (SIATKA) --- */
+.blok_kart {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 1vw;
+}
+
+@media (min-width: 550px) {
+    .blok_kart {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1440px) {
+    .blok_kart {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* --- SEKCJA 2: STYL I MECHANIZM OBRACANEJ KARTY --- */
+.karta-kontener {
+    perspective: 1000px;
+    width: 100%;
+}
+
+.karta-wewnetrzna {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.8s;
+    transform-style: preserve-3d;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+.karta-kontener:hover .karta-wewnetrzna {
+    transform: rotateY(180deg);
+}
+
+.karta-przod, .karta-tyl {
+    grid-column: 1 / 1;
+    grid-row: 1 / 1;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: var(--mix-radius-xl);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    box-sizing: border-box;
+    padding: clamp(20px, 5vw, 30px) !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.karta-przod {
+    transform: rotateY(0deg);
+    background: var(--mix-color-background-light);
+}
+
+.karta-tyl {
+    transform: rotateY(180deg);
+    background: #f8f8f8;
+}
+
+@media (min-width: 1440px) {
+    .karta-tyl {
+        padding: 20px !important;
+    }
+}
+
+/* --- SEKCJA 3: STYL TREŚCI WEWNĄTRZ KART --- */
+.karta-przod {
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.karta-tyl {
+    align-items: flex-start;
+    justify-content: flex-end;
+    text-align: left;
+}
+
+.karta-przod .goals__card-title {
+    font-size: clamp(1.8rem, 6vw, 2.8rem) !important;
+    line-height: 1.2 !important;
+    text-align: left !important;
+    color: var(--mix-color-brand-secondary) !important;
+}
+
+.karta-tyl .goals__card-title {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    color: var(--mix-color-brand-secondary) !important;
+    text-align: left !important;
+}
+
+.karta-przod .goals__card-text,
+.karta-tyl .goals__card-text {
+    font-size: clamp(0.9rem, 4vw, 1rem) !important;
+    line-height: 1.5 !important;
+    color: var(--mix-color-brand-secondary) !important;
+}
+
+.karta-przod img {
+    max-width: 80%;
+    height: auto;
+    margin-top: 15px;
+    align-self: center;
+}
+
+@media (min-width: 1000px) and (max-width: 1500px) {
+    .cele-boksy {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-rows: repeat(2, 1fr) !important;
+    }
+    .cele-boksy .elementor-flip-box__image img {
+        width: 65% !important;
+    }
+}
+
+@media (min-width: 500px) and (max-width: 767px) {
+    .cele-boksy .elementor-flip-box__image img {
+        width: 60% !important;
+    }
+}

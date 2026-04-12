@@ -1,0 +1,431 @@
+/* --- Strona Główna (Home) --- */
+
+.home-main {
+    padding-bottom: 60px;
+}
+
+.home-main .section-title {
+    font-size: 42px;
+    font-weight: 600;
+    margin-bottom: 40px;
+    text-transform: uppercase;
+}
+
+.home-main .section-title b {
+    font-weight: 800;
+}
+
+@media (max-width: 768px) {
+    .home-main .section-title {
+        font-size: 32px;
+        margin-bottom: 30px;
+    }
+}
+
+/* --- Hero Tax --- */
+.home-hero-tax {
+    background-image: url('/wp-content/uploads/2026/01/vfxvfxd.png');
+    background-size: cover;
+    background-position: center;
+    min-height: 75vh;
+    display: flex;
+    align-items: center;
+    padding: 100px 0;
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .home-hero-tax {
+        background-image: url('/wp-content/uploads/2026/01/fgfgdgfdfgtdtfgd-1.jpg');
+        background-position: top center;
+        align-items: flex-start;
+        padding-top: 40px;
+        padding-bottom: 350px;
+        min-height: auto;
+    }
+}
+
+.hero-tax-content {
+    max-width: 900px;
+}
+
+.hero-tax-title {
+    font-size: 86px;
+    font-weight: 400;
+    line-height: 88px;
+    color: #1500BB !important;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+.hero-tax-title b {
+    font-weight: 800;
+    color: #1500BB !important;
+}
+
+.hero-tax-desc {
+    font-size: 24px;
+    color: #1500BB !important;
+    margin-bottom: 30px;
+    font-weight: 500;
+}
+
+.hero-tax-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-tax-actions .psy-btn-green {
+    background-color: #01BE4A !important;
+    color: #ffffff !important;
+}
+
+.hero-tax-actions .psy-btn-green:hover {
+    background-color: #01a040 !important;
+}
+
+.hero-tax-krs {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+}
+
+@media (max-width: 768px) {
+    .hero-tax-title {
+        font-size: 36px;
+        line-height: 40px;
+    }
+    .hero-tax-desc {
+        font-size: 18px;
+    }
+}
+
+/* --- Mission Bar --- */
+.home-mission-bar {
+    background-color: var(--mix-color-brand-primary);
+    padding: 15px 0;
+    color: var(--mix-color-text-light);
+}
+
+.mission-bar-inner {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 30px;
+}
+
+.mission-bar-text {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+    color: var(--mix-color-text-light);
+    text-align: left;
+    line-height: 1;
+}
+
+.mission-bar-support {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+}
+
+.mission-bar-support h2 {
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0;
+    color: var(--mix-color-text-light);
+    line-height: 1;
+}
+
+.buycoffee-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    color: var(--mix-color-text-light);
+    font-weight: 700;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+    line-height: 1;
+}
+
+.buycoffee-btn:hover {
+    color: var(--mix-color-text-light);
+    opacity: 0.8;
+}
+
+.buycoffee-btn:hover svg path {
+    fill: #FAF4E6;
+}
+
+/* --- About Intro --- */
+.home-about-intro {
+    padding: 80px 0;
+    background-color: var(--mix-color-brand-secondary);
+}
+
+.home-about-intro .section-title {
+    color: var(--mix-color-text-light);
+}
+
+.about-intro-grid {
+    align-items: center;
+    gap: 60px;
+}
+
+.about-intro-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.about-text p {
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--mix-color-text-light);
+    margin-bottom: 20px;
+}
+
+.about-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mix-color-text-light);
+    text-transform: uppercase;
+    margin-top: 20px;
+    transition: opacity 0.3s ease;
+    align-self: flex-start;
+    flex-direction: row;
+}
+
+.about-link-btn .icon-wrap {
+    background-color: transparent;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.about-link-btn:hover {
+    color: var(--mix-color-text-light);
+    opacity: 0.8;
+}
+
+.about-intro-image {
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.about-intro-image img {
+    max-width: 100%;
+    height: auto;
+    max-height: 500px;
+    object-fit: contain;
+}
+
+/* --- Help Grid --- */
+.home-help-grid-section {
+    padding: 80px 0;
+    background-color: var(--mix-color-background-page);
+}
+
+.help-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+}
+
+@media (max-width: 900px) {
+    .help-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.help-box {
+    background-color: var(--mix-color-background-light);
+    border-radius: var(--mix-radius-xl);
+    padding: 40px;
+    box-shadow: var(--mix-shadow-card);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--mix-color-border-light);
+}
+
+.help-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+.help-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.help-box-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.help-box-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 0;
+    font-size: 16px;
+    font-weight: 600;
+    gap: 5px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.help-box-type {
+    display: flex;
+    align-items: center;
+    color: var(--mix-color-text-dark);
+}
+
+.help-box-price {
+    color: var(--mix-color-text-subtle);
+}
+
+.help-box-desc {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--mix-color-text-dark);
+    flex-grow: 1;
+    margin-bottom: 30px;
+}
+
+.help-box-link {
+    display: inline-flex;
+    align-items: center;
+    font-weight: 700;
+    color: var(--mix-color-brand-primary);
+    text-decoration: none;
+    font-size: 16px;
+    align-self: flex-start;
+}
+
+.help-box-link svg {
+    transition: transform 0.3s ease;
+}
+
+.help-box-link:hover svg {
+    transform: translateX(5px);
+}
+
+/* --- Event Banner --- */
+.home-event-banner {
+    background-image: url('/wp-content/uploads/2026/03/warsztaty-relaksacyjne-scaled.webp');
+    background-size: cover;
+    background-position: center;
+    padding: 100px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+}
+
+.event-banner-content {
+    text-align: center;
+}
+
+.event-banner-content .event-bubble {
+    display: inline-block;
+}
+
+.event-banner-content .event-bubble svg {
+    transition: transform 0.3s ease;
+}
+
+.event-banner-content .event-bubble:hover svg {
+    transform: scale(1.05);
+}
+
+/* --- Team Intro --- */
+.home-team-intro {
+    padding: 80px 0;
+    background-color: #FFE2E6;
+    position: relative;
+}
+
+.home-team-intro .section-title {
+    font-size: 54px;
+    line-height: 1.2;
+}
+
+.team-intro-grid {
+    align-items: stretch;
+    gap: 40px;
+}
+
+.team-intro-text-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+}
+
+.team-group-img {
+    border-radius: var(--mix-radius-xl);
+    width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.about-btn-icon {
+    align-self: flex-start;
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.about-btn-icon:hover {
+    transform: scale(1.05);
+}
+
+.team-intro-img-col img {
+    border-radius: var(--mix-radius-xl);
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    min-height: 400px;
+}
+
+/* --- Goals Section --- */
+.home-goals-section {
+    padding: 80px 0;
+    background-color: var(--mix-color-brand-secondary);
+}
+
+.home-goals-section .section-title {
+    color: var(--mix-color-text-light);
+}
+
+/* --- Specialists Section --- */
+.home-specialists-section {
+    padding: 80px 0;
+    background-color: var(--mix-color-background-light);
+}
+
+.specialists-more-btn-wrapper .psy-btn-green {
+    padding: 16px 40px;
+    font-size: 14px;
+}

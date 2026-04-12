@@ -1,0 +1,378 @@
+/* ============================================================
+   PSYCHON — template styles
+   Atomy/molekuły używane z app.css:
+     .psy-section          — padding sekcji
+     .section-title        — nagłówki h2
+     .checklist            — listy z checkmarkami
+     .faq / .faq__*        — akordeon FAQ
+   ============================================================ */
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.psychon-hero {
+    background: #0B1033;
+    padding: 80px 0;
+}
+.psychon-hero__inner {
+    display: grid;
+    grid-template-columns: 1fr 440px;
+    gap: 60px;
+    align-items: center;
+}
+.psychon-hero__title {
+    font-size: 72px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.02em;
+    margin: 0 0 24px;
+    line-height: 1;
+}
+.psychon-hero__on {
+    color: var(--mix-color-brand-primary);
+}
+.psychon-hero__content p {
+    font-size: 18px;
+    color: #cdd1e0;
+    line-height: 1.65;
+    margin: 0 0 16px;
+    max-width: 540px;
+}
+.psychon-hero__content .psy-btn {
+    margin-top: 16px;
+}
+.psychon-hero__image img {
+    width: 100%;
+    border-radius: 20px;
+    display: block;
+}
+
+/* ============================================================
+   OVERVIEW — co zawiera / dla kogo
+   ============================================================ */
+.psychon-overview__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+}
+
+/* ============================================================
+   PILLARS — 3 filary
+   ============================================================ */
+.psychon-pillars__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+.psychon-pillar {
+    background: var(--mix-color-brand-secondary);
+    border-radius: 20px;
+    padding: 40px 32px;
+}
+.psychon-pillar h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mix-color-brand-primary);
+    letter-spacing: 0.04em;
+    margin: 0 0 16px;
+}
+.psychon-pillar p {
+    font-size: 16px;
+    color: #FAF4E6;
+    line-height: 1.65;
+    margin: 0;
+}
+
+/* ============================================================
+   CO ZYSKASZ — gains grid
+   ============================================================ */
+.psychon-gains__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+.psychon-gain {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 17px;
+    color: var(--mix-color-text-dark);
+    background: #fff;
+    border-radius: 14px;
+    padding: 18px 24px;
+}
+.psychon-gain__dot {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--mix-color-brand-primary);
+}
+
+/* ============================================================
+   KOSZT + KROKI
+   ============================================================ */
+.psychon-cost__layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 60px;
+    align-items: start;
+}
+.psychon-cost__card {
+    background: #F9F8F6;
+    border: 2px solid var(--mix-color-brand-primary);
+    border-radius: 20px;
+    padding: 40px 32px;
+    position: sticky;
+    top: 100px;
+}
+.psychon-cost__label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--mix-color-brand-primary);
+    text-transform: uppercase;
+    margin: 0 0 12px;
+}
+.psychon-cost__amount {
+    font-size: 56px;
+    font-weight: 800;
+    color: var(--mix-color-text-dark);
+    line-height: 1;
+    margin: 0 0 16px;
+}
+.psychon-cost__amount span {
+    font-size: 28px;
+    font-weight: 500;
+}
+.psychon-cost__card > p {
+    font-size: 15px;
+    color: var(--mix-color-text-dark);
+    margin: 0 0 24px;
+    line-height: 1.6;
+}
+
+/* ============================================================
+   STEPS (ol)
+   ============================================================ */
+.psychon-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+.psychon-steps li {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+.psychon-steps__num {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.psychon-steps li strong {
+    display: block;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+    margin-bottom: 4px;
+}
+.psychon-steps li p {
+    font-size: 15px;
+    color: #666;
+    margin: 0;
+    line-height: 1.55;
+}
+
+/* ============================================================
+   LEAD MENTOR
+   ============================================================ */
+.psychon-lead__inner {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 60px;
+    align-items: center;
+}
+.psychon-lead__quote {
+    font-size: 22px;
+    font-style: italic;
+    color: #FAF4E6;
+    line-height: 1.65;
+    margin: 0 0 32px;
+}
+.psychon-lead__name {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--mix-color-brand-primary);
+    margin: 0 0 4px;
+}
+.psychon-lead__role {
+    font-size: 15px;
+    color: #cdd1e0;
+    margin: 0 0 28px;
+}
+.psychon-lead__photo img {
+    width: 100%;
+    border-radius: 20px;
+    display: block;
+}
+
+/* ============================================================
+   MENTORS
+   ============================================================ */
+.psychon-mentors__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+    margin-top: 40px;
+}
+.psychon-mentor__photo {
+    aspect-ratio: 3 / 4;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+.psychon-mentor__photo:hover {
+    border-color: var(--mix-color-brand-primary);
+}
+.psychon-mentor__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    display: block;
+}
+.psychon-mentor h4 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+    margin: 0 0 4px;
+}
+.psychon-mentor p {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+/* ============================================================
+   TESTIMONIALS
+   ============================================================ */
+.psychon-testimonials__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 40px;
+}
+.psychon-testimonial {
+    background: #F9F8F6;
+    border-radius: 20px;
+    padding: 32px;
+}
+.psychon-testimonial__quote {
+    font-size: 16px;
+    color: var(--mix-color-text-dark);
+    line-height: 1.7;
+    margin: 0 0 20px;
+    font-style: italic;
+}
+.psychon-testimonial strong {
+    display: block;
+    font-size: 15px;
+    color: var(--mix-color-text-dark);
+    margin-bottom: 2px;
+}
+.psychon-testimonial span {
+    font-size: 13px;
+    color: #888;
+}
+
+/* ============================================================
+   REKRUTACJA
+   ============================================================ */
+.psychon-recruitment__inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 60px;
+    align-items: center;
+}
+.psychon-recruitment__steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    counter-reset: recruit-step;
+}
+.psychon-recruitment__steps li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 17px;
+    color: #FAF4E6;
+    counter-increment: recruit-step;
+}
+.psychon-recruitment__steps li::before {
+    content: counter(recruit-step);
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.psychon-recruitment__cta {
+    text-align: center;
+    min-width: 280px;
+}
+.psychon-recruitment__cta p {
+    font-size: 18px;
+    color: #FAF4E6;
+    margin: 0 0 20px;
+    line-height: 1.5;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1200px) {
+    .psychon-mentors__grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 1024px) {
+    .psychon-hero__inner { grid-template-columns: 1fr; }
+    .psychon-hero__image { display: none; }
+    .psychon-overview__grid { grid-template-columns: 1fr; gap: 40px; }
+    .psychon-pillars__grid { grid-template-columns: 1fr; }
+    .psychon-gains__grid { grid-template-columns: 1fr; }
+    .psychon-cost__layout { grid-template-columns: 1fr; }
+    .psychon-cost__card { position: static; }
+    .psychon-lead__inner { grid-template-columns: 1fr; }
+    .psychon-recruitment__inner { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+    .psychon-hero__title { font-size: 52px; }
+    .psychon-testimonials__grid { grid-template-columns: 1fr; }
+    .psychon-mentors__grid { grid-template-columns: repeat(2, 1fr); }
+    .psychon-lead__quote { font-size: 18px; }
+}

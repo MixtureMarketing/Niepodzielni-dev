@@ -1,0 +1,92 @@
+/* Layout System for Niepodzielni Theme */
+
+/* GŁÓWNY KONTENER */
+.psy-container {
+  width: 90%;
+  max-width: var(--mix-container-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.psy-container-wide {
+  width: 95%;
+  max-width: var(--mix-container-width-wide);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* SYSTEM GRIDOWY (POMOCNICZY) */
+.psy-grid {
+  display: grid;
+  gap: var(--mix-spacing-base);
+}
+
+.psy-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.psy-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.psy-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* RESPONSIVE LAYOUT */
+@media (max-width: 1024px) {
+  .psy-grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .psy-grid-2, .psy-grid-3, .psy-grid-4 { 
+    grid-template-columns: 1fr; 
+  }
+  
+  .psy-container {
+    width: 92%;
+  }
+}
+
+/* SEKCJE — padding pionowy
+   ---------------------------------------- */
+.psy-section {
+    padding: 80px 0;
+}
+
+.psy-section--tight {
+    padding: 48px 0;
+}
+
+.psy-section--wide {
+    padding: 120px 0;
+}
+
+/* Warianty tła sekcji */
+.psy-section--beige {
+    background: #F9F8F6;
+}
+
+.psy-section--white {
+    background: #fff;
+}
+
+.psy-section--dark {
+    background: var(--mix-color-brand-secondary);
+}
+
+.psy-section--midnight {
+    background: #0B1033;
+}
+
+.psy-section--green {
+    background: var(--mix-color-brand-primary);
+}
+
+/* FLEX HELPERS */
+.psy-flex {
+  display: flex;
+  gap: var(--mix-spacing-base);
+}
+
+.psy-flex-between {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.psy-flex-center {
+  justify-content: center;
+  align-items: center;
+}

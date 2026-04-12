@@ -1,0 +1,148 @@
+
+/**
+ * Psychologist Listing - Atomic CSS (Desktop Fix & Mobile Sticky v12)
+ */
+
+/* --- LAYOUT --- */
+.site-content .ast-container, .site-content #primary, .psy-page-wrapper { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+.psy-container { width: 90% !important; max-width: 1650px !important; margin: 0 auto !important; }
+.psy-page-wrapper { font-family: 'Roboto', sans-serif; color: #323232; line-height: 1.6; }
+.psy-section { padding: 80px 0; }
+
+
+.fi { margin-right: 10px; flex-shrink: 0; border-radius: 2px; }
+
+.psy-lang-item { display: inline-flex; align-items: center; font-size: 13px; color: #666; margin-right: 15px; }
+
+.psy-tag-small { background: #f3f4f6; color: #4b5563; padding: 5px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; display: inline-block; white-space: nowrap; transition: 0.3s; }
+
+/* Tagi More/Less */
+.psy-hidden-tags-wrapper { width: 100%; max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease; display: flex; flex-wrap: wrap; gap: 8px; }
+.psy-card-tags.is-expanded .psy-hidden-tags-wrapper { max-height: 1000px; opacity: 1; margin-top: 8px; }
+.psy-tag-more { color: #01BE4A; font-size: 11px; font-weight: 800; cursor: pointer; padding: 5px 0; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; transition: 0.3s; }
+.psy-tag-more::after { content: '▼'; font-size: 9px; transition: transform 0.4s ease; }
+.psy-tag-more.is-expanded::after { transform: rotate(180deg); }
+
+/* --- MOLECULES (DESKTOP DEFAULT) --- */
+.psy-filter-toggle { display: flex; background: #F5F5F5; padding: 5px; border-radius: 50px; flex-shrink: 0; }
+.psy-toggle-label input { display: none; }
+.psy-toggle-label span { display: block; padding: 10px 22px; border-radius: 50px; font-size: 13px; font-weight: 700; color: #999; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+.psy-toggle-label input:checked + span { background: #fff; color: #1500BB; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+.psy-multiselect-dropdown { position: relative; width: 220px; flex-shrink: 0; }
+.multiselect-label { height: 50px; border: 1px solid #E0E0E0; border-radius: 12px; padding: 0 35px 0 15px; font-size: 12px; font-weight: 600; display: block; line-height: 50px; cursor: pointer; background: #fff; position: relative; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.multiselect-label::after { content: ''; position: absolute; right: 15px; top: 22px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #999; }
+
+.multiselect-content { 
+    position: absolute; top: 55px; left: 0; width: 340px; background: #fff; border: 1px solid #EAEAEA; 
+    border-radius: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); z-index: 999; 
+    display: flex; flex-direction: column; max-height: 450px; overflow: hidden;
+    opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.3s ease;
+}
+.multiselect-content.is-open { opacity: 1; visibility: visible; transform: translateY(0); }
+.multiselect-options-list { overflow-y: auto; padding: 10px 15px; }
+.multiselect-inner-search { width: 100%; border: none; padding: 15px; border-bottom: 1px solid #eee; font-size: 13px; outline: none; }
+
+.multiselect-group-header { font-size: 11px; font-weight: 800; color: #01BE4A; text-transform: uppercase; padding: 12px 5px 5px; border-top: 1px solid #f5f5f5; margin-top: 5px; }
+.multiselect-option { display: flex; align-items: center; gap: 12px; padding: 8px 5px; cursor: pointer; font-size: 13px; color: #555; border-radius: 8px; }
+.multiselect-option input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; border: 2px solid #E0E0E0; border-radius: 4px; background: #fff; position: relative; flex-shrink: 0; }
+.multiselect-option input[type="checkbox"]:checked { background: #1500BB; border-color: #1500BB; }
+.multiselect-option input[type="checkbox"]:checked::after { content: ''; position: absolute; left: 5px; top: 2px; width: 5px; height: 9px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+/* --- ORGANISMS (DESKTOP) --- */
+
+/* Hero */
+.psy-hero-section { background: #fff; padding: 100px 0 60px; overflow: hidden; }
+.psy-hero-row { display: flex; align-items: center; gap: 60px; }
+.psy-hero-content { flex: 1; }
+.psy-title-main { font-size: 64px; font-weight: 800; line-height: 1.1; margin-bottom: 30px; color: #1500BB; }
+.psy-hero-description { font-size: 20px; color: #555; margin-bottom: 40px; max-width: 600px; }
+.psy-highlight { color: #01BE4A; font-weight: 800; }
+.psy-hero-btns { display: flex; gap: 20px; flex-wrap: wrap; }
+.psy-hero-image { flex: 0 0 450px; }
+.psy-hero-image img { width: 100%; height: auto; }
+
+/* Steps */
+.psy-steps-section { background: #f9f9f9; padding: 100px 0; border-radius: 60px; margin: 0 20px; }
+.psy-steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 60px; }
+.psy-step-col { background: #fff; padding: 40px; border-radius: 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.04); }
+.psy-step-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+.psy-step-header h3 { font-size: 18px; font-weight: 800; margin: 0; text-transform: uppercase; color: #323232; }
+.psy-step-col p { font-size: 15px; color: #666; line-height: 1.6; margin: 0; }
+
+/* Mission */
+.psy-mission-section { padding: 120px 0; }
+.psy-mission-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 80px; align-items: center; }
+.psy-mission-text h2 { font-size: 32px; font-weight: 800; color: #1500BB; margin-bottom: 25px; }
+.psy-mission-text p { font-size: 18px; color: #555; }
+.psy-contact-box { background: #1500BB; color: #fff; padding: 50px; border-radius: 40px; text-align: center; }
+.psy-contact-box h3 { font-size: 24px; font-weight: 700; margin-bottom: 15px; }
+
+.psy-filters-box { 
+    background: #fff; border: 1px solid #EAEAEA; border-radius: 35px; padding: 25px; 
+    box-shadow: 0 25px 60px rgba(0,0,0,0.06); margin-bottom: 80px; 
+    position: relative; /* Statyczny na desktopie */
+    z-index: 100;
+}
+.psy-filters-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; overflow: visible !important; }
+.psy-input-search { width: 100%; height: 50px; border: 1px solid #E0E0E0; border-radius: 15px; padding: 0 20px; font-size: 15px; }
+
+.psy-btn-mobile-filters { display: none; }
+.psy-filters-secondary { display: contents; } /* Na desktopie zawsze widoczne i w linii */
+
+/* Cards */
+.psy-list-grid { display: flex; flex-direction: column; gap: 35px; }
+.psy-card-item { display: flex; background: #fff; border-radius: 30px; border: 1px solid #EAEAEA; overflow: hidden; transition: all 0.4s; opacity: 0; transform: translateY(20px); min-height: 420px; }
+.psy-card-item.is-visible { opacity: 1; transform: translateY(0); }
+.psy-card-photo-wrapper { flex: 0 0 300px; background: #f9f9f9; border-right: 1px solid #f0f0f0; }
+.psy-card-photo-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+.psy-card-content { flex: 1; padding: 45px !important; position: relative; display: flex; flex-direction: column; }
+.psy-card-meta-top { position: absolute; top: 45px; right: 45px; text-align: right; display: flex; flex-direction: column; gap: 10px; z-index: 5; width: 200px; }
+.psy-card-main-info { margin-right: 230px; display: flex; flex-direction: column; height: 100%; }
+.psy-card-name { font-size: 32px; font-weight: 800; text-transform: uppercase; line-height: 1.1; }
+
+/* --- MOBILE OPTIMIZATION (STICKY TOP ONLY ON MOBILE) --- */
+@media (max-width: 1024px) {
+    .psy-filters-section { padding: 40px 0; }
+    .psy-filters-box { 
+        position: sticky; top: 0; 
+        width: 100%; border-radius: 20px; margin-bottom: 40px; padding: 12px 15px; 
+        z-index: 2000; box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        transition: border-radius 0.3s ease;
+    }
+    .psy-filters-box.is-stuck { border-radius: 0 0 25px 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+
+    .psy-filters-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-search-col { min-width: 120px; flex: 1; }
+    .psy-input-search { height: 42px; border-radius: 10px; font-size: 13px; }
+    
+    .psy-btn-mobile-filters { 
+        display: flex; align-items: center; justify-content: center; gap: 6px; 
+        background: #F0F3FF; border: none; height: 42px; padding: 0 12px; 
+        border-radius: 10px; font-size: 11px; font-weight: 800; color: #1500BB;
+    }
+    .psy-btn-mobile-filters.is-active { background: #1500BB; color: #fff; }
+
+    .psy-filters-secondary { 
+        display: flex; width: 100%; flex-direction: column; gap: 10px; 
+        max-height: 0; opacity: 0; overflow: hidden; visibility: hidden;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    }
+    .psy-filters-secondary.is-open { 
+        max-height: 1500px; opacity: 1; visibility: visible;
+        padding-top: 12px; margin-top: 5px; border-top: 1px solid #F0F0F0;
+        overflow: visible !important;
+    }
+    
+    .psy-multiselect-dropdown { width: 100%; position: relative; }
+    .multiselect-label { height: 44px; line-height: 44px; border-radius: 10px; font-size: 12px; background: #fff; }
+    
+    .multiselect-content { position: absolute; top: 48px; left: 0; right: 0; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+
+    .psy-card-item { flex-direction: column; min-height: auto; }
+    .psy-card-photo-wrapper { flex: 0 0 250px; border-right: none; border-bottom: 1px solid #f0f0f0; }
+    .psy-card-content { padding: 25px !important; }
+    .psy-card-main-info { margin-right: 0; }
+    .psy-card-meta-top { position: static; width: 100%; text-align: left; flex-direction: row; flex-wrap: wrap; margin-bottom: 20px; }
+    .psy-card-name { font-size: 24px; }
+}

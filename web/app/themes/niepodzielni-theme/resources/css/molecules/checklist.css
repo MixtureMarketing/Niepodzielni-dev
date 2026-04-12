@@ -1,0 +1,96 @@
+/* ============================================================
+   CHECKLIST — molekuła listy z zielonymi znacznikami
+   Zastępuje: .adhd-symptom-list, .asystent-list, .psychon-check-list
+
+   HTML pattern:
+   <ul class="checklist">
+     <li>Punkt listy</li>
+   </ul>
+
+   Warianty:
+   .checklist--sm          — mniejsza czcionka (14px)
+   .checklist--lg          — większa czcionka (18px)
+   .checklist--on-dark     — tekst na ciemnym tle
+   .checklist--numbered    — numerowana (1, 2, 3...) zamiast check
+   ============================================================ */
+
+.checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 16px;
+    color: var(--mix-color-text-dark);
+    line-height: 1.55;
+}
+
+/* Zielone kółko z białym checkmarkiem (SVG inline) */
+.checklist li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--mix-color-brand-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'%3E%3Cpath d='M1 5l3.5 3.5L11 1' stroke='white' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 11px;
+    margin-top: 1px;
+}
+
+/* Rozmiary */
+.checklist--sm li {
+    font-size: 14px;
+    gap: 10px;
+}
+
+.checklist--sm li::before {
+    width: 18px;
+    height: 18px;
+    background-size: 9px;
+}
+
+.checklist--lg li {
+    font-size: 18px;
+    gap: 14px;
+}
+
+.checklist--lg li::before {
+    width: 26px;
+    height: 26px;
+    background-size: 13px;
+}
+
+/* Na ciemnym tle */
+.checklist--on-dark li {
+    color: #FAF4E6;
+}
+
+/* Lista numerowana — zamiast checkmark cyfry */
+.checklist--numbered {
+    counter-reset: checklist-counter;
+}
+
+.checklist--numbered li {
+    counter-increment: checklist-counter;
+}
+
+.checklist--numbered li::before {
+    content: counter(checklist-counter);
+    background-image: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

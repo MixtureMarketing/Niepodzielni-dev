@@ -1,0 +1,107 @@
+/* ============================================================
+   O NAS — template styles
+   Atomy/molekuły używane z app.css:
+     .psy-section          — padding sekcji
+     .page-nav + .page-nav__btn — nawigacja pigułkowa
+   ============================================================ */
+
+/* Margines nad nawigacją */
+.onas-nav-section {
+    padding: 40px 0 0;
+}
+
+/* ============================================================
+   HERO Z ILUSTRACJĄ
+   ============================================================ */
+.onas-hero {
+    padding: 48px 0 0;
+}
+.onas-hero__inner {
+    display: flex;
+    justify-content: flex-end;
+}
+.onas-hero__image img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ============================================================
+   HISTORIA I MISJA
+   ============================================================ */
+.onas-story__content {
+    max-width: 840px;
+}
+.onas-story__content p {
+    font-size: 18px;
+    color: var(--mix-color-text-dark);
+    line-height: 1.75;
+    margin: 0 0 24px;
+}
+.onas-story__content .psy-btn {
+    margin-top: 16px;
+}
+
+/* ============================================================
+   ZESPÓŁ
+   ============================================================ */
+.onas-team {
+    background: var(--mix-color-brand-secondary);
+    padding: 80px 0;
+}
+.onas-team__intro {
+    max-width: 800px;
+    margin: 0 0 60px;
+}
+.onas-team__intro p {
+    font-size: 20px;
+    color: #FAF4E6;
+    line-height: 1.7;
+    margin: 0;
+}
+.onas-team__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+}
+.onas-member__photo {
+    aspect-ratio: 3 / 4;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+.onas-member__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    display: block;
+}
+.onas-member__role {
+    font-size: 14px;
+    font-weight: 500;
+    color: #FAF4E6;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1200px) {
+    .onas-team__grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 1024px) {
+    .onas-hero__inner { justify-content: center; }
+}
+@media (max-width: 768px) {
+    .onas-nav-section { padding: 24px 0 0; }
+    .onas-hero { padding: 32px 0 0; }
+    .onas-story__content p { font-size: 16px; }
+    .onas-team__grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .onas-team__intro p { font-size: 16px; }
+}
+@media (max-width: 480px) {
+    .onas-team__grid { gap: 16px; }
+    .onas-member__role { font-size: 12px; }
+}

@@ -1,0 +1,106 @@
+/* --- Widget wizyt --- */
+.appointment-widget {
+    position: relative;
+    display: inline-block;
+    z-index: 9999;
+}
+
+.appointment-widget .main-text {
+    background-color: var(--mix-color-brand-primary) !important;
+    border: none !important;
+    position: relative;
+    width: 260px;
+    height: 42px;
+    padding: 10px 22px;
+    box-sizing: border-box;
+    border-radius: var(--mix-radius-xxl);
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-radius 0.45s var(--mix-transition-timing-cubic-custom);
+}
+
+.appointment-widget .main-text-content {
+    color: var(--mix-color-text-light) !important;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-weight: var(--mix-font-weight-regular);
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+.appointment-widget .main-text::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background-color: var(--mix-color-brand-primary);
+    border-radius: var(--mix-radius-xxl);
+    width: 55%;
+    left: 22.5%;
+    transition: width 0.45s var(--mix-transition-timing-cubic-custom), 
+                left 0.45s var(--mix-transition-timing-cubic-custom), 
+                border-radius 0.45s var(--mix-transition-timing-cubic-custom);
+}
+
+.appointment-widget .options-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: var(--mix-color-brand-primary);
+    color: var(--mix-color-text-light);
+    padding: 20px;
+    border-radius: 0 0 var(--mix-radius-large) var(--mix-radius-large);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.35s ease 0.1s, transform 0.35s ease 0.1s, visibility 0.35s ease 0.1s;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.appointment-widget .options-list a {
+    color: var(--mix-color-text-light);
+    text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px;
+    border-radius: var(--mix-radius-small);
+    text-align: center;
+    transition: background-color var(--mix-transition-duration-fast) var(--mix-transition-timing-ease);
+}
+
+.appointment-widget .options-list a:hover {
+    color: var(--mix-color-text-light);
+}
+
+.appointment-widget .options-list a.is-clicked {
+    background-color: var(--mix-color-background-light);
+    color: var(--mix-color-brand-primary);
+    border-radius: 0;
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.appointment-widget.is-open .main-text {
+    border-radius: var(--mix-radius-large) var(--mix-radius-large) 0 0;
+}
+
+.appointment-widget.is-open .main-text::before {
+    width: 100%;
+    left: 0;
+    border-radius: var(--mix-radius-large) var(--mix-radius-large) 0 0;
+}
+
+.appointment-widget.is-open .options-list {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}

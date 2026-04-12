@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+/* Style dla shortcode'u [tytul_wyrozniony] */
+.wyrozniony-tytul {
+    color: var(--mix-color-text-light);
+    font-family: var(--mix-font-family-primary);
+    text-transform: uppercase;
+}
+
+.wyrozniony-tytul--zwykly {
+    font-weight: 200;
+}
+
+.wyrozniony-tytul--pogrubiony {
+    font-weight: var(--mix-font-weight-bold);
+}
+
+.cienki {
+    font-weight: 200 !important;
+}
+
+.tekst_duzy {
+    font-size: 1rem;
+}
+
+/* ==========================================================================
+   BAZOWA TYPOGRAFIA (zastępstwo domyślnych styli Astry)
+   ========================================================================== */
+
+body {
+    font-family: var(--mix-font-family-primary);
+    color: var(--mix-color-text-base);
+    line-height: 1.6;
+}
+
+/* Przywrócenie formatowania nagłówków */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--mix-font-family-secondary);
+    color: var(--mix-color-brand-secondary); /* Ciemnoniebieski z Twoich zmiennych */
+    font-weight: var(--mix-font-weight-bold);
+    line-height: 1.2;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+h1 { font-size: clamp(2.5rem, 5vw, 3.5rem); }
+h2 { font-size: clamp(2rem, 4vw, 2.5rem); }
+h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
+h4 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+
+/* Przywrócenie odstępów w akapitach */
+p {
+    margin-bottom: 1.2em;
+    font-size: 1rem;
+}
+
+/* Przywrócenie wyglądu linków w treści */
+a {
+    color: var(--mix-color-brand-primary);
+    text-decoration: none;
+    transition: color var(--mix-transition-fast);
+}
+
+a:hover {
+    color: var(--mix-color-brand-primary-hover);
+}
+
+/* Przywrócenie list punktowanych (wypunktowań) */
+ul, ol {
+    margin-bottom: 1.2em;
+    padding-left: 1.5em;
+}
+
+ul { list-style-type: disc; }
+ol { list-style-type: decimal; }
+li { margin-bottom: 0.5em; }
+
+/* Pogrubienia i pochylenia */
+b, strong { font-weight: var(--mix-font-weight-bold); }
+i, em { font-style: italic; }
+
+/* ==========================================================================
+   SECTION TITLE — ujednolicony nagłówek sekcji h2
+   Używaj: <h2 class="section-title"> zamiast adhd-section-h2, psychon-section__h2 itd.
+   ========================================================================== */
+
+.section-title {
+    font-size: clamp(26px, 3vw, 36px);
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+    margin: 0 0 28px;
+    line-height: 1.25;
+}
+
+.section-title--center {
+    text-align: center;
+}
+
+.section-title--green {
+    color: var(--mix-color-brand-primary);
+}
+
+.section-title--white {
+    color: #fff;
+}
+
+.section-title--light {
+    color: #FAF4E6;
+}

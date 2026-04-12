@@ -1,0 +1,611 @@
+/* ============================================================
+   SINGLE EVENT VIEWS — warsztaty, grupy-wsparcia, wydarzenia,
+   aktualności, psychoedukacja (WP post)
+   ============================================================ */
+
+/* ---- Full-bleed hero ---- */
+.nsingle-hero {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  position: relative;
+  overflow: hidden;
+}
+
+.nsingle-hero--tall   { height: 600px; }
+.nsingle-hero--medium { height: 480px; }
+.nsingle-hero--short  { height: 380px; }
+
+.nsingle-hero__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.nsingle-hero__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.15) 100%);
+}
+
+.nsingle-hero__inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr auto;
+  padding: 32px 48px;
+  gap: 0 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* top-left meta */
+.nsingle-hero__top-left {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+/* top-right meta */
+.nsingle-hero__top-right {
+  text-align: right;
+}
+
+/* center title (spans both columns) */
+.nsingle-hero__title-wrap {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nsingle-hero__title {
+  color: #fff;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: var(--mix-font-weight-black);
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.15;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  max-width: 820px;
+}
+
+/* bottom row */
+.nsingle-hero__bottom-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.nsingle-hero__bottom-right {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+/* Text colours in hero */
+.nsingle-hero__meta-text {
+  color: rgba(255,255,255,0.9);
+  font-size: 0.9rem;
+  font-weight: var(--mix-font-weight-medium);
+}
+
+.nsingle-hero__facilitator-name {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: var(--mix-font-weight-bold);
+}
+
+/* ---- Pills ---- */
+.nsingle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: var(--mix-radius-pill);
+  font-size: 0.78rem;
+  font-weight: var(--mix-font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.nsingle-pill--green {
+  background: var(--mix-color-brand-primary);
+  color: #fff;
+}
+
+.nsingle-pill--outlined {
+  border: 1.5px solid rgba(255,255,255,0.8);
+  color: #fff;
+  background: transparent;
+}
+
+.nsingle-pill--outlined-dark {
+  border: 1.5px solid var(--mix-color-brand-secondary);
+  color: var(--mix-color-brand-secondary);
+  background: transparent;
+}
+
+.nsingle-pill--dark {
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+/* ---- CTA button in hero ---- */
+.nsingle-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--mix-color-brand-primary);
+  color: #fff;
+  font-weight: var(--mix-font-weight-bold);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 12px 28px;
+  border-radius: var(--mix-radius-pill);
+  text-decoration: none;
+  transition: background var(--mix-transition-fast);
+}
+
+.nsingle-hero__cta:hover {
+  background: var(--mix-color-brand-primary-hover);
+  color: #fff;
+}
+
+/* ---- Page wrapper ---- */
+.nsingle-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---- Section spacing ---- */
+.nsingle-section {
+  padding: 56px 0;
+}
+
+.nsingle-section + .nsingle-section {
+  border-top: 1px solid var(--mix-color-border-light);
+}
+
+/* ---- 2-col content layout ---- */
+.nsingle-two-col {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 48px;
+  align-items: start;
+}
+
+/* ---- Intro text ---- */
+.nsingle-intro {
+  font-size: 1.05rem;
+  color: var(--mix-color-text-base);
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+/* ---- Symptom list (jesli_doswiadczasz) ---- */
+.nsingle-symptom-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nsingle-symptom-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.95rem;
+  color: var(--mix-color-text-base);
+  line-height: 1.55;
+}
+
+.nsingle-symptom-list li::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: var(--mix-color-brand-primary);
+  margin-top: 6px;
+}
+
+/* ---- Facilitator card ---- */
+.nsingle-facilitator-card {
+  background: var(--mix-color-background-grey-light);
+  border-radius: var(--mix-radius-large);
+  padding: 28px 24px;
+  text-align: center;
+  position: sticky;
+  top: 100px;
+}
+
+.nsingle-facilitator-card__photo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 16px;
+  display: block;
+  border: 3px solid var(--mix-color-brand-primary);
+}
+
+.nsingle-facilitator-card__label {
+  font-size: 0.72rem;
+  font-weight: var(--mix-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mix-color-text-subtle);
+  margin-bottom: 6px;
+}
+
+.nsingle-facilitator-card__name {
+  font-size: 1.15rem;
+  font-weight: var(--mix-font-weight-bold);
+  color: var(--mix-color-text-dark);
+  margin-bottom: 6px;
+}
+
+.nsingle-facilitator-card__role {
+  font-size: 0.85rem;
+  color: var(--mix-color-text-subtle);
+  margin-bottom: 12px;
+}
+
+.nsingle-facilitator-card__bio {
+  font-size: 0.88rem;
+  color: var(--mix-color-text-base);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.nsingle-facilitator-card__link {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: var(--mix-font-weight-bold);
+  color: var(--mix-color-brand-secondary);
+  text-decoration: none;
+  border-bottom: 1.5px solid currentColor;
+}
+
+/* ---- Start bar ---- */
+.nsingle-start-bar {
+  background: var(--mix-color-brand-primary);
+  color: #fff;
+  padding: 20px 32px;
+  border-radius: var(--mix-radius-large);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 40px;
+  align-items: center;
+  margin: 48px 0;
+}
+
+.nsingle-start-bar__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nsingle-start-bar__label {
+  font-size: 0.7rem;
+  font-weight: var(--mix-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
+
+.nsingle-start-bar__value {
+  font-size: 1.05rem;
+  font-weight: var(--mix-font-weight-bold);
+}
+
+/* ---- Price + topics 2-col ---- */
+.nsingle-price-topics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+/* ---- Price box ---- */
+.nsingle-price-box {
+  background: var(--mix-color-background-grey-light);
+  border-radius: var(--mix-radius-large);
+  padding: 28px 32px;
+}
+
+.nsingle-price-box__heading {
+  font-size: 0.75rem;
+  font-weight: var(--mix-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mix-color-text-subtle);
+  margin-bottom: 12px;
+}
+
+.nsingle-price-box__amount {
+  font-size: 2.2rem;
+  font-weight: var(--mix-font-weight-black);
+  color: var(--mix-color-text-dark);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.nsingle-price-box__note {
+  font-size: 0.85rem;
+  color: var(--mix-color-text-subtle);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.nsingle-price-box__free {
+  font-size: 1.5rem;
+  font-weight: var(--mix-font-weight-black);
+  color: var(--mix-color-brand-primary);
+  margin-bottom: 8px;
+}
+
+/* ---- Topic list (temat_718) ---- */
+.nsingle-topic-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nsingle-topic-list__item {}
+
+.nsingle-topic-list__title {
+  font-weight: var(--mix-font-weight-bold);
+  font-size: 0.95rem;
+  color: var(--mix-color-text-dark);
+  margin-bottom: 3px;
+}
+
+.nsingle-topic-list__desc {
+  font-size: 0.88rem;
+  color: var(--mix-color-text-subtle);
+  line-height: 1.55;
+}
+
+/* ---- Bookero section ---- */
+.nsingle-bookero {
+  padding: 56px 0;
+  border-top: 1px solid var(--mix-color-border-light);
+}
+
+/* ---- Zapisy zakończone ---- */
+.nsingle-zapisy-zakonczone {
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--mix-color-background-grey-light);
+  border-radius: var(--mix-radius-large);
+  border: 1.5px solid var(--mix-color-border-light);
+}
+
+.nsingle-zapisy-zakonczone__icon {
+  font-size: 2.4rem;
+  margin-bottom: 12px;
+}
+
+.nsingle-zapisy-zakonczone__title {
+  font-size: 1.4rem;
+  font-weight: var(--mix-font-weight-black);
+  color: var(--mix-color-text-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+.nsingle-zapisy-zakonczone__desc {
+  font-size: 0.95rem;
+  color: var(--mix-color-text-subtle);
+}
+
+/* ---- Gallery grid ---- */
+.nsingle-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.nsingle-gallery__item {
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  border-radius: var(--mix-radius-medium);
+}
+
+.nsingle-gallery__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--mix-transition-normal);
+}
+
+.nsingle-gallery__item:hover img {
+  transform: scale(1.04);
+}
+
+/* ---- Aktualności content block ---- */
+.nsingle-content-block {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.nsingle-content-block__title {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: var(--mix-font-weight-black);
+  text-transform: uppercase;
+  color: var(--mix-color-brand-primary);
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 20px;
+}
+
+.nsingle-content-block__meta {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.nsingle-content-block__content {
+  font-size: 1rem;
+  color: var(--mix-color-text-base);
+  line-height: 1.8;
+}
+
+.nsingle-content-block__content h2,
+.nsingle-content-block__content h3 {
+  color: var(--mix-color-text-dark);
+  font-weight: var(--mix-font-weight-bold);
+  margin: 32px 0 12px;
+}
+
+.nsingle-content-block__content p {
+  margin-bottom: 18px;
+}
+
+/* ---- Psychoedukacja / post hero overlay ---- */
+.nsingle-post-hero__inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.nsingle-post-hero__tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nsingle-post-hero__title {
+  color: #fff;
+  font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+  font-weight: var(--mix-font-weight-black);
+  line-height: 1.2;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  max-width: 800px;
+}
+
+/* ---- Info bar (wydarzenia) ---- */
+.nsingle-info-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--mix-color-border-light);
+  border-radius: var(--mix-radius-large);
+  overflow: hidden;
+  margin: 40px 0;
+}
+
+.nsingle-info-bar__item {
+  flex: 1;
+  min-width: 160px;
+  padding: 20px 24px;
+  border-right: 1px solid var(--mix-color-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nsingle-info-bar__item:last-child {
+  border-right: none;
+}
+
+.nsingle-info-bar__label {
+  font-size: 0.7rem;
+  font-weight: var(--mix-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mix-color-text-subtle);
+}
+
+.nsingle-info-bar__value {
+  font-size: 1rem;
+  font-weight: var(--mix-font-weight-bold);
+  color: var(--mix-color-text-dark);
+}
+
+/* ---- Section heading ---- */
+.nsingle-section-heading {
+  font-size: 1.5rem;
+  font-weight: var(--mix-font-weight-black);
+  text-transform: uppercase;
+  color: var(--mix-color-text-dark);
+  margin-bottom: 24px;
+  letter-spacing: 0.03em;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .nsingle-two-col,
+  .nsingle-price-topics {
+    grid-template-columns: 1fr;
+  }
+
+  .nsingle-facilitator-card {
+    position: static;
+  }
+
+  .nsingle-hero__inner {
+    padding: 24px 20px;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  .nsingle-hero__top-right { text-align: left; }
+
+  .nsingle-hero--tall   { height: 500px; }
+  .nsingle-hero--medium { height: 400px; }
+
+  .nsingle-gallery { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .nsingle-hero--tall   { height: 420px; }
+  .nsingle-hero--medium { height: 340px; }
+  .nsingle-hero--short  { height: 280px; }
+
+  .nsingle-hero__inner { padding: 20px 16px; }
+
+  .nsingle-start-bar { padding: 16px 20px; }
+
+  .nsingle-content-block { padding: 32px 0; }
+
+  .nsingle-gallery { grid-template-columns: 1fr; }
+
+  .nsingle-info-bar { flex-direction: column; }
+  .nsingle-info-bar__item { border-right: none; border-bottom: 1px solid var(--mix-color-border-light); }
+  .nsingle-info-bar__item:last-child { border-bottom: none; }
+
+  .nsingle-post-hero__inner { padding: 20px 16px; }
+}

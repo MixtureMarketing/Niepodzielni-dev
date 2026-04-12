@@ -1,0 +1,75 @@
+:root {
+  /* === KOLORY MARKI === */
+  --mix-color-brand-primary: #01BE4A;
+  --mix-color-brand-primary-hover: #01a040;
+  --mix-color-brand-secondary: #1500BB; /* Głęboki niebieski */
+  
+  /* === KOLORY TEKSTU === */
+  --mix-color-text-dark: #323232;
+  --mix-color-text-base: #323232;
+  --mix-color-text-interactive: #323232;
+  --mix-color-text-subtle: #828282;
+  --mix-color-text-light: #ffffff;
+  
+  /* === TŁA I POWIERZCHNIE === */
+  --mix-color-background-light: #ffffff;
+  --mix-color-background-grey-light: #F5F5F5;
+  --mix-color-background-grey-medium: #E0E0E0;
+  --mix-color-background-page: #F9F8F6;
+
+  /* === BORDERY === */
+  --mix-color-border-light: #EAEAEA;
+  --mix-color-border-grey: #F9F8F6;
+  --mix-color-border-brand: var(--mix-color-brand-primary);
+
+  /* === CZCIONKI === */
+  --mix-font-family-primary: 'Roboto', sans-serif;
+  --mix-font-family-secondary: 'Roboto', sans-serif;
+
+  --mix-font-weight-thin: 200;
+  --mix-font-weight-regular: 400;
+  --mix-font-weight-medium: 500;
+  --mix-font-weight-bold: 700;
+  --mix-font-weight-black: 900;
+
+  /* === LAYOUT & SPACING === */
+  --mix-container-width: 100%;
+  --mix-container-width-wide: 100%;
+  --mix-spacing-base: 20px;
+  --mix-header-height: 80px;
+
+  /* === ZAOKRĄGLENIA === */
+  --mix-radius-small: 5px;
+  --mix-radius-medium: 15px;
+  --mix-radius-large: 20px;
+  --mix-radius-xl: 24px;
+  --mix-radius-xxl: 36px;
+  --mix-radius-pill: 50px;
+
+  /* === CIENIE === */
+  --mix-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --mix-shadow-header: 0 2px 10px rgba(0,0,0,0.05);
+
+  /* === KOLORY DODATKOWE === */
+  --mix-color-primary-light: #e6f9ef;
+
+  /* === PRZEJŚCIA === */
+  --mix-transition-fast: 0.25s ease-in-out;
+  --mix-transition-normal: 0.4s ease-in-out;
+  --mix-transition-slow: 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Timing functions (do użycia z własnym duration) */
+  --mix-transition-timing-ease: ease-in-out;
+  --mix-transition-timing-cubic: cubic-bezier(0.4, 0, 0.2, 1);
+  --mix-transition-timing-cubic-switch: cubic-bezier(0.4, 0, 0.2, 1);
+  --mix-transition-timing-cubic-custom: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Duration bez timing (do użycia z var(--mix-transition-timing-*)) */
+  --mix-transition-duration-fast: 0.25s;
+  --mix-transition-duration-slow: 0.5s;
+
+  /* === ZAOKRĄGLENIA PILL (aliasy) === */
+  --mix-radius-pill-outer: var(--mix-radius-pill);
+  --mix-radius-pill-inner: var(--mix-radius-pill);
+  --mix-radius-pill-large: var(--mix-radius-pill);
+}

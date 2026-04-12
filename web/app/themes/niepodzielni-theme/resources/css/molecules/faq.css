@@ -1,0 +1,124 @@
+/* ============================================================
+   FAQ — molekuła akordeonu FAQ
+   Używaj: <div class="faq"><div class="faq__item">...
+
+   HTML pattern:
+   <div class="faq">
+     <div class="faq__item">
+       <div class="faq__question m_acordeon_head">Pytanie</div>
+       <div class="faq__answer linkmenu">
+         <p>Odpowiedź</p>
+       </div>
+     </div>
+   </div>
+   ============================================================ */
+
+.faq {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.faq__item {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* Na tle beżowym: item też beżowy */
+.faq--on-beige .faq__item {
+    background: #F9F8F6;
+}
+
+.faq__question {
+    padding: 18px 52px 18px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--mix-color-text-dark);
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: background 0.2s, color 0.2s;
+    line-height: 1.4;
+}
+
+/* Strzałka chevron */
+.faq__question::after {
+    content: '';
+    position: absolute;
+    right: 22px;
+    top: 50%;
+    margin-top: -6px;
+    border: solid #888;
+    border-width: 0 2px 2px 0;
+    padding: 4px;
+    transform: rotate(45deg);
+    transition: transform 0.3s, border-color 0.2s;
+}
+
+/* Stan aktywny — zielone tło */
+.faq__question.m_acordeon_active {
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+}
+
+.faq__question.m_acordeon_active::after {
+    border-color: #fff;
+    transform: rotate(-135deg);
+    margin-top: -2px;
+}
+
+/* Odpowiedź — ukryta domyślnie, otwierana przez custom-accordion.js */
+.faq__answer {
+    display: none;
+    padding: 0 24px 18px;
+}
+
+.faq__answer p {
+    font-size: 15px;
+    color: var(--mix-color-text-dark);
+    margin: 0 0 12px;
+    line-height: 1.7;
+}
+
+.faq__answer p:last-child {
+    margin-bottom: 0;
+}
+
+.faq__answer ul,
+.faq__answer ol {
+    margin: 0 0 12px;
+    padding-left: 20px;
+}
+
+.faq__answer li {
+    font-size: 15px;
+    color: var(--mix-color-text-dark);
+    margin-bottom: 6px;
+    line-height: 1.6;
+}
+
+/* Wariant: ciemne tło (np. dark section) — odwrócone kolory */
+.faq--on-dark .faq__item {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.faq--on-dark .faq__question {
+    color: #FAF4E6;
+}
+
+.faq--on-dark .faq__question::after {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.faq--on-dark .faq__question.m_acordeon_active {
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+}
+
+/* Max-width centrum */
+.faq--centered {
+    max-width: 820px;
+    margin-left: auto;
+    margin-right: auto;
+}

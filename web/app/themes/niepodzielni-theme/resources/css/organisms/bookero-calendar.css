@@ -1,0 +1,548 @@
+﻿
+    1. IMPORTÂ FONTS
+----------------------------------------------------------------- */
+
+
+    2. CUSTOMÂ PROPERTIES
+----------------------------------------------------------------- */
+:root{
+  --color-primary:#01BE4A;
+  --color-primary-dark:#01a742;
+  --color-primary-light:#e6f9ef;
+
+  --color-text-header:#1c2e4a;
+  --color-text-body:#333;
+  --color-text-muted:#828282;
+  --color-text-placeholder:#95a5a6;
+  --color-white:#ffffff;
+
+  --bg-main:#ffffff;
+  --bg-light-gray:#F9F8F6;
+
+  --border-color-soft:#e9ecef;
+  --border-color-input:#323232;
+  --border-color-medium:#D9D9D9;
+
+  --font-family-main:'Roboto',sans-serif;
+  --font-weight-normal:400;
+  --font-weight-medium:500;
+  --font-weight-bold:700;
+
+  --radius-large:30px;
+  --radius-medium:20px;
+  --radius-small:12px;
+  --radius-circle:50%;
+
+  --shadow-main:0 8px 30px rgba(0,0,0,.1);
+  --shadow-primary:0 4px 15px rgba(1,190,74,.3);
+
+  --transition-speed:.3s;
+}
+
+    3. LAYOUTÂ &Â GLOBAL
+----------------------------------------------------------------- */
+.my_style_calendar{
+  width:100%;
+  background-color:var(--bg-main);
+  border-radius:var(--radius-medium);
+  font-family:var(--font-family-main);
+}
+.add_some_padding{padding:1.875rem 2.5rem;} /*Â 30Â 40Â */
+.bookero-plugin-header-add{
+  display: none !important;
+  font-size:1.75rem;
+  font-weight:var(--font-weight-bold);
+  color:var(--color-text-header);
+  text-align:center;
+  margin:0 0 1.875rem 0;
+  padding-bottom:1.5rem;
+  border-bottom:1px solid var(--border-color-soft);
+}
+
+/* ---Â DWIEÂ KOLUMNYÂ --- */
+.bookero-plugin-form-wrapper,
+.bookero-plugin-form,
+.bookero-plugin-hideable-part,
+.bookero-plugin-hideable-part-wrapper{display:block!important;}
+
+.form-grid-container{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:3.125rem; /*Â 50Â */
+}
+.form-grid-container .form-column-left,
+.form-grid-container .form-column-right{display:block!important;}
+
+    4. COMPONENTSÂ (STYLING)
+----------------------------------------------------------------- */
+/* NagĹ‚ĂłwkiÂ sekcji */
+.bookero-plugin-form-heading{font-size:1.125rem;font-weight:var(--font-weight-medium);color:#34495e;margin-top:3.75rem;margin-bottom:2.75rem;;padding-bottom:.625rem;border-bottom:1px solid #f0f0f0;}
+.bookero-plugin-form-heading-term{display:block;font-size:.1.125rem;margin-top:3.75rem;margin-bottom:2.75rem;}
+.bookero-plugin-form-heading-time{font-size:.9375rem;}
+
+
+/* UsĹ‚ugi (drop-down) */
+.services-section{background:var(--bg-light-gray);border-radius:var(--radius-small);padding:1.25rem;margin-bottom:1.5rem;width: 50%; margin-left: auto; margin-right: auto;}
+.label-service{display:block;margin-bottom:.625rem;font-weight:var(--font-weight-medium);color:#555;padding-left:.3125rem;}
+.multiselect__tags{background:var(--bg-main);border-radius:var(--radius-small);border:1px solid var(--border-color-medium);padding:.625rem 1rem;transition:border-color var(--transition-speed);cursor:pointer;}
+.multiselect__single{font-size:1rem;color:var(--color-text-body);font-family:var(--font-family-main);}
+.multiselect--active .multiselect__tags{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px var(--color-primary-light);}
+.multiselect__content-wrapper{background:var(--bg-main);border-radius:var(--radius-small);padding:1.25rem;border:1px solid var(--border-color-soft);box-shadow:var(--shadow-main);margin-top:.5rem;overflow:hidden;}
+.multiselect__content{padding:0;margin:0;list-style:none;}
+.multiselect__option{padding:.75rem 1.25rem;color:var(--color-text-body);transition:background-color var(--transition-speed),color var(--transition-speed);cursor:pointer;font-size:.9375rem;}
+.multiselect__option--highlight{background:var(--color-primary-light);color:var(--color-primary);}
+.multiselect__option--selected{background:transparent;font-weight:var(--font-weight-normal);}
+.multiselect__option--selected.multiselect__option--highlight:hover{color:var(--color-primary);}
+.multiselect__option--selected.multiselect__option--highlight{color:var(--color-text-bod);}
+.multiselect__content > li:first-child { display: none; }
+.multiselect__select{transition:transform var(--transition-speed);}
+.multiselect--active .multiselect__select{transform:rotate(180deg);}
+
+/* Kalendarz */
+.dates-section{background:var(--bg-light-gray);border-radius:var(--radius-large);padding:2.5rem;width: 50%;margin-left: auto; margin-right: auto;}
+.calendar-nav{display:flex;justify-content:flex-start;align-items:center;border-radius:46px;border:2px solid var(--color-primary);width:fit-content;margin:0 auto 1rem 0;font-size:1.25rem;}
+.calendar-nav-month{font-size:1.125rem;font-weight:var(--font-weight-bold);color:#2c3e50;margin:0 1rem;}
+.calendar-nav-prev,.calendar-nav-next{text-decoration:none;font-size:1.75rem;font-weight:var(--font-weight-bold);padding:0 .625rem;border-radius:8px;transition:background-color var(--transition-speed),color var(--transition-speed) !important;}
+.calendar-nav-prev{color:var(--color-text-muted) !important;}
+.calendar-nav-next{color:var(--color-primary) !important;}
+.calendar-nav-prev:hover,.calendar-nav-next:hover{color:var(--color-primary);}
+.calendar-nav .is-hidden{color:#828282 !important;}
+
+.calendar-days-heading{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:.625rem;}
+.calendar-days-heading-cell{font-weight:var(--font-weight-medium);color:var(--color-text-placeholder);font-size:.875rem;}
+.calendar-days-list{display:grid;grid-template-columns:repeat(7,1fr);gap:.3125rem;}
+.calendar-days-list-cell{display:flex;justify-content:center;align-items:center;height:38px;width:38px;margin:auto;font-size:.875rem;font-weight:var(--font-weight-medium);border-radius:var(--radius-circle);transition:background-color var(--transition-speed),color var(--transition-speed),border-color var(--transition-speed),transform var(--transition-speed);box-sizing:border-box;}
+.is-offset{visibility:hidden;}
+
+@media(max-width:768px) {
+  .calendar-days-list-cell{
+    height:25px;
+    width:25px;
+ 
+  }
+}
+.switcher {
+  flex-shrink: 0;
+}
+@media(max-width:768px) {
+  .dates-section{
+    padding: 15px;
+ 
+  }
+
+.title_of_calendar{
+  padding: 1.25rem 1.5rem;
+}
+
+  
+}
+.calendar-days-list-cell.is-open{cursor:pointer;color:var(--color-text-muted);border:2px solid var(--color-text-muted);}
+.calendar-days-list-cell.is-open.is-valid{color:var(--color-primary);border:2px solid var(--color-primary);}
+.calendar-days-list-cell.is-open:not(.is-valid):hover{background:#f5f5f5;color:var(--color-text-body);border-color:var(--color-text-body);}
+.calendar-days-list-cell.is-open.is-valid:not(.is-selected):hover{background:var(--color-primary-light);}
+.calendar-days-list-cell.is-open.is-valid.is-selected{background:var(--color-primary);color:var(--color-white);border-color:var(--color-primary);transform:scale(1.1);box-shadow:0 0 10px rgba(1,190,74,.5);}
+
+/* ListaÂ godzin */
+.hours-list{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:.625rem;margin-top:1.5rem;}
+.hours-list-item{color:var(--color-primary);padding:.5rem 1rem;border-radius:var(--radius-medium);font-weight:var(--font-weight-medium);cursor:pointer;border:2px solid transparent;transition:background-color var(--transition-speed),color var(--transition-speed),border-color var(--transition-speed);}
+.hours-list-item:hover{background:var(--color-primary-light);border-color:var(--color-primary);}
+.hours-list-item.is-selected{background:var(--color-primary);color:var(--color-white);border-color:var(--color-primary);}
+
+/* PolaÂ formularza */
+.params-section .field,.customer-section .field{margin-bottom:1.5rem;}
+.params-input-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem;}
+.label-param,.label-customer-name,.label-customer-email{display:block;font-size:.875rem;font-weight:var(--font-weight-medium);color:var(--color-text-muted);margin-bottom:.5rem;}
+input[slot="field"],textarea[slot="field"],.customer-section .field>input{width:100%;border:none;border-bottom:1px solid var(--border-color-input);padding:.5rem .125rem;font-size:1rem;background:transparent;transition:border-color var(--transition-speed);box-sizing:border-box;font-family:var(--font-family-main);}
+input[slot="field"]:focus,textarea[slot="field"]:focus,.customer-section .field>input:focus{outline:none;border-color:var(--color-primary);}
+textarea[slot="field"]{resize:vertical;min-height:80px;background:var(--bg-light-gray);border-radius:13px;padding:.625rem;border:none;}
+
+/* Telefon */
+.label-customer-phone{display:none;}
+.vue-tel-input{border:none !important;border-bottom:1px solid var(--border-color-input) !important;border-radius:0 !important;}
+.vue-tel-input:focus-within{outline:none;box-shadow:none;border-color:var(--color-primary);}
+.vue-tel-input .vti__dropdown,.vue-tel-input .vti__input{background:transparent;border:none;}
+.vue-tel-input .vti__input{font-size:1rem;font-family:var(--font-family-main);padding-left:.5rem;}
+
+/* SwitcherÂ (checkbox) */
+.switcher-wrapper{display:flex;align-items:center;cursor:pointer;}
+.switcher{width:20px;height:20px;background:var(--bg-light-gray);border:1px solid var(--border-color-medium);border-radius:4px;position:relative;transition:background-color var(--transition-speed),border-color var(--transition-speed);box-sizing:border-box;}
+.switcher.is-agreement{width:20px!important;height:20px!important;min-width:20px;}
+.switcher-wrapper.is-active .switcher,.switcher.is-agreement.is-active{background:var(--color-primary);border-color:var(--color-primary);}
+.switcher-label{margin-left:.75rem;color:var(--color-text-body);}
+.switcher-label a{color: var(--color-text-body) !important;}
+.switcher.is-active {background: var(--color-primary);border-color: var(--color-primary);}
+
+
+/* Przyciski */
+.submit-section{margin-top:1.25rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.submit-button{background:var(--color-primary);color:var(--color-white);border:none;padding:.9375rem 2.5rem;font-size:.875rem;font-weight:var(--font-weight-bold);border-radius:var(--radius-large);cursor:pointer;transition:background-color var(--transition-speed);text-transform:uppercase;order:2;}
+.submit-button:hover{background:var(--color-primary-dark);transform:translateY(-2px);}
+.back-button{background:transparent;border:none;color:var(--color-text-muted);font-family:var(--font-family-main);font-weight:var(--font-weight-medium);font-size:.875rem;cursor:pointer;padding:.5rem;display:flex;align-items:center;order:1;transition:color var(--transition-speed);}
+.back-button:hover{color:var(--color-text-body);}
+.back-button::before{content:'';display:inline-block;width:6px;height:6px;border-style:solid;border-color:var(--color-primary);border-width:0 0 2px 2px;transform:rotate(45deg);margin-right:.75rem;}
+.required-fields-notice{grid-column:1/-1;text-align:right;font-size:.75rem;color:var(--color-text-muted);margin-top:-.625rem;}
+
+/* Podsumowanie */
+.bookero-plugin-header-summary{display:none;}
+.inquiries-list-section{background:var(--bg-light-gray);border-radius:var(--radius-large);padding:1.875rem;margin-top:1.5rem;}
+.inquiry-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:.625rem;border-bottom:1px solid var(--border-color-soft);}
+.inquiry-title{font-size:1.25rem;font-weight:var(--font-weight-bold);color:var(--color-text-body);}
+.inquiry-price{font-size:1.125rem;font-weight:var(--font-weight-bold);color:var(--color-primary);}
+.inquiry-datetime,.inquiry-service{font-size:1rem;margin-bottom:.625rem;color:var(--color-text-body);}
+.inquiry-label{font-weight:var(--font-weight-medium);color:var(--color-primary);margin-right:.3125rem;}
+.payment-methods-item-wrapper{display:none;}
+.payment-summary-quote{width:100%;text-align:right;color:var(--color-text-muted);font-size:1rem;margin-top:1.5rem;}
+.payment-summary-price{color:var(--color-primary);font-weight:var(--font-weight-bold);font-size:1.125rem;}
+
+    5. RESPONSIVEÂ BREAKPOINTÂ â‰¤Â 768â€Żpx
+----------------------------------------------------------------- */
+@media(max-width:768px){
+  .add_some_padding{padding:1.25rem 1.5rem;}
+  .bookero-plugin-header-add{font-size:1.5rem;}
+  .form-grid-container{grid-template-columns:1fr!important;gap:1.875rem;}
+  .params-input-grid{grid-template-columns:1fr;}
+  .submit-section{flex-direction:column-reverse;align-items:stretch;text-align:center;}
+  .back-button{justify-content:center;}
+}
+@media (max-width: 999px) {
+  .services-section {width: 100%;}
+  .dates-section {width: 100%;}
+}
+
+    6.Â FIXÂ DLAÂ ELEMENTORAÂ â€“Â WYĹÄ„CZNIEÂ WÂ bookero_div
+----------------------------------------------------------------- */
+/* kontener oznaczony przez Ciebie klasÄ…Â bookero_div
+   (dodaj jÄ… w Elementorze w zakĹ‚adceÂ ZaawansowaneÂ â†’Â CSSÂ Classes) */
+
+.bookero_div{
+  width:100%!important;
+  max-width:none!important;
+  box-sizing:border-box;
+  /* usuĹ„ ewentualny padding/margines nadany przez Elementor */
+  padding-left:0!important;
+  padding-right:0!important;
+  margin-left:0!important;
+  margin-right:0!important;
+}
+
+/* sam widgetÂ HTMLÂ wewnÄ…trz */
+.bookero_div .elementor-widget-html{
+  width:100%!important;
+  max-width:100%!important;
+  flex:1 1 100%!important;
+  box-sizing:border-box;
+}
+
+/* jeĹ›li kalendarz ma dodatkowy wrapper, rozciÄ…gnij go */
+.bookero_div #bookero_calendar,
+.bookero_div #bookero-plugin,
+.bookero_div .my_style_calendar{
+  max-width:none!important;
+  width:100%!important;
+}
+
+/* opcjonalnie usuĹ„ ograniczenia szerokoĹ›ci, ktĂłre Elementor
+   nadaje konteneromÂ Flexbox/Grid: */
+.bookero_div [class*="e-con"]{
+  max-width:none!important;
+  flex:1 1 100%!important;
+}
+
+
+/* --- Popup Style --- */
+
+/* 1. TĹ‚o (Overlay) - pokrywa caĹ‚Ä… stronÄ™ */
+.result-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* PĂłĹ‚przezroczysta czerĹ„ */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Upewnia siÄ™, ĹĽe jest na samej gĂłrze */
+}
+
+/* 2. GĹ‚Ăłwne okno popupa */
+.result-popup {
+  background: #ffffff;
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-width: 550px; /* Maksymalna szerokoĹ›Ä‡ okna */
+  width: 90%; /* SzerokoĹ›Ä‡ na mniejszych ekranach */
+  position: relative;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* 3. Przycisk zamykania (X) */
+.result-popup-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.result-popup-close:hover {
+  opacity: 1;
+}
+.result-popup-close::before,
+.result-popup-close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #888;
+  border-radius: 2px;
+}
+.result-popup-close::before {
+  transform: rotate(45deg);
+}
+.result-popup-close::after {
+  transform: rotate(-45deg);
+}
+
+
+/* 4. Stylizacja treĹ›ci wewnÄ…trz popupa */
+.result-popup-header {
+  font-family: sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.result-popup-content {
+  font-family: sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #666;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+/* 5. Sekcja z linkiem do pĹ‚atnoĹ›ci */
+.result-popup-content-payment-link {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f7f7f7;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin: 2rem 0;
+  gap: 1rem;
+}
+
+.result-popup-content-payment-quote {
+  font-family: sans-serif;
+  color: #555;
+}
+.result-popup-content-payment-quote strong {
+  color: #111;
+  font-size: 1.2rem;
+  margin-left: 0.5rem;
+}
+
+/* 6. Przycisk "ZapĹ‚aÄ‡ teraz" */
+.result-popup-content-paylink {
+  font-family: sans-serif;
+  background-color: #01BE4A;
+  color: #ffffff;
+  text-decoration: none;
+  padding: 0.8rem 1.8rem;
+  border-radius: 8px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.result-popup-content-paylink:hover {
+  background-color: #01a742;
+}
+
+/* 7. Informacja o SSL */
+.result-popup-content-payment-ssl {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-family: sans-serif;
+  font-size: 0.8rem;
+  color: #aaa;
+  margin-top: -1rem;
+}
+
+/* --- Details Popup Style --- */
+
+/* 1. TĹ‚o (Overlay) */
+.details-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* 2. GĹ‚Ăłwne okno popupa */
+.details-popup {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-width: 600px;
+  width: 90%;
+  position: relative;
+  box-sizing: border-box;
+  display: flex; /* UĹ‚atwia zarzÄ…dzanie ukĹ‚adem */
+  flex-direction: column; /* UkĹ‚ad pionowy: nagĹ‚Ăłwek, treĹ›Ä‡ */
+  max-height: 90vh; /* Ograniczenie wysokoĹ›ci */
+  padding: 2rem 2.5rem;
+}
+
+/* 3. Przycisk zamykania (X) */
+.details-popup-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.details-popup-close:hover {
+  opacity: 1;
+}
+.details-popup-close::before,
+.details-popup-close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #888;
+  border-radius: 2px;
+}
+.details-popup-close::before {
+  transform: rotate(45deg);
+}
+.details-popup-close::after {
+  transform: rotate(-45deg);
+}
+
+
+/* 4. Stylizacja nagĹ‚ĂłwkĂłw i treĹ›ci */
+.details-popup-header {
+  font-family: sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+  padding-bottom: 1.5rem;
+  text-align: center;
+  flex-shrink: 0; /* NagĹ‚Ăłwek nie bÄ™dzie siÄ™ kurczyĹ‚ */
+}
+
+/* Kontener na treĹ›Ä‡, z przewijaniem */
+.details-popup-content {
+  font-family: sans-serif;
+  overflow-y: auto; /* WĹ‚Ä…cza przewijanie, jeĹ›li treĹ›Ä‡ jest za dĹ‚uga */
+  padding-right: 1rem; /* Miejsce na pasek przewijania */
+  margin-right: -1rem;
+}
+
+/* PodnagĹ‚Ăłwki sekcji (UsĹ‚uga, Termin, etc.) */
+.details-popup-subheader {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+  margin: 1.5rem 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+.details-popup-subheader:first-of-type {
+  margin-top: 0;
+}
+
+/* Pojedynczy wiersz z informacjÄ… */
+.details-popup-content-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+}
+
+.details-popup-content-item-label {
+  color: #777;
+}
+
+.details-popup-content-item-value {
+  color: #333;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Wiersze w liĹ›cie "Dodatkowe informacje" */
+.details-popup-content-params-list-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  font-size: 0.95rem;
+}
+
+.details-popup-content-params-list-item-label {
+  color: #777;
+  margin-right: 1rem; /* OdstÄ™p miÄ™dzy etykietÄ… a wartoĹ›ciÄ… */
+}
+
+/* Sekcja z cenÄ… na dole */
+.details-popup-price {
+  font-family: sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #333;
+  text-align: right;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ddd;
+  flex-shrink: 0; /* Stopka nie bÄ™dzie siÄ™ kurczyÄ‡ */
+}
+
+.details-popup-price-quote {
+  color: #01BE4A; /* Zielony kolor dla ceny */
+  margin-left: 1rem;
+}
+
+.details-popup-content-params-list {
+  width: 100%;
+}
+
+.inquiry-actions-details{
+  color: var(--color-text-body) !important;
+  text-decoration: underline !important;
+}
+
+
+.bookero-plugin-form-heading-term,.bookero-plugin-form-heading-summary-main-info{
+  display: none !important;
+}
+
+.calendar-message{
+  margin-bottom: 10px;
+}

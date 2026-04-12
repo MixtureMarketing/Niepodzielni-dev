@@ -1,0 +1,123 @@
+/* --- Toggle Switch Styling --- */
+.Filtry > .filter_switch .jet-radio-list-wrapper {
+    display: flex;
+    justify-content: center;
+    height: 50px;
+}
+.Filtry > .filter_switch .jet-radio-list__input {
+    display: none;
+}
+.Filtry > .filter_switch fieldset {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    position: relative;
+    border: 2px solid var(--mix-color-brand-primary);
+    border-radius: var(--mix-radius-pill-outer);
+    padding: 3px;
+    background-color: var(--mix-color-background-light);
+    min-width: 220px;
+}
+.Filtry > .filter_switch fieldset::before {
+    content: '';
+    position: absolute;
+    background-color: var(--mix-color-brand-primary);
+    border-radius: var(--mix-radius-pill-inner);
+    z-index: 1;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    right: 50%;
+    transition: left 0.35s var(--mix-transition-timing-cubic-switch), right 0.35s var(--mix-transition-timing-cubic-switch);
+}
+.Filtry > .filter_switch fieldset.switch-right::before {
+    left: 50%;
+    right: 3px;
+}
+.Filtry > .filter_switch .jet-radio-list__item {
+    display: block;
+    position: relative;
+    z-index: 2;
+    width: 100%;
+}
+.Filtry > .filter_switch .jet-radio-list__button {
+    padding: 10px 5px;
+    cursor: pointer;
+    font-family: var(--mix-font-family-primary);
+    font-weight: var(--mix-font-weight-medium);
+    transition: color 0.3s var(--mix-transition-timing-ease);
+    user-select: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+.Filtry > .filter_switch .jet-radio-list__input:checked + .jet-radio-list__button {
+    color: var(--mix-color-text-light);
+}
+.Filtry > .filter_switch .jet-radio-list__decorator {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .Filtry > .filter_switch fieldset {
+        width: 100%;
+        min-width: unset;
+    }
+}
+
+/* --- Style dla filtrów JetEngine/JetSmartFilters --- */
+.jet-list-tree__parent .jet-checkboxes-list__decorator {
+    display: none;
+}
+.jet-list-tree__parent .jet-checkboxes-list__label {
+    color: var(--mix-color-brand-primary);
+}
+.jet-list-tree__parent .jet-checkboxes-list__button {
+    padding-left: 0;
+}
+.jet-filter-items-dropdown__body {
+    width: 15em;
+}
+@media screen and (max-width: 768px) {
+    .jet-filter-items-dropdown__body {
+        width: 100%;
+    }
+}
+.prev-next {
+    background-color: var(--mix-color-brand-primary);
+    border-radius: var(--mix-radius-pill-large);
+    color: var(--mix-color-text-light) !important;
+}
+.prev-next:hover {
+    border-radius: var(--mix-radius-pill-large);
+}
+.prev-next .jet-filters-pagination__link:hover {
+    background-color: var(--mix-color-brand-primary);
+    color: var(--mix-color-text-light) !important;
+    border-radius: var(--mix-radius-pill-large);
+}
+
+.karty-radio .jet-radio-list__decorator {
+    display: none;
+}
+
+.karty-radio .jet-radio-list__row.jet-filter-row:nth-child(2) {
+    border: 2px solid var(--mix-color-background-light);
+    border-radius: var(--mix-radius-pill-large);
+    padding: 10px 30px;
+}
+
+.jet-dropdown-open .jet-filter-items-dropdown__label {
+    background-color: var(--mix-color-brand-primary) !important;
+    color: var(--mix-color-text-light) !important;
+}
+
+/* Zmienia kolor tekstu tylko dla opcji z etykietą "Online" */
+label.jet-radio-list__item:has(input[data-label="Online"]) {
+    color: white;
+}
+
+.switch-right label.jet-radio-list__item:has(input[data-label="Online"]) {
+    color: var(--mix-color-text-base);
+}

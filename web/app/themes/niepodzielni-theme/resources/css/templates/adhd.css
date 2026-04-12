@@ -1,0 +1,231 @@
+/* ============================================================
+   ADHD u dorosłych — template styles
+   Atomy/molekuły używane z app.css:
+     .psy-section          — padding sekcji
+     .section-title        — nagłówki h2
+     .checklist            — lista objawów
+     .faq / .faq__*        — akordeon FAQ
+   ============================================================ */
+
+.adhd-page { font-family: var(--mix-font-family-primary); color: var(--mix-color-text-dark); }
+
+/* ============================================================
+   HERO — bg #F9F8F6
+   ============================================================ */
+.adhd-hero {
+    background: #F9F8F6;
+    padding: 80px 0 60px;
+}
+.adhd-hero__inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 60px;
+    align-items: center;
+}
+.adhd-hero__content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 580px;
+}
+.adhd-hero__title {
+    font-size: 54px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--mix-color-text-dark);
+    margin: 0;
+}
+.adhd-hero__content p {
+    font-size: 16px;
+    color: #555;
+    line-height: 1.65;
+    margin: 0;
+}
+.adhd-hero__image img {
+    width: 420px;
+    height: auto;
+    display: block;
+}
+
+/* ============================================================
+   CZYM JEST ADHD — bg #FFFFFF
+   ============================================================ */
+.adhd-about { background: #FFFFFF; }
+.adhd-about__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: start;
+}
+.adhd-about__left h2,
+.adhd-about__right h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+    margin: 0 0 20px;
+}
+.adhd-about__left p {
+    font-size: 15px;
+    line-height: 1.75;
+    color: #555;
+    margin: 0;
+}
+
+/* ============================================================
+   DLACZEGO WARTO + PROCES — bg #FFFFFF
+   ============================================================ */
+.adhd-why { background: #FFFFFF; }
+.adhd-why__intro {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.75;
+    margin: 0 0 16px;
+    max-width: 800px;
+}
+
+.adhd-process__layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 48px;
+    align-items: start;
+}
+.adhd-process__steps {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.adhd-step {
+    background: #F9F8F6;
+    border-radius: 20px;
+    padding: 28px 32px;
+}
+.adhd-step h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+    margin: 0 0 10px;
+}
+.adhd-step p {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.7;
+    margin: 0;
+}
+
+/* Price card */
+.adhd-price-card {
+    background: #F9F8F6;
+    border-radius: 24px;
+    padding: 36px 28px;
+    border: 2px solid var(--mix-color-brand-primary);
+    box-shadow: 0 8px 24px rgba(1,190,74,0.1);
+    position: sticky;
+    top: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.adhd-price-card__label {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+.adhd-price-card__amount {
+    font-size: 64px;
+    font-weight: 900;
+    color: var(--mix-color-text-dark);
+    line-height: 1;
+}
+.adhd-price-card__amount span {
+    font-size: 28px;
+    font-weight: 600;
+    color: #888;
+}
+.adhd-price-card__klarna {
+    font-size: 13px;
+    color: var(--mix-color-text-dark);
+    background: rgba(1,190,74,0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    line-height: 1.5;
+}
+.adhd-price-card__info {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ============================================================
+   DARK SECTION — bg #1500BB
+   ============================================================ */
+.adhd-dark {
+    background: #1500BB;
+    padding: 80px 0 0;
+}
+.adhd-dark__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    padding-bottom: 64px;
+}
+.adhd-dark__h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 16px;
+}
+.adhd-dark p {
+    font-size: 15px;
+    color: rgba(255,255,255,0.82);
+    line-height: 1.75;
+    margin: 0;
+}
+.adhd-dark__sub {
+    background: #F9F8F6;
+    padding: 56px 0;
+}
+.adhd-dark__sub-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 48px;
+    align-items: center;
+}
+.adhd-dark__sub-content h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--mix-color-text-dark);
+    margin: 0 0 16px;
+}
+.adhd-dark__sub-content p {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.75;
+    margin: 0;
+}
+.adhd-dark__sub-image img {
+    width: 260px;
+    height: auto;
+}
+
+/* ============================================================
+   SPECJALIŚCI — używa shortcode specjalisci_slider
+   ============================================================ */
+.adhd-specialists { background: #FFFFFF; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+    .adhd-process__layout { grid-template-columns: 1fr; }
+    .adhd-price-card { position: static; max-width: 400px; }
+}
+@media (max-width: 768px) {
+    .adhd-hero__inner { grid-template-columns: 1fr; gap: 32px; }
+    .adhd-hero__image { order: -1; text-align: center; }
+    .adhd-hero__image img { width: 260px; margin: 0 auto; }
+    .adhd-hero__title { font-size: 36px; }
+    .adhd-about__grid { grid-template-columns: 1fr; gap: 40px; }
+    .adhd-dark__grid { grid-template-columns: 1fr; gap: 32px; }
+    .adhd-dark__sub-inner { grid-template-columns: 1fr; }
+}

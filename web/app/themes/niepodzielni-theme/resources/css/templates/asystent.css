@@ -1,0 +1,111 @@
+/* ============================================================
+   Asystenci Zdrowienia — template styles
+   Atomy/molekuły używane z app.css:
+     .psy-section          — padding sekcji
+     .section-title        — nagłówki h2
+     .checklist            — lista punktowana
+     .faq / .faq__*        — akordeon FAQ
+   ============================================================ */
+
+.asystent-page { font-family: var(--mix-font-family-primary); color: var(--mix-color-text-dark); }
+
+/* ============================================================
+   HERO — bg #FFFFFF
+   ============================================================ */
+.asystent-hero {
+    background: #FFFFFF;
+    padding: 80px 0 60px;
+}
+.asystent-hero__inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 60px;
+    align-items: center;
+}
+.asystent-hero__content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 580px;
+}
+.asystent-hero__title {
+    font-size: 60px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--mix-color-brand-primary);
+    margin: 0;
+    text-transform: uppercase;
+}
+.asystent-hero__content p {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.7;
+    margin: 0;
+}
+.asystent-hero__content strong { color: var(--mix-color-text-dark); }
+.asystent-hero__image img {
+    width: 420px;
+    height: auto;
+    display: block;
+}
+
+/* ============================================================
+   VALUE + PRICE + KIEDY WARTO — bg #FEFEFE
+   ============================================================ */
+.asystent-value { background: #FEFEFE; }
+.asystent-value__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: start;
+}
+.asystent-value__quote {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--mix-color-text-dark);
+    line-height: 1.5;
+    margin: 0 0 32px;
+}
+
+/* Price box */
+.asystent-price-box {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: #F9F8F6;
+    border-radius: 20px;
+    padding: 24px 28px;
+    border-left: 4px solid var(--mix-color-brand-primary);
+}
+.asystent-price-box__amount {
+    font-size: 56px;
+    font-weight: 900;
+    color: var(--mix-color-brand-primary);
+    line-height: 1;
+    white-space: nowrap;
+}
+.asystent-price-box__amount span {
+    font-size: 24px;
+    font-weight: 600;
+    color: #888;
+}
+.asystent-price-box__info { display: flex; flex-direction: column; gap: 4px; }
+.asystent-price-box__info p { font-size: 13px; color: #555; margin: 0; line-height: 1.5; }
+.asystent-price-box__info strong { color: var(--mix-color-text-dark); }
+
+/* ============================================================
+   SPECJALIŚCI — używa shortcode specjalisci_slider
+   ============================================================ */
+.asystent-specialists { background: #FFFFFF; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+    .asystent-hero__inner { grid-template-columns: 1fr; gap: 32px; }
+    .asystent-hero__image { order: -1; text-align: center; }
+    .asystent-hero__image img { width: 260px; margin: 0 auto; }
+    .asystent-hero__title { font-size: 42px; }
+    .asystent-value__grid { grid-template-columns: 1fr; gap: 40px; }
+    .asystent-price-box { flex-direction: column; align-items: flex-start; gap: 12px; }
+}

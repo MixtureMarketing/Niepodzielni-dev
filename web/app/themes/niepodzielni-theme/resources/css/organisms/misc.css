@@ -1,0 +1,126 @@
+/* --- OSTATECZNA WERSJA KODU AKORDEONU --- */
+@media (max-width: 1000px) {
+    .m_acordeon_head {
+        cursor: pointer;
+        position: relative;
+        padding-right: 30px;
+    }
+    .m_acordeon_head::after {
+        content: '';
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        margin-top: -4px;
+        border: solid black;
+        border-width: 0 2px 2px 0;
+        display: inline-block;
+        padding: 4px;
+        transform: rotate(45deg);
+        transition: transform 0.3s ease-in-out;
+    }
+    .m_acordeon_head.m_acordeon_active::after {
+        transform: rotate(-135deg);
+        margin-top: -2px;
+    }
+    .linkmenu, .linkmenu_w {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease-in-out;
+    }
+    .linkmenu a:hover {
+        color: var(--mix-color-brand-primary) !important;
+    }
+    .e-con:has(> .m_acordeon_head) {
+        row-gap: 0;
+        transition: row-gap 0.4s ease-in-out;
+    }
+    .e-con:has(> .m_acordeon_head.m_acordeon_active) {
+        row-gap: 20px;
+    }
+}
+
+.card {
+    box-sizing: border-box;
+    padding: 24px;
+    background: #ffffff;
+    border: 2px solid transparent;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 40px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    text-align: left;
+}
+.card:hover {
+    transform: translateY(-2px);
+    border-color: var(--mix-color-brand-primary);
+    box-shadow: 0 0 15px rgba(1, 190, 74, 0.7);
+}
+.card:active {
+    transform: translateY(0px) scale(0.99);
+    border-color: var(--mix-color-brand-primary);
+    box-shadow: 0 0 8px rgba(1, 190, 74, 0.5);
+}
+
+.bookero-preloader-wrapper {
+    width: 100%;
+}
+
+@media (max-width: 767px) {
+    .srodek-karty .jet-tabs > .jet-tabs__control-wrapper > .jet-tabs__control {
+        width: 100% !important;
+    }
+}
+
+.confij .elementor-icon-box-title {
+    color: #323232 !important;
+}
+.kolorek .elementor-icon-box-description {
+    color: #323232 !important;
+}
+
+/* === Style dla Popupu Informacyjnego === */
+.popup-product-name {
+    font-weight: 700;
+    color: var(--mix-color-brand-primary);
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1.1em;
+}
+.popup-info-text, .popup-redirect-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 1rem 0;
+    color: #323232;
+    text-align: center;
+}
+.popup-redirect-text {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f0f0f0;
+}
+.popup-redirect-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding: 12px 24px;
+    background-color: var(--mix-color-brand-primary);
+    color: #ffffff !important;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.popup-redirect-link:hover {
+    background-color: #01a040;
+    color: #ffffff !important;
+    transform: translateY(-2px);
+}
+.popup-main-message {
+    text-align: center;
+}
+
+.aco .e-n-accordion-item-title {
+    box-shadow: 0 17px 33px rgba(0, 0, 0, 0.1);
+}
+.aco .e-n-accordion-item-title:hover, .aco .e-n-accordion-item-title:active {
+    box-shadow: 0 17px 33px rgba(0, 0, 0, 0);
+}
