@@ -74,12 +74,12 @@ jobs:
 
       # ── 4. Instalacja zależności ──────────────────────────────────────────────
       - name: Instalacja zależności Composer
-        run: composer install --prefer-dist --no-progress --no-interaction --ansi
+        run: composer install --prefer-dist --no-progress --no-interaction
 
       # ── 5. Laravel Pint — styl kodu ───────────────────────────────────────────
       # Konfiguracja: pint.json (preset: per, wykluczone: web/wp, web/app/plugins)
       - name: "Linting — Laravel Pint (--test)"
-        run: vendor/bin/pint --test --ansi
+        run: vendor/bin/pint --test
 
       # ── 6. PHPStan — statyczna analiza ───────────────────────────────────────
       # PHPStan nie jest jeszcze w composer.json require-dev.
@@ -96,12 +96,13 @@ jobs:
       #          - web/app/plugins
       - name: "Statyczna analiza — PHPStan"
         if: ${{ hashFiles('vendor/bin/phpstan') != '' }}
-        run: vendor/bin/phpstan analyse --no-progress --ansi
+        run: vendor/bin/phpstan analyse --no-progress
 
       # ── 7. Pest — testy jednostkowe i integracyjne ───────────────────────────
       # Konfiguracja: phpunit.xml.dist, suite: tests/Feature/**Test.php
+      # Uwaga: --ansi i --no-coverage powodują "Unknown option" w niektórych wersjach Pest.
       - name: "Testy — Pest"
-        run: vendor/bin/pest --no-coverage --ansi
+        run: vendor/bin/pest
 
   # ┌──────────────────────────────────────────────────────────────────────────┐
   # │  JOB 2 — Frontend: Node.js build & lint                                 │

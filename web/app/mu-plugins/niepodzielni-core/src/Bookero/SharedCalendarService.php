@@ -264,7 +264,8 @@ class SharedCalendarService
         }
 
         // L2: Negative cache — API niedawno zwróciło błąd dla tej kombinacji.
-        // Nie ponawiamy requestu przez HOURS_ERROR_TTL (90s).
+        // Klucz jest per (typ × workerId × date): awaria jednego psychologa nie blokuje
+        // pozostałych na tę samą datę. Nie ponawiamy requestu przez HOURS_ERROR_TTL (90s).
         if ($this->repo->getHoursErrorTransient($typ, $worker->workerId, $date)) {
             return [];
         }
@@ -278,7 +279,7 @@ class SharedCalendarService
             $hours = $this->client->getMonthDay($calHash, $worker->workerId, $date, $config->serviceId);
         } catch (BookeroApiException $e) {
             np_bookero_log_error('getMonthDay', "worker={$worker->workerId} date={$date}: " . $e->getMessage());
-            // Ustaw negative cache — kolejne kliknięcia w ten dzień nie trafią do API
+            // Flaga błędu scoped do tego konkretnego pracownika — pozostali nie są blokowaní
             $this->repo->setHoursErrorTransient($typ, $worker->workerId, $date);
             return [];
         }

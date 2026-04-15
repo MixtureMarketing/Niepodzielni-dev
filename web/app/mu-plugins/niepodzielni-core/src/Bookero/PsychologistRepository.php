@@ -348,7 +348,12 @@ class PsychologistRepository
     private const HOURS_ERROR_TTL = 90;
 
     /**
-     * Sprawdza czy ostatnie zapytanie o godziny zwróciło błąd API.
+     * Sprawdza czy ostatnie zapytanie o godziny dla tego konkretnego pracownika
+     * zwróciło błąd API.
+     *
+     * Klucz jest skoped per (typ × workerId × date) — awaria API jednego psychologa
+     * nie blokuje pozostałych na tę samą datę.
+     *
      * True = nie odpytuj API ponownie, zwróć [] natychmiast.
      */
     public function getHoursErrorTransient(string $typ, string $workerId, string $date): bool
@@ -357,9 +362,10 @@ class PsychologistRepository
     }
 
     /**
-     * Ustawia flagę błędu API na HOURS_ERROR_TTL sekund.
-     * Kolejne żądania o te same godziny będą zwracane z cache (pusty wynik)
-     * zamiast ponownie odpytywać API.
+     * Ustawia flagę błędu API dla konkretnego pracownika na HOURS_ERROR_TTL sekund.
+     * Kolejne żądania o te same godziny dla TEGO samego pracownika będą
+     * zwracane z cache (pusty wynik) zamiast ponownie odpytywać API.
+     * Pozostali pracownicy w tym samym dniu nie są tym dotknięci.
      */
     public function setHoursErrorTransient(string $typ, string $workerId, string $date): void
     {
@@ -371,12 +377,17 @@ class PsychologistRepository
     }
 
     /**
-     * Klucz negative cache — oddzielny prefiks od dayCacheKey, by nie kolidować
-     * z cache faktycznych wyników getMonthDay.
+     * Klucz negative cache — 'ERROR' wewnątrz hasha gwarantuje izolację per pracownik.
+     *
+     * Format: np_bkday_ + md5(typ + 'ERROR' + date + workerId)
+     *
+     * Sentinel 'ERROR' oddziela domenę błędów od domeny wyników (dayCacheKey),
+     * eliminując kolizję kluczy nawet przy identycznych wartościach typ/workerId/date.
+     * WorkerId w hashu = awaria API jednego psychologa nie blokuje pozostałych.
      */
     private function hoursErrorCacheKey(string $typ, string $workerId, string $date): string
     {
-        return 'np_bkday_err_' . md5($typ . $workerId . $date);
+        return 'np_bkday_' . md5($typ . 'ERROR' . $date . $workerId);
     }
 
     // ─── Transienty: shared calendar (buildMonthData) ─────────────────────────────

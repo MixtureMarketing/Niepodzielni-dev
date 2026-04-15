@@ -139,38 +139,31 @@ function np_ajax_refresh_termin_single(): void
         wp_send_json_error([ 'message' => 'Brak post_id' ]);
     }
 
-    $bk_pelny = get_post_meta($post_id, 'bookero_id_pelny', true);
-    $bk_niski = get_post_meta($post_id, 'bookero_id_niski', true);
+    // BookeroSyncService: czyści transienty, odpytuje API, zapisuje metadane i timestamp.
+    // Zastępuje ręczne pętle delete_transient + wywołania np_bookero_najblizszy_termin.
+    $client = new \Niepodzielni\Bookero\BookeroApiClient();
+    $repo   = new \Niepodzielni\Bookero\PsychologistRepository();
+    $sync   = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo);
 
-    $termin_pelny = '';
-    $termin_niski = '';
+    $result = $sync->syncSingleWorker($post_id);
 
-    if ($bk_pelny) {
-        // Wyczyść cache transientów dla wszystkich miesięcy
-        for ($i = 0; $i <= 2; $i++) {
-            delete_transient('np_bk_' . md5('pelnoplatny' . $bk_pelny) . '_m' . $i);
-        }
-        $termin_pelny = np_bookero_najblizszy_termin($bk_pelny, 'pelnoplatny');
-        update_post_meta($post_id, 'najblizszy_termin_pelnoplatny', $termin_pelny);
-    }
-    if ($bk_niski) {
-        for ($i = 0; $i <= 2; $i++) {
-            delete_transient('np_bk_' . md5('nisko' . $bk_niski) . '_m' . $i);
-        }
-        $termin_niski = np_bookero_najblizszy_termin($bk_niski, 'nisko');
-        update_post_meta($post_id, 'najblizszy_termin_niskoplatny', $termin_niski);
-    }
+    // Odczytaj świeżo zapisane etykiety z repo (w WP object cache po syncSingleWorker)
+    $termin_pelny = $result->hasPelny ? $result->nearestPelny : '';
+    $termin_niski = $result->hasNisko ? $result->nearestNisko : '';
 
     $now = time();
-    update_post_meta($post_id, 'np_termin_updated_at', $now);
 
-    // Ostrzeżenie gdy IDs są ustawione, ale brak terminów (prawdopodobnie błąd API)
+    // Ostrzeżenie gdy worker ID istnieje, ale sync nie znalazł żadnego terminu
     $api_warning = '';
-    if ($bk_pelny && ! $termin_pelny) {
-        $api_warning .= 'Pełny: brak odpowiedzi. ';
+    if ($result->hasPelny && $termin_pelny === '') {
+        $api_warning .= 'Pełny: brak wolnych terminów. ';
     }
-    if ($bk_niski && ! $termin_niski) {
-        $api_warning .= 'Niski: brak odpowiedzi.';
+    if ($result->hasNisko && $termin_niski === '') {
+        $api_warning .= 'Niski: brak wolnych terminów.';
+    }
+
+    if (! $result->hasSynced()) {
+        wp_send_json_error([ 'message' => 'Psycholog nie ma przypisanego Bookero ID.' ]);
     }
 
     wp_send_json_success([
