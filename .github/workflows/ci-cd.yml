@@ -1,0 +1,251 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Niepodzielni CI/CD Pipeline
+#
+# Uruchamia się przy każdym push i pull_request do gałęzi main i develop.
+# Trzy niezależne job-y: backend → frontend → deploy (placeholder).
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# Anuluje w locie poprzedni run dla tej samej gałęzi/PR gdy nowy commit trafi
+# zanim poprzedni się skończy — oszczędza minuty runners na niepotrzebnych runach.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │  JOB 1 — Backend: PHP checks & tests                                    │
+  # └──────────────────────────────────────────────────────────────────────────┘
+  backend:
+    name: "Backend — PHP ${{ matrix.php-version }}"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false        # Pozwól obu wersjom PHP dobiec do końca
+      matrix:
+        php-version:
+          - "8.4"             # Wersja produkcyjna
+          # - "8.3"           # Odkomentuj aby testować też na 8.3 (composer.json: >=8.3)
+
+    env:
+      # Composer cache dir dla cache action
+      COMPOSER_CACHE_DIR: ~/.cache/composer
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repozytorium
+        uses: actions/checkout@v4
+
+      # ── 2. Konfiguracja PHP ───────────────────────────────────────────────────
+      - name: Konfiguracja PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: >-
+            mbstring, xml, ctype, fileinfo, curl,
+            intl, json, zip, bcmath, redis
+          coverage: none          # Nie zbieramy coverage w CI (przyspiesza Pest)
+          tools: composer:v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Wymagane przez shivammathur dla wyższych rate limitów
+
+      # ── 3. Cache Composera ────────────────────────────────────────────────────
+      - name: Cache paczek Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.COMPOSER_CACHE_DIR }}
+          key: composer-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-${{ matrix.php-version }}-
+            composer-
+
+      # ── 4. Instalacja zależności ──────────────────────────────────────────────
+      - name: Instalacja zależności Composer
+        run: composer install --prefer-dist --no-progress --no-interaction --ansi
+
+      # ── 5. Laravel Pint — styl kodu ───────────────────────────────────────────
+      # Konfiguracja: pint.json (preset: per, wykluczone: web/wp, web/app/plugins)
+      - name: "Linting — Laravel Pint (--test)"
+        run: vendor/bin/pint --test --ansi
+
+      # ── 6. PHPStan — statyczna analiza ───────────────────────────────────────
+      # PHPStan nie jest jeszcze w composer.json require-dev.
+      # Aby aktywować ten krok:
+      #   1. composer require --dev phpstan/phpstan
+      #   2. Utwórz plik phpstan.neon w katalogu głównym projektu:
+      #      parameters:
+      #        level: 5
+      #        paths:
+      #          - web/app/mu-plugins/niepodzielni-core/src
+      #          - web/app/themes/niepodzielni-theme/app
+      #        excludePaths:
+      #          - web/wp
+      #          - web/app/plugins
+      - name: "Statyczna analiza — PHPStan"
+        if: ${{ hashFiles('vendor/bin/phpstan') != '' }}
+        run: vendor/bin/phpstan analyse --no-progress --ansi
+
+      # ── 7. Pest — testy jednostkowe i integracyjne ───────────────────────────
+      # Konfiguracja: phpunit.xml.dist, suite: tests/Feature/**Test.php
+      - name: "Testy — Pest"
+        run: vendor/bin/pest --no-coverage --ansi
+
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │  JOB 2 — Frontend: Node.js build & lint                                 │
+  # └──────────────────────────────────────────────────────────────────────────┘
+  frontend:
+    name: "Frontend — Node.js ${{ matrix.node-version }}"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - "20.x"            # Minimalna wersja wg engines: >=20.0.0 w package.json
+
+    defaults:
+      run:
+        # Wszystkie kroki `run` w tym job-ie wykonują się w katalogu motywu
+        working-directory: web/app/themes/niepodzielni-theme
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repozytorium
+        uses: actions/checkout@v4
+
+      # ── 2. Konfiguracja Node.js ───────────────────────────────────────────────
+      - name: Konfiguracja Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          # Ścieżka do package-lock.json w katalogu motywu — wymagane przez cache
+          cache-dependency-path: web/app/themes/niepodzielni-theme/package-lock.json
+
+      # ── 3. Instalacja zależności NPM ──────────────────────────────────────────
+      # `npm ci` wymaga package-lock.json (istnieje w repozytorium).
+      # Jest szybszy i bardziej deterministyczny niż `npm install` w CI.
+      - name: Instalacja zależności NPM
+        run: npm ci
+
+      # ── 4. Vite build produkcyjny ─────────────────────────────────────────────
+      # Buduje: public/build/assets/*.{js,css} + public/build/manifest.json
+      # Odpowiednik ręcznego: cd web/app/themes/niepodzielni-theme && npm run build
+      - name: "Build — Vite (production)"
+        run: npm run build
+
+      # ── 5. (Opcjonalne) Upload artefaktu build ────────────────────────────────
+      # Odkomentuj jeśli job deploy ma pobierać gotowe pliki zamiast budować od nowa.
+      # - name: Upload artefaktu public/build
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: frontend-build
+      #     path: web/app/themes/niepodzielni-theme/public/build
+      #     retention-days: 1
+
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │  JOB 3 — Deploy (placeholder)                                           │
+  # │  Uruchamia się TYLKO po sukcesie obu poprzednich job-ów                 │
+  # │  oraz TYLKO na push do main (nie na PR, nie na develop)                 │
+  # └──────────────────────────────────────────────────────────────────────────┘
+  deploy:
+    name: "Deploy — Production"
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    # Wdrożenie tylko przy bezpośrednim pushu do main — nie przy PR
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    # Środowisko GitHub Environments — opcjonalne, ale umożliwia:
+    # - ochronę gałęzi z wymaganym approval przed deployem
+    # - secrets scoped do środowiska (np. PROD_SSH_KEY)
+    # - śledzenie historii wdrożeń w UI GitHub
+    environment:
+      name: production
+      # url: https://niepodzielni.pl   # Odkomentuj gdy masz domenę
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repozytorium
+        uses: actions/checkout@v4
+
+      # ────────────────────────────────────────────────────────────────────────
+      # INSTRUKCJA PODPIĘCIA DEPLOYMENTU
+      # Wybierz jedną z metod poniżej i odkomentuj odpowiedni blok.
+      # ────────────────────────────────────────────────────────────────────────
+
+      # ── METODA A: rsync + SSH ─────────────────────────────────────────────────
+      # Wymaga secretów: PROD_SSH_KEY (klucz prywatny RSA/Ed25519),
+      #                  PROD_SSH_HOST, PROD_SSH_USER, PROD_SSH_PATH
+      #
+      # - name: Konfiguracja klucza SSH
+      #   uses: webfactory/ssh-agent@v0.9.0
+      #   with:
+      #     ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+      #
+      # - name: Dodaj host do known_hosts
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     ssh-keyscan -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
+      #
+      # - name: Deploy via rsync
+      #   run: |
+      #     rsync -azP --delete \
+      #       --exclude='.git/' \
+      #       --exclude='.github/' \
+      #       --exclude='node_modules/' \
+      #       --exclude='web/app/themes/niepodzielni-theme/node_modules/' \
+      #       --exclude='.env' \
+      #       --exclude='web/wp/' \
+      #       ./ ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_SSH_PATH }}
+      #
+      # - name: Post-deploy (composer install + wp cache flush)
+      #   run: |
+      #     ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} \
+      #       "cd ${{ secrets.PROD_SSH_PATH }} && \
+      #        composer install --no-dev --optimize-autoloader --no-interaction && \
+      #        wp cache flush --allow-root"
+
+      # ── METODA B: PHP Deployer (deployer.org) ─────────────────────────────────
+      # Wymaga: composer require --dev deployer/deployer
+      #         pliku deploy.php w katalogu głównym projektu
+      # Zalety nad rsync: atomic deploys, rollback, shared dirs (uploads, .env),
+      #                   automatyczne cache:clear, zero downtime
+      #
+      # - name: Deploy via Deployer
+      #   run: |
+      #     vendor/bin/dep deploy production \
+      #       --branch=${{ github.ref_name }} \
+      #       -o remote_user=${{ secrets.PROD_SSH_USER }} \
+      #       -o hostname=${{ secrets.PROD_SSH_HOST }} \
+      #   env:
+      #     SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
+
+      # ── METODA C: GitHub Environments + własny runner na serwerze ─────────────
+      # Zainstaluj self-hosted runner na serwerze produkcyjnym:
+      #   https://docs.github.com/en/actions/hosting-your-own-runners
+      # Następnie zmień: runs-on: self-hosted
+      # i uruchamiaj komendy bezpośrednio na serwerze bez potrzeby SSH.
+
+      # ── Placeholder — usuń gdy podepniesz jedną z powyższych metod ───────────
+      - name: "Placeholder — brak konfiguracji deploymentu"
+        run: |
+          echo "✓ Backend (PHP) — OK"
+          echo "✓ Frontend (Vite build) — OK"
+          echo ""
+          echo "Deployment nie jest jeszcze skonfigurowany."
+          echo "Odkomentuj jedną z metod (rsync/Deployer/self-hosted runner)"
+          echo "w sekcji deploy tego pliku: .github/workflows/ci-cd.yml"

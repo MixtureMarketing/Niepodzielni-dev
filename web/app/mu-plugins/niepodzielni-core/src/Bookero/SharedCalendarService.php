@@ -232,8 +232,15 @@ class SharedCalendarService {
     /**
      * Zwraca godziny dla psychologa w danym dniu.
      *
-     * Priorytet: WorkerRecord::$hoursCache (DB) → API → zapis do DB.
-     * Zapis używa persistHoursMap() z mapą scaloną w pamięci — zero dodatkowego odczytu DB.
+     * Trzypoziomowy priorytet — każdy poziom wyżej eliminuje zapytanie HTTP:
+     *   L1 — DB cache (WorkerRecord::$hoursCache)   → zero SQL, zero HTTP
+     *   L2 — Negative cache (transient 90s)         → zero SQL, zero HTTP
+     *   L3 — API Bookero (getMonthDay)               → 1 HTTP request
+     *
+     * Negative cache (L2): jeśli API ostatnio zwróciło błąd dla tej kombinacji
+     * (worker × data × typ), przez 90 sekund zwracamy [] bez ponownego odpytania.
+     * Chroni przed "spam-clicking" przez wielu użytkowników w tę samą datę
+     * podczas przeciążenia Bookero.
      *
      * @return string[]
      */
@@ -245,13 +252,19 @@ class SharedCalendarService {
         AccountConfig $config,
         string        $today,
     ): array {
-        // L1: DB cache z WorkerRecord — zero SQL
+        // L1: DB cache z WorkerRecord — zero SQL, zero HTTP
         $cached = $worker->cachedHoursFor( $date );
         if ( $cached !== null ) {
             return $cached;
         }
 
-        // L2: Brak w cache — pobierz z API
+        // L2: Negative cache — API niedawno zwróciło błąd dla tej kombinacji.
+        // Nie ponawiamy requestu przez HOURS_ERROR_TTL (90s).
+        if ( $this->repo->getHoursErrorTransient( $typ, $worker->workerId, $date ) ) {
+            return [];
+        }
+
+        // L3: Brak w cache i brak flagi błędu — odpytaj API
         if ( ! $calHash ) {
             return [];
         }
@@ -260,15 +273,17 @@ class SharedCalendarService {
             $hours = $this->client->getMonthDay( $calHash, $worker->workerId, $date, $config->serviceId );
         } catch ( BookeroApiException $e ) {
             np_bookero_log_error( 'getMonthDay', "worker={$worker->workerId} date={$date}: " . $e->getMessage() );
+            // Ustaw negative cache — kolejne kliknięcia w ten dzień nie trafią do API
+            $this->repo->setHoursErrorTransient( $typ, $worker->workerId, $date );
             return [];
         }
 
-        // Zapisz przez persistHoursMap() — scala z istniejącą mapą w pamięci,
-        // omijając dodatkowy get_post_meta() read który byłby w saveHours().
+        // Sukces — zapisz wynik do DB przez persistHoursMap() (scala mapę w pamięci,
+        // bez dodatkowego get_post_meta() read który byłby w saveHours()).
         $updatedMap          = $worker->hoursCache;
         $updatedMap[ $date ] = array_values( $hours );
 
-        // Wyczyść daty z przeszłości w pamięci przed zapisem
+        // Wyczyść daty z przeszłości przed zapisem
         foreach ( array_keys( $updatedMap ) as $d ) {
             if ( $d < $today ) {
                 unset( $updatedMap[ $d ] );

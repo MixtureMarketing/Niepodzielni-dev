@@ -146,7 +146,8 @@ class BookeroApiClient {
     public function createBooking( string $calHash, array $payload ): array {
         $payload['bookero_id'] = $calHash;
 
-        $body    = $this->post( 'add', $payload, timeout: 20 );
+        // 8s zamiast 20s — fail-fast zapobiega wyczerpaniu puli workerów PHP-FPM
+        $body    = $this->post( 'add', $payload, timeout: 8 );
         $inquiry = $body['data']['inquiries'][0] ?? [];
 
         return [

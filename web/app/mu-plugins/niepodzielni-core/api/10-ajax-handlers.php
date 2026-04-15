@@ -63,7 +63,8 @@ add_action( 'wp_ajax_np_get_terminy',        'np_ajax_get_terminy' );
 add_action( 'wp_ajax_nopriv_np_get_terminy', 'np_ajax_get_terminy' );
 
 function np_ajax_get_terminy(): void {
-    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+    // Brak nonce — endpoint read-only serwowany z page-cached stron.
+    // Nonce z cachedowanych stron wygasają natychmiast, blokując użytkowników.
 
     $bookero_id = sanitize_text_field( $_POST['bookero_id'] ?? '' );
     $typ        = sanitize_key( $_POST['typ'] ?? 'pelnoplatny' );
@@ -169,7 +170,9 @@ add_action( 'wp_ajax_bk_get_shared_month',        'np_ajax_bk_get_shared_month' 
 add_action( 'wp_ajax_nopriv_bk_get_shared_month', 'np_ajax_bk_get_shared_month' );
 
 function np_ajax_bk_get_shared_month(): void {
-    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+    // Brak nonce — endpoint read-only, wywoływany z page-cached stron kalendarza.
+    // Nonce osadzony w cachedowanej stronie wygasa w ciągu minut i blokuje kalendarz.
+    // Ochrona przez: sanitację wejścia + transient cache po stronie serwera.
 
     $typ         = sanitize_text_field( $_POST['typ'] ?? 'nisko' );
     $plus_months = max( 0, min( 12, (int) ( $_POST['plus_months'] ?? 0 ) ) );
@@ -191,7 +194,8 @@ add_action( 'wp_ajax_bk_get_date_slots',        'np_ajax_bk_get_date_slots' );
 add_action( 'wp_ajax_nopriv_bk_get_date_slots', 'np_ajax_bk_get_date_slots' );
 
 function np_ajax_bk_get_date_slots(): void {
-    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+    // Brak nonce — endpoint read-only (pobieranie godzin przy kliknięciu dnia).
+    // Format daty walidowany przez regex poniżej.
 
     $typ  = sanitize_text_field( $_POST['typ'] ?? 'nisko' );
     $date = sanitize_text_field( $_POST['date'] ?? '' );
@@ -209,6 +213,9 @@ add_action( 'wp_ajax_bk_verify_hour',        'np_ajax_bk_verify_hour' );
 add_action( 'wp_ajax_nopriv_bk_verify_hour', 'np_ajax_bk_verify_hour' );
 
 function np_ajax_bk_verify_hour(): void {
+    // Nonce zachowany — endpoint inicjuje N zewnętrznych wywołań API Bookero
+    // (jedno na każdy bookero_id). Nonce chroni przed spam-flood z zewnątrz.
+    // Wywoływany z dynamicznej strony potwierdzenia rezerwacji (nie z page cache).
     check_ajax_referer( 'np_bookero_nonce', 'nonce' );
 
     $date        = sanitize_text_field( $_POST['date'] ?? '' );
@@ -357,8 +364,11 @@ function np_ajax_bk_create_booking(): void {
         ],
     ];
 
+    // Timeout 8s zamiast 20s — zapobiega blokowaniu workerów PHP-FPM/Apache
+    // gdy Bookero jest przeciążone. Po 20s cały pool wątków może być zajęty
+    // przez wiszące requesty rezerwacji. 8s = czytelny fail-fast dla użytkownika.
     $response = wp_remote_post( 'https://plugin.bookero.pl/plugin-api/v2/add', [
-        'timeout' => 20,
+        'timeout' => 8,
         'headers' => [
             'Accept'       => 'application/json, text/plain, */*',
             'Content-Type' => 'application/json',
@@ -370,8 +380,20 @@ function np_ajax_bk_create_booking(): void {
     ] );
 
     if ( is_wp_error( $response ) ) {
-        np_bookero_log_error( 'add', "worker={$worker_id} date={$date} hour={$hour}: " . $response->get_error_message() );
-        wp_send_json_error( 'Błąd połączenia z Bookero. Spróbuj ponownie.' );
+        $err_msg = $response->get_error_message();
+        np_bookero_log_error( 'add', "worker={$worker_id} date={$date} hour={$hour}: {$err_msg}" );
+
+        // cURL error 28 = timeout — komunikat odróżniony od ogólnego błędu sieci.
+        // "timed out" łapie też warianty tekstowe z różnych wersji libcurl.
+        $is_timeout = str_contains( $err_msg, 'timed out' )
+                   || str_contains( $err_msg, 'error 28' )
+                   || str_contains( $err_msg, 'Operation timed out' );
+
+        wp_send_json_error(
+            $is_timeout
+                ? 'System rezerwacji jest obecnie przeciążony. Odczekaj chwilę i spróbuj ponownie.'
+                : 'Błąd połączenia z Bookero. Spróbuj ponownie.'
+        );
     }
 
     $code = (int) wp_remote_retrieve_response_code( $response );

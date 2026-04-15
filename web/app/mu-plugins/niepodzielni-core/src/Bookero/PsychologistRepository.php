@@ -315,6 +315,46 @@ class PsychologistRepository {
         update_post_meta( $postId, $metaKey, wp_json_encode( $map ) );
     }
 
+    // ─── Transienty: negative cache godzin ───────────────────────────────────────
+
+    /**
+     * TTL negative cache: 90 sekund.
+     *
+     * Wystarczająco długo, by nie spamować przeciążonego Bookero przy
+     * namiętnym klikaniu w ten sam dzień przez wielu użytkowników.
+     * Wystarczająco krótko, by przy chwilowej awarii API dane wróciły szybko.
+     */
+    private const HOURS_ERROR_TTL = 90;
+
+    /**
+     * Sprawdza czy ostatnie zapytanie o godziny zwróciło błąd API.
+     * True = nie odpytuj API ponownie, zwróć [] natychmiast.
+     */
+    public function getHoursErrorTransient( string $typ, string $workerId, string $date ): bool {
+        return (bool) get_transient( $this->hoursErrorCacheKey( $typ, $workerId, $date ) );
+    }
+
+    /**
+     * Ustawia flagę błędu API na HOURS_ERROR_TTL sekund.
+     * Kolejne żądania o te same godziny będą zwracane z cache (pusty wynik)
+     * zamiast ponownie odpytywać API.
+     */
+    public function setHoursErrorTransient( string $typ, string $workerId, string $date ): void {
+        set_transient(
+            $this->hoursErrorCacheKey( $typ, $workerId, $date ),
+            1,
+            self::HOURS_ERROR_TTL
+        );
+    }
+
+    /**
+     * Klucz negative cache — oddzielny prefiks od dayCacheKey, by nie kolidować
+     * z cache faktycznych wyników getMonthDay.
+     */
+    private function hoursErrorCacheKey( string $typ, string $workerId, string $date ): string {
+        return 'np_bkday_err_' . md5( $typ . $workerId . $date );
+    }
+
     // ─── Transienty: shared calendar (buildMonthData) ─────────────────────────────
 
     private const SHARED_MONTH_TTL = 5 * MINUTE_IN_SECONDS;
