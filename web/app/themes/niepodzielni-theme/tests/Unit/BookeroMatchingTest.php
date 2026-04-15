@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
@@ -36,7 +37,7 @@ class BookeroMatchingTest extends TestCase
         // ą ć ę ł ń ó ś ź ż and uppercase variants
         $this->assertSame(
             'acelnoszz acelnoszz',
-            np_normalize_bookero_name('ąćęłńóśźż ĄĆĘŁŃÓŚŹŻ')
+            np_normalize_bookero_name('ąćęłńóśźż ĄĆĘŁŃÓŚŹŻ'),
         );
     }
 
@@ -44,7 +45,7 @@ class BookeroMatchingTest extends TestCase
     public function test_normalize_collapses_multiple_spaces(): void
     {
         $this->assertSame('adam kowalski', np_normalize_bookero_name('Adam  Kowalski'));
-        $this->assertSame('jan nowak',     np_normalize_bookero_name('Jan   Nowak'));
+        $this->assertSame('jan nowak', np_normalize_bookero_name('Jan   Nowak'));
     }
 
 
@@ -161,8 +162,8 @@ class BookeroMatchingTest extends TestCase
     {
         $result = np_find_worker_by_name('Jan Nowak', $this->workers);
         $this->assertNotNull($result);
-        $this->assertArrayHasKey('id',    $result);
-        $this->assertArrayHasKey('name',  $result);
+        $this->assertArrayHasKey('id', $result);
+        $this->assertArrayHasKey('name', $result);
         $this->assertArrayHasKey('match', $result);
     }
 

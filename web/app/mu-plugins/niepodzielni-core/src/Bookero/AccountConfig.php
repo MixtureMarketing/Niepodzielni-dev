@@ -1,6 +1,6 @@
 <?php
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace Niepodzielni\Bookero;
 
@@ -9,8 +9,8 @@ namespace Niepodzielni\Bookero;
  *
  * Immutable value object — readonly class PHP 8.2+.
  */
-readonly class AccountConfig {
-
+readonly class AccountConfig
+{
     public function __construct(
         public int    $serviceId,
         public string $serviceName,
@@ -20,8 +20,9 @@ readonly class AccountConfig {
     /**
      * Pusta konfiguracja — używana jako bezpieczny fallback gdy /init niedostępny.
      */
-    public static function empty(): self {
-        return new self( 0, '', 0 );
+    public static function empty(): self
+    {
+        return new self(0, '', 0);
     }
 
     /**
@@ -29,7 +30,8 @@ readonly class AccountConfig {
      *
      * @return array{service_id: int, service_name: string, payment_id: int}
      */
-    public function toArray(): array {
+    public function toArray(): array
+    {
         return [
             'service_id'   => $this->serviceId,
             'service_name' => $this->serviceName,
@@ -42,11 +44,12 @@ readonly class AccountConfig {
      *
      * @param array{service_id?: int, service_name?: string, payment_id?: int} $data
      */
-    public static function fromArray( array $data ): self {
+    public static function fromArray(array $data): self
+    {
         return new self(
-            serviceId:   (int) ( $data['service_id']   ?? 0 ),
-            serviceName: (string) ( $data['service_name'] ?? '' ),
-            paymentId:   (int) ( $data['payment_id']   ?? 0 ),
+            serviceId: (int) ($data['service_id']   ?? 0),
+            serviceName: (string) ($data['service_name'] ?? ''),
+            paymentId: (int) ($data['payment_id']   ?? 0),
         );
     }
 }

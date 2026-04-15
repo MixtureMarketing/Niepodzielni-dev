@@ -3,100 +3,123 @@
  * Admin Settings — strona ustawień wtyczki Niepodzielni Core
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
-add_action( 'admin_menu', 'np_add_settings_page' );
+add_action('admin_menu', 'np_add_settings_page');
 
-function np_add_settings_page(): void {
+function np_add_settings_page(): void
+{
     add_options_page(
         'Ustawienia Niepodzielni',
         'Niepodzielni',
         'manage_options',
         'niepodzielni-settings',
-        'np_render_settings_page'
+        'np_render_settings_page',
     );
 }
 
-add_action( 'admin_init', 'np_register_settings' );
+add_action('admin_init', 'np_register_settings');
 
-function np_register_settings(): void {
-    register_setting( 'np_settings_group', 'np_bookero_api_url',       [ 'sanitize_callback' => 'esc_url_raw'         ] );
-    register_setting( 'np_settings_group', 'np_bookero_api_key_pelny', [ 'sanitize_callback' => 'sanitize_text_field' ] );
-    register_setting( 'np_settings_group', 'np_bookero_api_key_nisko', [ 'sanitize_callback' => 'sanitize_text_field' ] );
-    register_setting( 'np_settings_group', 'np_bookero_cal_pelny',     [ 'sanitize_callback' => 'sanitize_text_field' ] );
-    register_setting( 'np_settings_group', 'np_bookero_cal_nisko',     [ 'sanitize_callback' => 'sanitize_text_field' ] );
-    register_setting( 'np_settings_group', 'np_psy_listing_version',   [ 'sanitize_callback' => 'sanitize_text_field' ] );
+function np_register_settings(): void
+{
+    register_setting('np_settings_group', 'np_bookero_api_url', [ 'sanitize_callback' => 'esc_url_raw'         ]);
+    register_setting('np_settings_group', 'np_bookero_api_key_pelny', [ 'sanitize_callback' => 'sanitize_text_field' ]);
+    register_setting('np_settings_group', 'np_bookero_api_key_nisko', [ 'sanitize_callback' => 'sanitize_text_field' ]);
+    register_setting('np_settings_group', 'np_bookero_cal_pelny', [ 'sanitize_callback' => 'sanitize_text_field' ]);
+    register_setting('np_settings_group', 'np_bookero_cal_nisko', [ 'sanitize_callback' => 'sanitize_text_field' ]);
+    register_setting('np_settings_group', 'np_psy_listing_version', [ 'sanitize_callback' => 'sanitize_text_field' ]);
 
-    add_settings_section( 'np_bookero_section', 'Konfiguracja Bookero', function() {
+    add_settings_section('np_bookero_section', 'Konfiguracja Bookero', function () {
         echo '<p>Wartości z pliku <code>.env</code> mają priorytet nad polami poniżej i są wyświetlane jako aktywne.</p>';
-    }, 'niepodzielni-settings' );
+    }, 'niepodzielni-settings');
 
     // Helper: wyświetl pole z informacją o stałej .env
-    $env_field = function( string $label, string $option_name, string $const_name, string $desc = '' ) {
-        $env_val  = defined( $const_name ) ? constant( $const_name ) : '';
-        $db_val   = get_option( $option_name, '' );
-        $is_env   = ! empty( $env_val );
-        $display  = $is_env ? substr( $env_val, 0, 6 ) . str_repeat( '•', max( 0, strlen( $env_val ) - 6 ) ) : '';
+    $env_field = function (string $label, string $option_name, string $const_name, string $desc = '') {
+        $env_val  = defined($const_name) ? constant($const_name) : '';
+        $db_val   = get_option($option_name, '');
+        $is_env   = ! empty($env_val);
+        $display  = $is_env ? substr($env_val, 0, 6) . str_repeat('•', max(0, strlen($env_val) - 6)) : '';
 
-        if ( $is_env ) {
+        if ($is_env) {
             echo '<code style="background:#eaffea;padding:4px 8px;border-radius:4px;color:#1a6b1a;">'
-               . esc_html( $display ) . '</code> '
+               . esc_html($display) . '</code> '
                . '<span style="color:#1a6b1a;">✓ ustawione w .env</span>';
         } else {
-            echo '<input type="text" name="' . esc_attr( $option_name ) . '" '
-               . 'value="' . esc_attr( $db_val ) . '" class="regular-text">';
+            echo '<input type="text" name="' . esc_attr($option_name) . '" '
+               . 'value="' . esc_attr($db_val) . '" class="regular-text">';
         }
-        if ( $desc ) {
+        if ($desc) {
             echo '<p class="description">' . $desc . '</p>';
         }
     };
 
-    add_settings_field( 'np_bookero_api_url', 'URL API Bookero', function() {
-        $val = get_option( 'np_bookero_api_url', 'https://app.bookero.pl/api/v1' );
-        echo '<input type="url" name="np_bookero_api_url" value="' . esc_attr( $val ) . '" class="regular-text">';
-    }, 'niepodzielni-settings', 'np_bookero_section' );
+    add_settings_field('np_bookero_api_url', 'URL API Bookero', function () {
+        $val = get_option('np_bookero_api_url', 'https://app.bookero.pl/api/v1');
+        echo '<input type="url" name="np_bookero_api_url" value="' . esc_attr($val) . '" class="regular-text">';
+    }, 'niepodzielni-settings', 'np_bookero_section');
 
-    add_settings_field( 'np_bookero_cal_pelny', 'ID kalendarza — Pełnopłatny', function() use ( $env_field ) {
-        $env_field( '', 'np_bookero_cal_pelny', 'NP_BOOKERO_CAL_ID_PELNY',
-            'Hash konta Bookero dla konsultacji pełnopłatnych' );
-    }, 'niepodzielni-settings', 'np_bookero_section' );
+    add_settings_field('np_bookero_cal_pelny', 'ID kalendarza — Pełnopłatny', function () use ($env_field) {
+        $env_field(
+            '',
+            'np_bookero_cal_pelny',
+            'NP_BOOKERO_CAL_ID_PELNY',
+            'Hash konta Bookero dla konsultacji pełnopłatnych',
+        );
+    }, 'niepodzielni-settings', 'np_bookero_section');
 
-    add_settings_field( 'np_bookero_api_key_pelny', 'Klucz API — Pełnopłatny', function() use ( $env_field ) {
-        $env_field( '', 'np_bookero_api_key_pelny', 'NP_BOOKERO_API_KEY_PELNY',
-            'Klucz Bearer do API Bookero dla konta pełnopłatnego' );
-    }, 'niepodzielni-settings', 'np_bookero_section' );
+    add_settings_field('np_bookero_api_key_pelny', 'Klucz API — Pełnopłatny', function () use ($env_field) {
+        $env_field(
+            '',
+            'np_bookero_api_key_pelny',
+            'NP_BOOKERO_API_KEY_PELNY',
+            'Klucz Bearer do API Bookero dla konta pełnopłatnego',
+        );
+    }, 'niepodzielni-settings', 'np_bookero_section');
 
-    add_settings_field( 'np_bookero_cal_nisko', 'ID kalendarza — Niskopłatny', function() use ( $env_field ) {
-        $env_field( '', 'np_bookero_cal_nisko', 'NP_BOOKERO_CAL_ID_NISKO',
-            'Hash konta Bookero dla konsultacji niskopłatnych' );
-    }, 'niepodzielni-settings', 'np_bookero_section' );
+    add_settings_field('np_bookero_cal_nisko', 'ID kalendarza — Niskopłatny', function () use ($env_field) {
+        $env_field(
+            '',
+            'np_bookero_cal_nisko',
+            'NP_BOOKERO_CAL_ID_NISKO',
+            'Hash konta Bookero dla konsultacji niskopłatnych',
+        );
+    }, 'niepodzielni-settings', 'np_bookero_section');
 
-    add_settings_field( 'np_bookero_api_key_nisko', 'Klucz API — Niskopłatny', function() use ( $env_field ) {
-        $env_field( '', 'np_bookero_api_key_nisko', 'NP_BOOKERO_API_KEY_NISKO',
-            'Klucz Bearer do API Bookero dla konta niskopłatnego' );
-    }, 'niepodzielni-settings', 'np_bookero_section' );
+    add_settings_field('np_bookero_api_key_nisko', 'Klucz API — Niskopłatny', function () use ($env_field) {
+        $env_field(
+            '',
+            'np_bookero_api_key_nisko',
+            'NP_BOOKERO_API_KEY_NISKO',
+            'Klucz Bearer do API Bookero dla konta niskopłatnego',
+        );
+    }, 'niepodzielni-settings', 'np_bookero_section');
 }
 
-function np_render_settings_page(): void {
-    if ( ! current_user_can( 'manage_options' ) ) return;
+function np_render_settings_page(): void
+{
+    if (! current_user_can('manage_options')) {
+        return;
+    }
     ?>
     <div class="wrap">
         <h1>Ustawienia Niepodzielni Core</h1>
         <form method="post" action="options.php">
             <?php
-            settings_fields( 'np_settings_group' );
-            do_settings_sections( 'niepodzielni-settings' );
-            submit_button( 'Zapisz ustawienia' );
-            ?>
+            settings_fields('np_settings_group');
+    do_settings_sections('niepodzielni-settings');
+    submit_button('Zapisz ustawienia');
+    ?>
         </form>
         <hr>
         <h2>Narzędzia</h2>
         <p>
-            <a href="<?= esc_url( admin_url( 'admin-ajax.php?action=np_refresh_terminy&_wpnonce=' . wp_create_nonce( 'np_bookero_nonce' ) ) ) ?>" class="button button-secondary">
+            <a href="<?= esc_url(admin_url('admin-ajax.php?action=np_refresh_terminy&_wpnonce=' . wp_create_nonce('np_bookero_nonce'))) ?>" class="button button-secondary">
                 Odśwież terminy Bookero ręcznie
             </a>
         </p>
-        <p><strong>Wersja cache listingu:</strong> <?= esc_html( NP_PSY_LISTING_VERSION ) ?></p>
+        <p><strong>Wersja cache listingu:</strong> <?= esc_html(NP_PSY_LISTING_VERSION) ?></p>
     </div>
     <?php
 }

@@ -14,7 +14,7 @@ class TemplatePsychoedukacja extends Composer
         $tags = get_psychoedukacja_tags();
         $tabs = array_merge(
             [['value' => 'all', 'label' => 'Wszystkie']],
-            $tags
+            $tags,
         );
 
         return compact('data', 'tabs');

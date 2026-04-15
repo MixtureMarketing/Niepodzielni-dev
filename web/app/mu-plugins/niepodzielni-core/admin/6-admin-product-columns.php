@@ -3,17 +3,20 @@
  * Admin Product Columns — dodatkowe kolumny w liście psychologów w adminie
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
 // Kolumny na liście psychologów
-add_filter( 'manage_psycholog_posts_columns',       'np_psycholog_columns' );
-add_action( 'manage_psycholog_posts_custom_column', 'np_psycholog_column_content', 10, 2 );
+add_filter('manage_psycholog_posts_columns', 'np_psycholog_columns');
+add_action('manage_psycholog_posts_custom_column', 'np_psycholog_column_content', 10, 2);
 
-function np_psycholog_columns( array $columns ): array {
+function np_psycholog_columns(array $columns): array
+{
     $new = [];
-    foreach ( $columns as $key => $label ) {
+    foreach ($columns as $key => $label) {
         $new[ $key ] = $label;
-        if ( $key === 'title' ) {
+        if ($key === 'title') {
             $new['bookero_id']    = 'Bookero ID';
             $new['najblizszy']    = 'Najbliższy termin';
             $new['stawka']        = 'Stawka';
@@ -23,41 +26,50 @@ function np_psycholog_columns( array $columns ): array {
     return $new;
 }
 
-function np_psycholog_column_content( string $column, int $post_id ): void {
-    switch ( $column ) {
+function np_psycholog_column_content(string $column, int $post_id): void
+{
+    switch ($column) {
         case 'bookero_id':
-            $pelny = get_post_meta( $post_id, 'bookero_id_pelny', true );
-            $niski = get_post_meta( $post_id, 'bookero_id_niski', true );
-            if ( $pelny ) echo '<small>Pełny: ' . esc_html( $pelny ) . '</small><br>';
-            if ( $niski ) echo '<small>Niski: ' . esc_html( $niski ) . '</small>';
+            $pelny = get_post_meta($post_id, 'bookero_id_pelny', true);
+            $niski = get_post_meta($post_id, 'bookero_id_niski', true);
+            if ($pelny) {
+                echo '<small>Pełny: ' . esc_html($pelny) . '</small><br>';
+            }
+            if ($niski) {
+                echo '<small>Niski: ' . esc_html($niski) . '</small>';
+            }
             break;
 
         case 'najblizszy':
-            $pelny      = get_post_meta( $post_id, 'najblizszy_termin_pelnoplatny', true );
-            $niski      = get_post_meta( $post_id, 'najblizszy_termin_niskoplatny', true );
-            $updated_ts = (int) get_post_meta( $post_id, 'np_termin_updated_at', true );
+            $pelny      = get_post_meta($post_id, 'najblizszy_termin_pelnoplatny', true);
+            $niski      = get_post_meta($post_id, 'najblizszy_termin_niskoplatny', true);
+            $updated_ts = (int) get_post_meta($post_id, 'np_termin_updated_at', true);
             echo '<span id="np-tp-' . $post_id . '">';
-            if ( $pelny ) echo '<small>Pełny: ' . esc_html( $pelny ) . '</small><br>';
+            if ($pelny) {
+                echo '<small>Pełny: ' . esc_html($pelny) . '</small><br>';
+            }
             echo '</span>';
             echo '<span id="np-tn-' . $post_id . '">';
-            if ( $niski ) echo '<small>Niski: ' . esc_html( $niski ) . '</small>';
+            if ($niski) {
+                echo '<small>Niski: ' . esc_html($niski) . '</small>';
+            }
             echo '</span>';
             echo '<span id="np-tu-' . $post_id . '" style="display:block;font-size:10px;color:#aaa;margin-top:3px;">';
             echo $updated_ts
-                ? 'akt.: ' . esc_html( date_i18n( 'd.m.Y H:i', $updated_ts ) )
+                ? 'akt.: ' . esc_html(date_i18n('d.m.Y H:i', $updated_ts))
                 : '<em>nie zsynchronizowano</em>';
             echo '</span>';
             break;
 
         case 'stawka':
-            $stawka = get_post_meta( $post_id, 'stawka_wysokoplatna', true );
-            echo esc_html( $stawka );
+            $stawka = get_post_meta($post_id, 'stawka_wysokoplatna', true);
+            echo esc_html($stawka);
             break;
 
         case 'odswieztermin':
-            $has_pelny = (bool) get_post_meta( $post_id, 'bookero_id_pelny', true );
-            $has_niski = (bool) get_post_meta( $post_id, 'bookero_id_niski', true );
-            if ( ! $has_pelny && ! $has_niski ) {
+            $has_pelny = (bool) get_post_meta($post_id, 'bookero_id_pelny', true);
+            $has_niski = (bool) get_post_meta($post_id, 'bookero_id_niski', true);
+            if (! $has_pelny && ! $has_niski) {
                 echo '<small style="color:#999">brak ID</small>';
                 break;
             }
@@ -65,7 +77,7 @@ function np_psycholog_column_content( string $column, int $post_id ): void {
             <button
                 type="button"
                 class="button button-small np-refresh-single"
-                data-post-id="<?= esc_attr( $post_id ) ?>"
+                data-post-id="<?= esc_attr($post_id) ?>"
                 onclick="npRefreshSingle(this)"
             >Odśwież</button>
             <span class="np-refresh-status" style="display:block;font-size:11px;margin-top:3px;"></span>
@@ -75,15 +87,18 @@ function np_psycholog_column_content( string $column, int $post_id ): void {
 }
 
 // Skrypt obsługi przycisków — ładowany tylko na liście psychologów
-add_action( 'admin_footer-edit.php', 'np_psycholog_list_scripts' );
+add_action('admin_footer-edit.php', 'np_psycholog_list_scripts');
 
-function np_psycholog_list_scripts(): void {
+function np_psycholog_list_scripts(): void
+{
     global $post_type;
-    if ( $post_type !== 'psycholog' ) return;
+    if ($post_type !== 'psycholog') {
+        return;
+    }
     ?>
     <script>
-    var npAjaxUrl = <?= wp_json_encode( admin_url( 'admin-ajax.php' ) ) ?>;
-    var npNonce   = <?= wp_json_encode( wp_create_nonce( 'np_bookero_nonce' ) ) ?>;
+    var npAjaxUrl = <?= wp_json_encode(admin_url('admin-ajax.php')) ?>;
+    var npNonce   = <?= wp_json_encode(wp_create_nonce('np_bookero_nonce')) ?>;
 
     function npRefreshSingle(btn) {
         var postId  = btn.dataset.postId;

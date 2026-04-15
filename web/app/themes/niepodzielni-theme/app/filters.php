@@ -20,7 +20,9 @@ add_filter('excerpt_more', function () {
  * Required because Vite outputs ESM with import statements.
  */
 add_filter('script_loader_tag', function (string $tag, string $handle, string $src): string {
-    if (! $src) return $tag;
+    if (! $src) {
+        return $tag;
+    }
     if (str_starts_with($handle, 'sage/')) {
         return '<script type="module" src="' . esc_url($src) . '"></script>' . "\n";
     }

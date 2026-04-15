@@ -1,4 +1,5 @@
 <?php
+
 /**
  * PHPUnit bootstrap — WordPress function stubs for unit testing.
  * Loads only the PHP files under test; does NOT bootstrap WordPress.
@@ -32,9 +33,12 @@ if (! function_exists('get_post_meta')) {
      * @param bool   $single
      * @return mixed
      */
-    function get_post_meta(int $post_id, string $key = '', bool $single = false): mixed {
+    function get_post_meta(int $post_id, string $key = '', bool $single = false): mixed
+    {
         $all = $GLOBALS['_np_test_post_meta'][$post_id] ?? [];
-        if ($key === '') return $all;
+        if ($key === '') {
+            return $all;
+        }
         $val = $all[$key] ?? '';
         return $single ? $val : ($val !== '' ? [$val] : []);
     }
@@ -45,49 +49,57 @@ if (! function_exists('wp_get_post_terms')) {
      * Reads from $GLOBALS['_np_test_wp_terms'].
      * @return string[]
      */
-    function wp_get_post_terms(int $post_id, string $taxonomy, array $args = []): array {
+    function wp_get_post_terms(int $post_id, string $taxonomy, array $args = []): array
+    {
         return $GLOBALS['_np_test_wp_terms'][$post_id][$taxonomy] ?? [];
     }
 }
 
 if (! function_exists('is_wp_error')) {
-    function is_wp_error(mixed $thing): bool {
+    function is_wp_error(mixed $thing): bool
+    {
         return false;
     }
 }
 
 if (! function_exists('add_action')) {
-    function add_action(string $hook, callable $callback, int $priority = 10, int $accepted_args = 1): bool {
+    function add_action(string $hook, callable $callback, int $priority = 10, int $accepted_args = 1): bool
+    {
         return true;
     }
 }
 
 if (! function_exists('get_transient')) {
-    function get_transient(string $key): mixed {
+    function get_transient(string $key): mixed
+    {
         return false;
     }
 }
 
 if (! function_exists('set_transient')) {
-    function set_transient(string $key, mixed $value, int $expiration = 0): bool {
+    function set_transient(string $key, mixed $value, int $expiration = 0): bool
+    {
         return true;
     }
 }
 
 if (! function_exists('wp_remote_get')) {
-    function wp_remote_get(string $url, array $args = []): array {
+    function wp_remote_get(string $url, array $args = []): array
+    {
         return [];
     }
 }
 
 if (! function_exists('wp_remote_retrieve_body')) {
-    function wp_remote_retrieve_body(array $response): string {
+    function wp_remote_retrieve_body(array $response): string
+    {
         return '';
     }
 }
 
 if (! function_exists('add_query_arg')) {
-    function add_query_arg(array $args, string $url = ''): string {
+    function add_query_arg(array $args, string $url = ''): string
+    {
         return $url . '?' . http_build_query($args);
     }
 }

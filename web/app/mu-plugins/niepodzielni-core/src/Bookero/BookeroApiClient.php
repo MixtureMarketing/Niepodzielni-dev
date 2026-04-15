@@ -1,6 +1,6 @@
 <?php
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace Niepodzielni\Bookero;
 
@@ -17,8 +17,8 @@ namespace Niepodzielni\Bookero;
  *   GET  /init        — konfiguracja konta (services, payments)
  *   POST /add         — tworzenie rezerwacji
  */
-class BookeroApiClient {
-
+class BookeroApiClient
+{
     private const BASE_URL   = 'https://plugin.bookero.pl/plugin-api/v2/';
     private const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
@@ -36,7 +36,7 @@ class BookeroApiClient {
         int    $serviceId,
         int    $plusMonths,
     ): array {
-        $body = $this->get( 'getMonth', [
+        $body = $this->get('getMonth', [
             'bookero_id'         => $calHash,
             'worker'             => $workerId,
             'service'            => $serviceId,
@@ -45,10 +45,10 @@ class BookeroApiClient {
             'lang'               => 'pl',
             'periodicity_id'     => 0,
             'custom_duration_id' => 0,
-            'plugin_comment'     => wp_json_encode( [ 'data' => [ 'parameters' => [] ] ] ),
-        ], timeout: 15 );
+            'plugin_comment'     => wp_json_encode([ 'data' => [ 'parameters' => [] ] ]),
+        ], timeout: 15);
 
-        return $this->normalizeSlots( $body );
+        return $this->normalizeSlots($body);
     }
 
     /**
@@ -63,7 +63,7 @@ class BookeroApiClient {
         string $date,
         int    $serviceId,
     ): array {
-        $body = $this->get( 'getMonthDay', [
+        $body = $this->get('getMonthDay', [
             'bookero_id'         => $calHash,
             'worker'             => $workerId,
             'date'               => $date,
@@ -75,12 +75,12 @@ class BookeroApiClient {
             'hour'               => '',
             'phone'              => '',
             'email'              => '',
-            'plugin_comment'     => wp_json_encode( [ 'data' => [ 'parameters' => (object) [] ] ] ),
-        ], timeout: 10 );
+            'plugin_comment'     => wp_json_encode([ 'data' => [ 'parameters' => (object) [] ] ]),
+        ], timeout: 10);
 
         $hours = [];
-        foreach ( ( $body['data']['hours'] ?? [] ) as $slot ) {
-            if ( ! empty( $slot['valid'] ) && ! empty( $slot['hour'] ) ) {
+        foreach (($body['data']['hours'] ?? []) as $slot) {
+            if (! empty($slot['valid']) && ! empty($slot['hour'])) {
                 $hours[] = (string) $slot['hour'];
             }
         }
@@ -94,46 +94,47 @@ class BookeroApiClient {
      *
      * @throws BookeroApiException
      */
-    public function getAccountConfig( string $calHash ): AccountConfig {
-        $body = $this->get( 'init', [
+    public function getAccountConfig(string $calHash): AccountConfig
+    {
+        $body = $this->get('init', [
             'bookero_id' => $calHash,
             'lang'       => 'pl',
             'type'       => 'calendar',
-        ], timeout: 10 );
+        ], timeout: 10);
 
         // Usługa z największą liczbą pracowników — dla nisko: 50604 (158 workers > 36549 (11))
         $serviceId   = 0;
         $serviceName = '';
-        if ( ! empty( $body['services_list'] ) && is_array( $body['services_list'] ) ) {
+        if (! empty($body['services_list']) && is_array($body['services_list'])) {
             $best      = $body['services_list'][0];
-            $bestCount = is_array( $best['workers'] ?? null ) ? count( $best['workers'] ) : 0;
+            $bestCount = is_array($best['workers'] ?? null) ? count($best['workers']) : 0;
 
-            foreach ( $body['services_list'] as $svc ) {
-                $cnt = is_array( $svc['workers'] ?? null ) ? count( $svc['workers'] ) : 0;
-                if ( $cnt > $bestCount ) {
+            foreach ($body['services_list'] as $svc) {
+                $cnt = is_array($svc['workers'] ?? null) ? count($svc['workers']) : 0;
+                if ($cnt > $bestCount) {
                     $bestCount = $cnt;
                     $best      = $svc;
                 }
             }
 
-            $serviceId   = (int) ( $best['id']   ?? 0 );
-            $serviceName = (string) ( $best['name'] ?? '' );
+            $serviceId   = (int) ($best['id']   ?? 0);
+            $serviceName = (string) ($best['name'] ?? '');
         }
 
         $paymentId = 0;
-        if ( ! empty( $body['payment_methods'] ) && is_array( $body['payment_methods'] ) ) {
-            foreach ( $body['payment_methods'] as $pm ) {
-                if ( ! empty( $pm['is_default'] ) ) {
-                    $paymentId = (int) ( $pm['id'] ?? 0 );
+        if (! empty($body['payment_methods']) && is_array($body['payment_methods'])) {
+            foreach ($body['payment_methods'] as $pm) {
+                if (! empty($pm['is_default'])) {
+                    $paymentId = (int) ($pm['id'] ?? 0);
                     break;
                 }
             }
-            if ( ! $paymentId && isset( $body['payment_methods'][0]['id'] ) ) {
+            if (! $paymentId && isset($body['payment_methods'][0]['id'])) {
                 $paymentId = (int) $body['payment_methods'][0]['id'];
             }
         }
 
-        return new AccountConfig( $serviceId, $serviceName, $paymentId );
+        return new AccountConfig($serviceId, $serviceName, $paymentId);
     }
 
     /**
@@ -143,11 +144,12 @@ class BookeroApiClient {
      * @return array{payment_url: string, inquiry_id: int|null, plugin_inquiry_id: int|null, status: string|null}
      * @throws BookeroApiException
      */
-    public function createBooking( string $calHash, array $payload ): array {
+    public function createBooking(string $calHash, array $payload): array
+    {
         $payload['bookero_id'] = $calHash;
 
         // 8s zamiast 20s — fail-fast zapobiega wyczerpaniu puli workerów PHP-FPM
-        $body    = $this->post( 'add', $payload, timeout: 8 );
+        $body    = $this->post('add', $payload, timeout: 8);
         $inquiry = $body['data']['inquiries'][0] ?? [];
 
         return [
@@ -167,17 +169,18 @@ class BookeroApiClient {
      * @return array<string, mixed>
      * @throws BookeroApiException
      */
-    private function get( string $endpoint, array $params, int $timeout ): array {
-        $url      = self::BASE_URL . $endpoint . '?' . http_build_query( $params );
-        $response = wp_remote_get( $url, [
+    private function get(string $endpoint, array $params, int $timeout): array
+    {
+        $url      = self::BASE_URL . $endpoint . '?' . http_build_query($params);
+        $response = wp_remote_get($url, [
             'timeout' => $timeout,
             'headers' => [
                 'Accept'     => 'application/json',
                 'User-Agent' => self::USER_AGENT,
             ],
-        ] );
+        ]);
 
-        return $this->parseResponse( $endpoint, $response );
+        return $this->parseResponse($endpoint, $response);
     }
 
     /**
@@ -187,8 +190,9 @@ class BookeroApiClient {
      * @return array<string, mixed>
      * @throws BookeroApiException
      */
-    private function post( string $endpoint, array $payload, int $timeout ): array {
-        $response = wp_remote_post( self::BASE_URL . $endpoint, [
+    private function post(string $endpoint, array $payload, int $timeout): array
+    {
+        $response = wp_remote_post(self::BASE_URL . $endpoint, [
             'timeout' => $timeout,
             'headers' => [
                 'Accept'       => 'application/json, text/plain, */*',
@@ -197,10 +201,10 @@ class BookeroApiClient {
                 'Origin'       => get_site_url(),
                 'Referer'      => get_site_url() . '/',
             ],
-            'body' => wp_json_encode( $payload ),
-        ] );
+            'body' => wp_json_encode($payload),
+        ]);
 
-        return $this->parseResponse( $endpoint, $response );
+        return $this->parseResponse($endpoint, $response);
     }
 
     /**
@@ -210,22 +214,23 @@ class BookeroApiClient {
      * @return array<string, mixed>
      * @throws BookeroApiException
      */
-    private function parseResponse( string $endpoint, \WP_Error|array $response ): array {
-        if ( is_wp_error( $response ) ) {
-            throw new BookeroApiException( $endpoint, $response->get_error_message() );
+    private function parseResponse(string $endpoint, \WP_Error|array $response): array
+    {
+        if (is_wp_error($response)) {
+            throw new BookeroApiException($endpoint, $response->get_error_message());
         }
 
-        $code = (int) wp_remote_retrieve_response_code( $response );
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        $code = (int) wp_remote_retrieve_response_code($response);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if ( $code !== 200 ) {
-            throw new BookeroApiException( $endpoint, "HTTP {$code}" );
+        if ($code !== 200) {
+            throw new BookeroApiException($endpoint, "HTTP {$code}");
         }
 
-        if ( ! is_array( $body ) || (int) ( $body['result'] ?? 0 ) !== 1 ) {
+        if (! is_array($body) || (int) ($body['result'] ?? 0) !== 1) {
             throw new BookeroApiException(
                 $endpoint,
-                'result=' . ( $body['result'] ?? 'N/A' ) . ', message=' . ( $body['message'] ?? '—' )
+                'result=' . ($body['result'] ?? 'N/A') . ', message=' . ($body['message'] ?? '—'),
             );
         }
 
@@ -240,17 +245,18 @@ class BookeroApiClient {
      *
      * @return array<array{date: string, hour: string}>
      */
-    private function normalizeSlots( array $body ): array {
+    private function normalizeSlots(array $body): array
+    {
         $slots = [];
 
         // Format v2: { "days": { "1": {"date":"YYYY-MM-DD","valid_day":1,"open":1}, ... } }
-        if ( ! empty( $body['days'] ) && is_array( $body['days'] ) ) {
-            foreach ( $body['days'] as $day ) {
-                if ( ! is_array( $day ) ) {
+        if (! empty($body['days']) && is_array($body['days'])) {
+            foreach ($body['days'] as $day) {
+                if (! is_array($day)) {
                     continue;
                 }
                 $date = $day['date'] ?? '';
-                if ( $date && (int) ( $day['valid_day'] ?? 0 ) > 0 ) {
+                if ($date && (int) ($day['valid_day'] ?? 0) > 0) {
                     $slots[] = [ 'date' => (string) $date, 'hour' => '' ];
                 }
             }
@@ -259,8 +265,8 @@ class BookeroApiClient {
         }
 
         // Fallback: stary format { "calendar": { "YYYY-MM-DD": ["16:30", ...] } }
-        if ( ! empty( $body['calendar'] ) && is_array( $body['calendar'] ) ) {
-            foreach ( array_keys( $body['calendar'] ) as $date ) {
+        if (! empty($body['calendar']) && is_array($body['calendar'])) {
+            foreach (array_keys($body['calendar']) as $date) {
                 $slots[] = [ 'date' => (string) $date, 'hour' => '' ];
             }
         }

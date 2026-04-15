@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: Niepodzielni Core
  * Description: Główna wtyczka Must-Use zawierająca logikę biznesową, Custom Post Types oraz integrację API Bookero dla Fundacji Niepodzielni. Uniezależnia dane od motywu.
@@ -6,24 +7,24 @@
  * Author: Mixture Marketing
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (! defined('ABSPATH')) {
     exit; // Zabezpieczenie przed bezpośrednim dostępem.
 }
 
 // Zdefiniowanie stałej ze ścieżką dla wygody
-define( 'NIEPODZIELNI_CORE_PATH', plugin_dir_path( __FILE__ ) . 'niepodzielni-core/' );
+define('NIEPODZIELNI_CORE_PATH', plugin_dir_path(__FILE__) . 'niepodzielni-core/');
 
 // Stałe Bookero (używane przez api/9-bookero-sync.php i inne)
-define( 'BOOKERO_CRON_HOOK', 'aktualizuj_terminy_psychologow_event' );
-define( 'BOOKERO_OFFSET_KEY', 'terminy_cron_offset' );
+define('BOOKERO_CRON_HOOK', 'aktualizuj_terminy_psychologow_event');
+define('BOOKERO_OFFSET_KEY', 'terminy_cron_offset');
 
 // Wersja cache listingu psychologów — zmień żeby wymusić odświeżenie transientów
-define( 'NP_PSY_LISTING_VERSION', '1.1.0' );
+define('NP_PSY_LISTING_VERSION', '1.1.0');
 
 // Zabezpieczenie: jeśli katalog niepodzielni-core/ nie istnieje, pomiń ładowanie
-if ( ! is_dir( NIEPODZIELNI_CORE_PATH ) ) {
-    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-        error_log( 'Niepodzielni Core: katalog ' . NIEPODZIELNI_CORE_PATH . ' nie istnieje. Sklonuj lub skopiuj pliki z repozytorium.' );
+if (! is_dir(NIEPODZIELNI_CORE_PATH)) {
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('Niepodzielni Core: katalog ' . NIEPODZIELNI_CORE_PATH . ' nie istnieje. Sklonuj lub skopiuj pliki z repozytorium.');
     }
     return;
 }
@@ -55,6 +56,6 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/7-admin-settings.php';
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';
 
 // JEDNORAZOWE — usuń po wykonaniu
-if ( file_exists( NIEPODZIELNI_CORE_PATH . 'misc/99-term-cleanup.php' ) ) {
+if (file_exists(NIEPODZIELNI_CORE_PATH . 'misc/99-term-cleanup.php')) {
     require_once NIEPODZIELNI_CORE_PATH . 'misc/99-term-cleanup.php';
 }

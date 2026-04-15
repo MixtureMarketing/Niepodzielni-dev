@@ -1,6 +1,6 @@
 <?php
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace Niepodzielni\Bookero;
 
@@ -9,8 +9,8 @@ namespace Niepodzielni\Bookero;
  *
  * Immutable value object zwracany przez BookeroSyncService::syncSingleWorker().
  */
-readonly class SyncResult {
-
+readonly class SyncResult
+{
     public function __construct(
         public int    $postId,
         public bool   $hasPelny,
@@ -22,14 +22,16 @@ readonly class SyncResult {
     /**
      * Czy psycholog miał przynajmniej jedno worker ID (był w ogóle synchronizowany).
      */
-    public function hasSynced(): bool {
+    public function hasSynced(): bool
+    {
         return $this->hasPelny || $this->hasNisko;
     }
 
     /**
      * Czy znaleziono jakikolwiek wolny termin (w dowolnym typie konta).
      */
-    public function hasAnyAvailability(): bool {
+    public function hasAnyAvailability(): bool
+    {
         return $this->nearestPelny !== '' || $this->nearestNisko !== '';
     }
 }

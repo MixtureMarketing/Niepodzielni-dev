@@ -89,9 +89,9 @@ add_action('wp_enqueue_scripts', function () {
 
     // Matchmaker — na stronach z shortcodem [matchmaker]
     $post = get_post();
-    $has_matchmaker = $post && has_shortcode( $post->post_content, 'matchmaker' );
-    if ( $has_matchmaker ) {
-        wp_enqueue_script( 'sage/matchmaker.js', Vite::asset( 'resources/js/matchmaker.js' ), [], null, true );
+    $has_matchmaker = $post && has_shortcode($post->post_content, 'matchmaker');
+    if ($has_matchmaker) {
+        wp_enqueue_script('sage/matchmaker.js', Vite::asset('resources/js/matchmaker.js'), [], null, true);
     }
 
     // Events listing — warsztaty, wydarzenia, aktualności, psychoedukacja
@@ -315,7 +315,9 @@ if (class_exists('WooCommerce')) {
 
     add_filter('woocommerce_admin_features', function ($features) {
         $idx = array_search('marketing', $features);
-        if ($idx !== false) unset($features[$idx]);
+        if ($idx !== false) {
+            unset($features[$idx]);
+        }
         return $features;
     });
 }

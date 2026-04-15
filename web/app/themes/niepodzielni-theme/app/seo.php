@@ -1,4 +1,5 @@
 <?php
+
 /**
  * SEO: Structured Data (schema.org JSON-LD)
  *
@@ -22,9 +23,9 @@ add_action('wp_head', function () {
     $post_id = get_the_ID();
 
     // Taksonomie
-    $specs   = \np_get_post_terms( $post_id, 'specjalizacja' );
-    $obszary = \np_get_post_terms( $post_id, 'obszar-pomocy' );
-    $jezyki  = \np_get_post_terms( $post_id, 'jezyk' ) ?: [ 'Polski' ];
+    $specs   = \np_get_post_terms($post_id, 'specjalizacja');
+    $obszary = \np_get_post_terms($post_id, 'obszar-pomocy');
+    $jezyki  = \np_get_post_terms($post_id, 'jezyk') ?: [ 'Polski' ];
 
     $biogram = wp_strip_all_tags(get_post_meta($post_id, 'biogram', true));
     $image   = get_the_post_thumbnail_url($post_id, 'large');
@@ -53,8 +54,8 @@ add_action('wp_head', function () {
     }
 
     // Jeśli psycholog ma wolny termin → dodaj ReserveAction
-    $termin_pelno = get_post_meta($post_id, np_bk_meta_key( 'pelnoplatny' ), true);
-    $termin_nisko = get_post_meta($post_id, np_bk_meta_key( 'niskoplatny' ), true);
+    $termin_pelno = get_post_meta($post_id, np_bk_meta_key('pelnoplatny'), true);
+    $termin_nisko = get_post_meta($post_id, np_bk_meta_key('niskoplatny'), true);
     $has_booking  = ! empty(bookero_sanitize_date((string) $termin_pelno))
                  || ! empty(bookero_sanitize_date((string) $termin_nisko));
 

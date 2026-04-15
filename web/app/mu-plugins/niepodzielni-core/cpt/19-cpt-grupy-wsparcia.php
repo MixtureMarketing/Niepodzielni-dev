@@ -1,14 +1,18 @@
 <?php
+
 /**
  * CPT: Grupy Wsparcia
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
-add_action( 'init', 'np_register_cpt_grupy_wsparcia' );
+add_action('init', 'np_register_cpt_grupy_wsparcia');
 
-function np_register_cpt_grupy_wsparcia(): void {
-    register_post_type( 'grupy-wsparcia', [
+function np_register_cpt_grupy_wsparcia(): void
+{
+    register_post_type('grupy-wsparcia', [
         'labels' => [
             'name'          => 'Grupy wsparcia',
             'singular_name' => 'Grupa wsparcia',
@@ -22,5 +26,5 @@ function np_register_cpt_grupy_wsparcia(): void {
         'supports'      => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
         'menu_icon'     => 'dashicons-heart',
         'menu_position' => 9,
-    ] );
+    ]);
 }

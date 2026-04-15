@@ -1,6 +1,6 @@
 <?php
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace Niepodzielni\Bookero;
 
@@ -16,8 +16,8 @@ namespace Niepodzielni\Bookero;
  *
  * Wcześniej było: 1 (get_posts) + N × 3-5 get_post_meta + ewentualne API calls
  */
-class SharedCalendarService {
-
+class SharedCalendarService
+{
     // Polskie nazwy miesięcy do budowania nagłówka kalendarza
     private const MONTHS_PL = [
         '', 'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
@@ -50,27 +50,28 @@ class SharedCalendarService {
      *   dates: array<string, array<int, array<string, mixed>>>
      * }
      */
-    public function buildMonthData( string $typ, int $plusMonths ): array {
+    public function buildMonthData(string $typ, int $plusMonths): array
+    {
         // L1: transient cache
-        $cached = $this->repo->getSharedMonthTransient( $typ, $plusMonths );
-        if ( $cached !== false ) {
+        $cached = $this->repo->getSharedMonthTransient($typ, $plusMonths);
+        if ($cached !== false) {
             return $cached;
         }
 
-        $meta     = $this->buildMonthMeta( $plusMonths );
-        $config   = $this->safeGetAccountConfig( $typ );
-        $calHash  = np_bookero_cal_id_for( $typ );
+        $meta     = $this->buildMonthMeta($plusMonths);
+        $config   = $this->safeGetAccountConfig($typ);
+        $calHash  = np_bookero_cal_id_for($typ);
 
         // Batch load: 2 SQL zamiast 1 + N×get_post_meta
-        $workers = $this->repo->getAllWorkersWithMeta( $typ );
+        $workers = $this->repo->getAllWorkersWithMeta($typ);
 
         $dates = [];
 
-        foreach ( $workers as $worker ) {
+        foreach ($workers as $worker) {
             // Ustal dostępne daty dla żądanego miesiąca
-            $monthDates = $this->filterDatesForMonth( $worker, $meta['year_month'] );
+            $monthDates = $this->filterDatesForMonth($worker, $meta['year_month']);
 
-            if ( empty( $monthDates ) ) {
+            if (empty($monthDates)) {
                 continue;
             }
 
@@ -86,7 +87,7 @@ class SharedCalendarService {
                 'hours'       => [],  // godziny ładowane lazily przez getDateSlots
             ];
 
-            foreach ( $monthDates as $date ) {
+            foreach ($monthDates as $date) {
                 $dates[ $date ][] = $entry;
             }
         }
@@ -101,7 +102,7 @@ class SharedCalendarService {
             'dates'         => $dates,
         ];
 
-        $this->repo->setSharedMonthTransient( $typ, $plusMonths, $data );
+        $this->repo->setSharedMonthTransient($typ, $plusMonths, $data);
 
         return $data;
     }
@@ -114,27 +115,28 @@ class SharedCalendarService {
      *
      * @return array{workers: array<int, array<string, mixed>>}
      */
-    public function getDateSlots( string $typ, string $date ): array {
-        $config  = $this->safeGetAccountConfig( $typ );
-        $calHash = np_bookero_cal_id_for( $typ );
-        $today   = date( 'Y-m-d' );
+    public function getDateSlots(string $typ, string $date): array
+    {
+        $config  = $this->safeGetAccountConfig($typ);
+        $calHash = np_bookero_cal_id_for($typ);
+        $today   = date('Y-m-d');
 
         // Batch load: 2 SQL zamiast 1 + N×get_post_meta
-        $workers = $this->repo->getAllWorkersWithMeta( $typ );
+        $workers = $this->repo->getAllWorkersWithMeta($typ);
 
         $result  = [];
 
-        foreach ( $workers as $worker ) {
-            if ( ! $worker->hasDate( $date ) ) {
+        foreach ($workers as $worker) {
+            if (! $worker->hasDate($date)) {
                 // Fallback: stara logika dla psychologów bez bookero_slots_* (nowy lub niezsynch.)
-                if ( ! $this->workerHasDateViaFallback( $worker, $date ) ) {
+                if (! $this->workerHasDateViaFallback($worker, $date)) {
                     continue;
                 }
             }
 
-            $hours = $this->resolveHours( $worker, $typ, $date, $calHash, $config, $today );
+            $hours = $this->resolveHours($worker, $typ, $date, $calHash, $config, $today);
 
-            if ( empty( $hours ) ) {
+            if (empty($hours)) {
                 continue; // Brak wolnych godzin — pomiń w wynikach
             }
 
@@ -151,7 +153,7 @@ class SharedCalendarService {
             ];
         }
 
-        usort( $result, static fn( $a, $b ) => strcmp( $a['name'], $b['name'] ) );
+        usort($result, static fn($a, $b) => strcmp($a['name'], $b['name']));
 
         return [ 'workers' => $result ];
     }
@@ -163,18 +165,19 @@ class SharedCalendarService {
      *
      * @return array{month_name: string, year_month: string, first_dow: int, days_in_month: int, today: string}
      */
-    private function buildMonthMeta( int $plusMonths ): array {
-        $tsStart     = strtotime( "+{$plusMonths} months", mktime( 0, 0, 0, (int) date( 'n' ), 1 ) );
-        $year        = (int) date( 'Y', $tsStart );
-        $month       = (int) date( 'n', $tsStart );
-        $yearMonth   = date( 'Y-m', $tsStart );
+    private function buildMonthMeta(int $plusMonths): array
+    {
+        $tsStart     = strtotime("+{$plusMonths} months", mktime(0, 0, 0, (int) date('n'), 1));
+        $year        = (int) date('Y', $tsStart);
+        $month       = (int) date('n', $tsStart);
+        $yearMonth   = date('Y-m', $tsStart);
 
         return [
             'month_name'    => self::MONTHS_PL[ $month ] . ' ' . $year,
             'year_month'    => $yearMonth,
-            'first_dow'     => (int) date( 'N', $tsStart ),  // 1=Pn, 7=Nd
-            'days_in_month' => (int) date( 't', $tsStart ),
-            'today'         => date( 'Y-m-d' ),
+            'first_dow'     => (int) date('N', $tsStart),  // 1=Pn, 7=Nd
+            'days_in_month' => (int) date('t', $tsStart),
+            'today'         => date('Y-m-d'),
         ];
     }
 
@@ -184,29 +187,30 @@ class SharedCalendarService {
      *
      * @return string[]
      */
-    private function filterDatesForMonth( WorkerRecord $worker, string $yearMonth ): array {
+    private function filterDatesForMonth(WorkerRecord $worker, string $yearMonth): array
+    {
         $filtered = array_filter(
             $worker->slots,
-            static fn( string $d ) => str_starts_with( $d, $yearMonth )
+            static fn(string $d) => str_starts_with($d, $yearMonth),
         );
 
-        if ( ! empty( $filtered ) ) {
-            return array_values( $filtered );
+        if (! empty($filtered)) {
+            return array_values($filtered);
         }
 
         // Fallback: nearestTerm jako jedyna data (gdy cron jeszcze nie wypełnił slots)
-        if ( $worker->nearestTerm === '' ) {
+        if ($worker->nearestTerm === '') {
             return [];
         }
 
-        $sortable = np_get_sortable_date( $worker->nearestTerm );
-        if ( $sortable === '99999999' ) {
+        $sortable = np_get_sortable_date($worker->nearestTerm);
+        if ($sortable === '99999999') {
             return [];
         }
 
-        $dateYmd = substr( $sortable, 0, 4 ) . '-' . substr( $sortable, 4, 2 ) . '-' . substr( $sortable, 6, 2 );
+        $dateYmd = substr($sortable, 0, 4) . '-' . substr($sortable, 4, 2) . '-' . substr($sortable, 6, 2);
 
-        return str_starts_with( $dateYmd, $yearMonth ) ? [ $dateYmd ] : [];
+        return str_starts_with($dateYmd, $yearMonth) ? [ $dateYmd ] : [];
     }
 
     // ─── Prywatne — godziny ───────────────────────────────────────────────────────
@@ -214,17 +218,18 @@ class SharedCalendarService {
     /**
      * Sprawdza czy psycholog ma datę przez fallback nearestTerm (brak slots w DB).
      */
-    private function workerHasDateViaFallback( WorkerRecord $worker, string $date ): bool {
-        if ( $worker->nearestTerm === '' ) {
+    private function workerHasDateViaFallback(WorkerRecord $worker, string $date): bool
+    {
+        if ($worker->nearestTerm === '') {
             return false;
         }
 
-        $sortable = np_get_sortable_date( $worker->nearestTerm );
-        if ( $sortable === '99999999' ) {
+        $sortable = np_get_sortable_date($worker->nearestTerm);
+        if ($sortable === '99999999') {
             return false;
         }
 
-        $dateYmd = substr( $sortable, 0, 4 ) . '-' . substr( $sortable, 4, 2 ) . '-' . substr( $sortable, 6, 2 );
+        $dateYmd = substr($sortable, 0, 4) . '-' . substr($sortable, 4, 2) . '-' . substr($sortable, 6, 2);
 
         return $dateYmd === $date;
     }
@@ -253,44 +258,44 @@ class SharedCalendarService {
         string        $today,
     ): array {
         // L1: DB cache z WorkerRecord — zero SQL, zero HTTP
-        $cached = $worker->cachedHoursFor( $date );
-        if ( $cached !== null ) {
+        $cached = $worker->cachedHoursFor($date);
+        if ($cached !== null) {
             return $cached;
         }
 
         // L2: Negative cache — API niedawno zwróciło błąd dla tej kombinacji.
         // Nie ponawiamy requestu przez HOURS_ERROR_TTL (90s).
-        if ( $this->repo->getHoursErrorTransient( $typ, $worker->workerId, $date ) ) {
+        if ($this->repo->getHoursErrorTransient($typ, $worker->workerId, $date)) {
             return [];
         }
 
         // L3: Brak w cache i brak flagi błędu — odpytaj API
-        if ( ! $calHash ) {
+        if (! $calHash) {
             return [];
         }
 
         try {
-            $hours = $this->client->getMonthDay( $calHash, $worker->workerId, $date, $config->serviceId );
-        } catch ( BookeroApiException $e ) {
-            np_bookero_log_error( 'getMonthDay', "worker={$worker->workerId} date={$date}: " . $e->getMessage() );
+            $hours = $this->client->getMonthDay($calHash, $worker->workerId, $date, $config->serviceId);
+        } catch (BookeroApiException $e) {
+            np_bookero_log_error('getMonthDay', "worker={$worker->workerId} date={$date}: " . $e->getMessage());
             // Ustaw negative cache — kolejne kliknięcia w ten dzień nie trafią do API
-            $this->repo->setHoursErrorTransient( $typ, $worker->workerId, $date );
+            $this->repo->setHoursErrorTransient($typ, $worker->workerId, $date);
             return [];
         }
 
         // Sukces — zapisz wynik do DB przez persistHoursMap() (scala mapę w pamięci,
         // bez dodatkowego get_post_meta() read który byłby w saveHours()).
         $updatedMap          = $worker->hoursCache;
-        $updatedMap[ $date ] = array_values( $hours );
+        $updatedMap[ $date ] = array_values($hours);
 
         // Wyczyść daty z przeszłości przed zapisem
-        foreach ( array_keys( $updatedMap ) as $d ) {
-            if ( $d < $today ) {
-                unset( $updatedMap[ $d ] );
+        foreach (array_keys($updatedMap) as $d) {
+            if ($d < $today) {
+                unset($updatedMap[ $d ]);
             }
         }
 
-        $this->repo->persistHoursMap( $worker->postId, $typ, $updatedMap );
+        $this->repo->persistHoursMap($worker->postId, $typ, $updatedMap);
 
         return $hours;
     }
@@ -301,11 +306,12 @@ class SharedCalendarService {
      * Pobiera konfigurację konta przez BookeroSyncService (z transient cache).
      * Na błąd zwraca AccountConfig::empty() — graceful degradation, nie blokuje kalendarza.
      */
-    private function safeGetAccountConfig( string $typ ): AccountConfig {
+    private function safeGetAccountConfig(string $typ): AccountConfig
+    {
         try {
-            return $this->syncService->getAccountConfig( $typ );
-        } catch ( BookeroApiException $e ) {
-            np_bookero_log_error( 'init', "typ={$typ}: " . $e->getMessage() );
+            return $this->syncService->getAccountConfig($typ);
+        } catch (BookeroApiException $e) {
+            np_bookero_log_error('init', "typ={$typ}: " . $e->getMessage());
             return AccountConfig::empty();
         }
     }

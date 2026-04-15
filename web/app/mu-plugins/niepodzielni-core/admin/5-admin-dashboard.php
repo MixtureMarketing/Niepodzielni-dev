@@ -3,26 +3,30 @@
  * Admin Dashboard — customizacja panelu głównego WP
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
 // Usuń zbędne widgety z dashboardu
-add_action( 'wp_dashboard_setup', 'np_remove_dashboard_widgets' );
+add_action('wp_dashboard_setup', 'np_remove_dashboard_widgets');
 
-function np_remove_dashboard_widgets(): void {
-    remove_meta_box( 'dashboard_quick_press',      'dashboard', 'side'   );
-    remove_meta_box( 'dashboard_primary',          'dashboard', 'side'   );
-    remove_meta_box( 'dashboard_site_health',      'dashboard', 'normal' );
-    remove_meta_box( 'wpseo-dashboard-overview',   'dashboard', 'normal' );
+function np_remove_dashboard_widgets(): void
+{
+    remove_meta_box('dashboard_quick_press', 'dashboard', 'side');
+    remove_meta_box('dashboard_primary', 'dashboard', 'side');
+    remove_meta_box('dashboard_site_health', 'dashboard', 'normal');
+    remove_meta_box('wpseo-dashboard-overview', 'dashboard', 'normal');
 }
 
 // Dodaj widget z informacjami projektu
-add_action( 'wp_dashboard_setup', 'np_add_dashboard_widget' );
+add_action('wp_dashboard_setup', 'np_add_dashboard_widget');
 
-function np_add_dashboard_widget(): void {
+function np_add_dashboard_widget(): void
+{
     wp_add_dashboard_widget(
         'np_dashboard_info',
         'Niepodzielni — panel zarządzania',
-        'np_render_dashboard_widget'
+        'np_render_dashboard_widget',
     );
 }
 
@@ -32,63 +36,65 @@ function np_add_dashboard_widget(): void {
  *
  * @return array{ok: bool, msg: string}
  */
-function np_check_bookero_status( string $typ ): array {
+function np_check_bookero_status(string $typ): array
+{
     $cache_key = 'np_bk_status_' . $typ;
-    $cached    = get_transient( $cache_key );
-    if ( false !== $cached ) {
+    $cached    = get_transient($cache_key);
+    if (false !== $cached) {
         return $cached;
     }
 
-    $cal_id = np_bookero_cal_id_for( $typ );
-    if ( ! $cal_id ) {
+    $cal_id = np_bookero_cal_id_for($typ);
+    if (! $cal_id) {
         $result = [ 'ok' => false, 'msg' => 'Brak ID kalendarza w konfiguracji' ];
-        set_transient( $cache_key, $result, 5 * MINUTE_IN_SECONDS );
+        set_transient($cache_key, $result, 5 * MINUTE_IN_SECONDS);
         return $result;
     }
 
     $response = wp_remote_get(
-        'https://plugin.bookero.pl/plugin-api/v2/init?' . http_build_query( [
+        'https://plugin.bookero.pl/plugin-api/v2/init?' . http_build_query([
             'bookero_id' => $cal_id,
             'lang'       => 'pl',
             'type'       => 'calendar',
-        ] ),
+        ]),
         [
             'timeout' => 10,
             'headers' => [
                 'Accept'     => 'application/json',
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
             ],
-        ]
+        ],
     );
 
-    if ( is_wp_error( $response ) ) {
+    if (is_wp_error($response)) {
         $result = [ 'ok' => false, 'msg' => 'Błąd połączenia: ' . $response->get_error_message() ];
-        set_transient( $cache_key, $result, 5 * MINUTE_IN_SECONDS );
+        set_transient($cache_key, $result, 5 * MINUTE_IN_SECONDS);
         return $result;
     }
 
-    $code = (int) wp_remote_retrieve_response_code( $response );
-    $body = json_decode( wp_remote_retrieve_body( $response ), true );
+    $code = (int) wp_remote_retrieve_response_code($response);
+    $body = json_decode(wp_remote_retrieve_body($response), true);
 
-    if ( $code === 200 && isset( $body['result'] ) && $body['result'] == 1 ) {
-        $workers = count( $body['workers_list'] ?? [] );
+    if ($code === 200 && isset($body['result']) && $body['result'] == 1) {
+        $workers = count($body['workers_list'] ?? []);
         $result  = [ 'ok' => true, 'msg' => "OK — {$workers} pracowników w kalendarzu" ];
     } else {
-        $result = [ 'ok' => false, 'msg' => "HTTP {$code}" . ( isset( $body['message'] ) ? ': ' . $body['message'] : '' ) ];
+        $result = [ 'ok' => false, 'msg' => "HTTP {$code}" . (isset($body['message']) ? ': ' . $body['message'] : '') ];
     }
 
-    set_transient( $cache_key, $result, 5 * MINUTE_IN_SECONDS );
+    set_transient($cache_key, $result, 5 * MINUTE_IN_SECONDS);
     return $result;
 }
 
-function np_render_dashboard_widget(): void {
-    $psycholodzy = wp_count_posts( 'psycholog' );
-    $warsztaty   = wp_count_posts( 'warsztaty' );
-    $wydarzenia  = wp_count_posts( 'wydarzenia' );
+function np_render_dashboard_widget(): void
+{
+    $psycholodzy = wp_count_posts('psycholog');
+    $warsztaty   = wp_count_posts('warsztaty');
+    $wydarzenia  = wp_count_posts('wydarzenia');
 
     // Status API Bookero (obie konta)
-    $status_pelny = np_check_bookero_status( 'pelnoplatny' );
-    $status_nisko = np_check_bookero_status( 'nisko' );
+    $status_pelny = np_check_bookero_status('pelnoplatny');
+    $status_nisko = np_check_bookero_status('nisko');
 
     // Statystyki synchronizacji terminów
     global $wpdb;
@@ -100,7 +106,7 @@ function np_render_dashboard_widget(): void {
          INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
          WHERE p.post_type = 'psycholog' AND p.post_status = 'publish'
            AND pm.meta_key IN ('bookero_id_pelny','bookero_id_niski')
-           AND pm.meta_value != ''"
+           AND pm.meta_value != ''",
     );
 
     // Zsynchronizowani (mają np_termin_updated_at)
@@ -108,7 +114,7 @@ function np_render_dashboard_widget(): void {
         "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
          INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
          WHERE p.post_type = 'psycholog' AND p.post_status = 'publish'
-           AND pm.meta_key = 'np_termin_updated_at'"
+           AND pm.meta_key = 'np_termin_updated_at'",
     );
 
     // Mają wolne terminy (przynajmniej jeden typ)
@@ -117,36 +123,38 @@ function np_render_dashboard_widget(): void {
          INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
          WHERE p.post_type = 'psycholog' AND p.post_status = 'publish'
            AND pm.meta_key IN ('najblizszy_termin_pelnoplatny','najblizszy_termin_niskoplatny')
-           AND pm.meta_value != ''"
+           AND pm.meta_value != ''",
     );
 
     // max(0,...) — psycholodzy z terminem zapisanym przed dodaniem np_termin_updated_at
     // mogą powodować ujemne liczby; cron uzupełni timestamp przy następnym przebiegu
-    $not_synced    = max( 0, $with_bookero - $synced );
-    $synced_noterm = max( 0, $synced - $has_terms );
+    $not_synced    = max(0, $with_bookero - $synced);
+    $synced_noterm = max(0, $synced - $has_terms);
 
     // Log błędów API (ostatnie 24h)
-    $error_log     = get_option( 'np_bookero_error_log', [] );
-    if ( ! is_array( $error_log ) ) $error_log = [];
-    $recent_errors = array_filter( $error_log, fn( $e ) => ( $e['ts'] ?? 0 ) > time() - DAY_IN_SECONDS );
+    $error_log     = get_option('np_bookero_error_log', []);
+    if (! is_array($error_log)) {
+        $error_log = [];
+    }
+    $recent_errors = array_filter($error_log, fn($e) => ($e['ts'] ?? 0) > time() - DAY_IN_SECONDS);
 
     // Status crona
-    $last_run  = (int) get_option( 'np_bookero_last_cron_run', 0 );
-    $next_run  = (int) wp_next_scheduled( BOOKERO_CRON_HOOK );
+    $last_run  = (int) get_option('np_bookero_last_cron_run', 0);
+    $next_run  = (int) wp_next_scheduled(BOOKERO_CRON_HOOK);
     $interval  = 60; // co minutę
     $now       = time();
-    $progress  = $last_run ? min( 100, (int) round( ( $now - $last_run ) / $interval * 100 ) ) : 0;
-    $last_ago  = $last_run  ? human_time_diff( $last_run,  $now ) . ' temu' : 'nigdy';
-    if ( ! $next_run ) {
+    $progress  = $last_run ? min(100, (int) round(($now - $last_run) / $interval * 100)) : 0;
+    $last_ago  = $last_run ? human_time_diff($last_run, $now) . ' temu' : 'nigdy';
+    if (! $next_run) {
         $next_in = 'niezaplanowany';
-    } elseif ( $next_run < $now - 90 ) {
+    } elseif ($next_run < $now - 90) {
         // Zaległa o więcej niż 90s — cron nie odpalał się przez dłuższy czas
-        $next_in = '<span style="color:#b45309">zaległa (' . human_time_diff( $next_run, $now ) . ' temu) — odpali przy następnej wizycie</span>';
-    } elseif ( $next_run <= $now ) {
+        $next_in = '<span style="color:#b45309">zaległa (' . human_time_diff($next_run, $now) . ' temu) — odpali przy następnej wizycie</span>';
+    } elseif ($next_run <= $now) {
         // Kilka sekund spóźnienia — normalne przy WP-Cron, odpali przy następnej wizycie
         $next_in = 'odpali przy następnej wizycie';
     } else {
-        $next_in = 'za ' . human_time_diff( $now, $next_run );
+        $next_in = 'za ' . human_time_diff($now, $next_run);
     }
 
     ?>
@@ -217,7 +225,7 @@ function np_render_dashboard_widget(): void {
             <span>Brak wolnych (API OK)</span>
         </div>
         <div class="np-sync-stat np-sync-new">
-            <strong><?= max( 0, $not_synced ) ?></strong>
+            <strong><?= max(0, $not_synced) ?></strong>
             <span>Jeszcze nie sprawdzono</span>
         </div>
     </div>
@@ -227,12 +235,12 @@ function np_render_dashboard_widget(): void {
         <div class="np-api-row">
             <span class="np-dot <?= $status_pelny['ok'] ? 'np-dot-ok' : 'np-dot-err' ?>"></span>
             <span class="np-api-label">Pełnopłatny</span>
-            <span class="np-api-msg"><?= esc_html( $status_pelny['msg'] ) ?></span>
+            <span class="np-api-msg"><?= esc_html($status_pelny['msg']) ?></span>
         </div>
         <div class="np-api-row">
             <span class="np-dot <?= $status_nisko['ok'] ? 'np-dot-ok' : 'np-dot-err' ?>"></span>
             <span class="np-api-label">Niskopłatny</span>
-            <span class="np-api-msg"><?= esc_html( $status_nisko['msg'] ) ?></span>
+            <span class="np-api-msg"><?= esc_html($status_nisko['msg']) ?></span>
         </div>
     </div>
 
@@ -241,14 +249,14 @@ function np_render_dashboard_widget(): void {
             Synchronizacja — system cron (co 60s, niezależnie od ruchu)
         </div>
         <div class="np-cron-header">
-            <span>Ostatnio: <strong id="np-cron-ago"><?= esc_html( $last_ago ) ?></strong></span>
+            <span>Ostatnio: <strong id="np-cron-ago"><?= esc_html($last_ago) ?></strong></span>
             <span>Następna za: <strong id="np-cron-next">…</strong></span>
         </div>
         <div class="np-cron-bar-bg">
             <div class="np-cron-bar-fill" id="np-cron-bar" style="width:<?= $progress ?>%"></div>
         </div>
         <div class="np-cron-footer">
-            <span><?= $last_run ? esc_html( date_i18n( 'd.m.Y H:i:s', $last_run ) ) : '—' ?></span>
+            <span><?= $last_run ? esc_html(date_i18n('d.m.Y H:i:s', $last_run)) : '—' ?></span>
             <span id="np-cron-next-abs"></span>
         </div>
     </div>
@@ -299,20 +307,20 @@ function np_render_dashboard_widget(): void {
     })();
     </script>
 
-    <?php if ( ! empty( $recent_errors ) ) : ?>
+    <?php if (! empty($recent_errors)) : ?>
     <div class="np-error-section">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#b00;margin-bottom:6px;">
             Błędy API Bookero (ostatnie 24h)
-            <span class="np-error-badge"><?= count( $recent_errors ) ?></span>
-            <a href="<?= esc_url( add_query_arg( 'np_clear_bk_errors', '1' ) ) ?>"
+            <span class="np-error-badge"><?= count($recent_errors) ?></span>
+            <a href="<?= esc_url(add_query_arg('np_clear_bk_errors', '1')) ?>"
                style="font-size:10px;margin-left:8px;color:#aaa;text-decoration:none;"
                onclick="return confirm('Wyczyścić log błędów?')">wyczyść</a>
         </div>
         <ul class="np-error-list">
-        <?php foreach ( $recent_errors as $err ) : ?>
+        <?php foreach ($recent_errors as $err) : ?>
             <li>
-                <time><?= esc_html( date_i18n( 'd.m H:i', $err['ts'] ) ) ?></time>
-                <span>[<?= esc_html( $err['context'] ) ?>] <?= esc_html( $err['msg'] ) ?></span>
+                <time><?= esc_html(date_i18n('d.m H:i', $err['ts'])) ?></time>
+                <span>[<?= esc_html($err['context']) ?>] <?= esc_html($err['msg']) ?></span>
             </li>
         <?php endforeach; ?>
         </ul>
@@ -322,12 +330,17 @@ function np_render_dashboard_widget(): void {
 }
 
 // Obsługa czyszczenia logu błędów
-add_action( 'admin_init', 'np_maybe_clear_bookero_error_log' );
+add_action('admin_init', 'np_maybe_clear_bookero_error_log');
 
-function np_maybe_clear_bookero_error_log(): void {
-    if ( ! isset( $_GET['np_clear_bk_errors'] ) ) return;
-    if ( ! current_user_can( 'manage_options' ) ) return;
-    delete_option( 'np_bookero_error_log' );
-    wp_redirect( remove_query_arg( 'np_clear_bk_errors' ) );
+function np_maybe_clear_bookero_error_log(): void
+{
+    if (! isset($_GET['np_clear_bk_errors'])) {
+        return;
+    }
+    if (! current_user_can('manage_options')) {
+        return;
+    }
+    delete_option('np_bookero_error_log');
+    wp_redirect(remove_query_arg('np_clear_bk_errors'));
     exit;
 }

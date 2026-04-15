@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
@@ -71,7 +72,7 @@ class HelpersTest extends TestCase
     {
         $this->assertSame(
             np_get_sortable_date('2026-06-15'),
-            np_get_sortable_date('15.06.2026')
+            np_get_sortable_date('15.06.2026'),
         );
     }
 
@@ -116,7 +117,7 @@ class HelpersTest extends TestCase
             $this->assertSame(
                 2,
                 strlen($code),
-                "Flag code for '{$lang}' must be exactly 2 characters (ISO 3166-1 alpha-2)"
+                "Flag code for '{$lang}' must be exactly 2 characters (ISO 3166-1 alpha-2)",
             );
         }
     }

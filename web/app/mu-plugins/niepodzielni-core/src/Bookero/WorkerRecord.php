@@ -1,6 +1,6 @@
 <?php
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace Niepodzielni\Bookero;
 
@@ -12,8 +12,8 @@ namespace Niepodzielni\Bookero;
  *
  * @immutable
  */
-readonly class WorkerRecord {
-
+readonly class WorkerRecord
+{
     /**
      * @param string[]              $slots      Daty YYYY-MM-DD z bookero_slots_*
      * @param array<string,string[]> $hoursCache Mapa date → hours[] z bookero_hours_*
@@ -34,8 +34,9 @@ readonly class WorkerRecord {
     /**
      * Czy psycholog ma podany dzień w swoich dostępnych slotach.
      */
-    public function hasDate( string $date ): bool {
-        return in_array( $date, $this->slots, true );
+    public function hasDate(string $date): bool
+    {
+        return in_array($date, $this->slots, true);
     }
 
     /**
@@ -44,8 +45,9 @@ readonly class WorkerRecord {
      *
      * @return string[]|null
      */
-    public function cachedHoursFor( string $date ): ?array {
-        return array_key_exists( $date, $this->hoursCache )
+    public function cachedHoursFor(string $date): ?array
+    {
+        return array_key_exists($date, $this->hoursCache)
             ? (array) $this->hoursCache[ $date ]
             : null;
     }

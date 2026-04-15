@@ -155,8 +155,8 @@ if (env('REDIS_HOST')) {
  */
 Config::define('NP_BOOKERO_API_KEY_PELNY', env('BOOKERO_API_KEY_PELNY') ?: '');
 Config::define('NP_BOOKERO_API_KEY_NISKO', env('BOOKERO_API_KEY_NISKO') ?: '');
-Config::define('NP_BOOKERO_CAL_ID_PELNY',  env('BOOKERO_CAL_ID_PELNY')  ?: '');
-Config::define('NP_BOOKERO_CAL_ID_NISKO',  env('BOOKERO_CAL_ID_NISKO')  ?: '');
+Config::define('NP_BOOKERO_CAL_ID_PELNY', env('BOOKERO_CAL_ID_PELNY') ?: '');
+Config::define('NP_BOOKERO_CAL_ID_NISKO', env('BOOKERO_CAL_ID_NISKO') ?: '');
 
 /**
  * Custom Settings
@@ -207,8 +207,8 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', $webroot_dir . '/wp/');
 }
 
-define( 'QM_ENABLE_CAPSULE', true );
-if ( ! defined( 'SAVEQUERIES' ) ) {
-    define( 'SAVEQUERIES', true );
+define('QM_ENABLE_CAPSULE', true);
+if (! defined('SAVEQUERIES')) {
+    define('SAVEQUERIES', true);
 }
-define( 'QM_SHOW_ALL_QUERIES', true ); // To pozwoli crawlerowi "widzieć" SQL i RAM
+define('QM_SHOW_ALL_QUERIES', true); // To pozwoli crawlerowi "widzieć" SQL i RAM

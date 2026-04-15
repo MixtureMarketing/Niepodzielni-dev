@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Shortcodes: Bookero Integration
  *
@@ -8,6 +9,6 @@
  * @package Niepodzielni
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (! defined('ABSPATH')) {
     exit;
 }

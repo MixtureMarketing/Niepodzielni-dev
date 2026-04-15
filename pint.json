@@ -2,8 +2,12 @@
   "preset": "per",
   "exclude": [
     "web/wp",
+    "web/app/cache",
+    "web/app/languages",
     "web/app/mu-plugins/bedrock-disallow-indexing",
+    "web/app/mu-plugins/s3-uploads",
     "web/app/plugins",
-    "web/app/themes/twentytwentyfive"
+    "web/app/themes/twentytwentyfive",
+    "example"
   ]
 }

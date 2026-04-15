@@ -1,14 +1,18 @@
 <?php
+
 /**
  * CPT: Wydarzenia
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
-add_action( 'init', 'np_register_cpt_wydarzenia' );
+add_action('init', 'np_register_cpt_wydarzenia');
 
-function np_register_cpt_wydarzenia(): void {
-    register_post_type( 'wydarzenia', [
+function np_register_cpt_wydarzenia(): void
+{
+    register_post_type('wydarzenia', [
         'labels' => [
             'name'          => 'Wydarzenia',
             'singular_name' => 'Wydarzenie',
@@ -22,5 +26,5 @@ function np_register_cpt_wydarzenia(): void {
         'supports'      => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
         'menu_icon'     => 'dashicons-calendar-alt',
         'menu_position' => 7,
-    ] );
+    ]);
 }

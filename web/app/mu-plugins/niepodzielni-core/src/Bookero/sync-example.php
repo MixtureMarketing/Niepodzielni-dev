@@ -83,13 +83,14 @@ use Niepodzielni\Bookero\BookeroSyncService;
  * Jedyna zmiana semantyczna: serwis zwraca SyncResult — można logować
  * wyniki bez dodatkowych get_post_meta.
  */
-function np_bookero_worker_sync_v2(): void {
-    update_option( 'np_bookero_last_cron_run', time(), false );
+function np_bookero_worker_sync_v2(): void
+{
+    update_option('np_bookero_last_cron_run', time(), false);
 
-    $offset  = (int) get_option( BOOKERO_OFFSET_KEY, 0 );
+    $offset  = (int) get_option(BOOKERO_OFFSET_KEY, 0);
     $perRun  = 3;
 
-    $psycholodzy = get_posts( [
+    $psycholodzy = get_posts([
         'post_type'      => 'psycholog',
         'posts_per_page' => $perRun,
         'offset'         => $offset,
@@ -97,15 +98,15 @@ function np_bookero_worker_sync_v2(): void {
         'fields'         => 'ids',
         'orderby'        => 'ID',
         'order'          => 'ASC',
-    ] );
+    ]);
 
-    if ( empty( $psycholodzy ) ) {
-        update_option( BOOKERO_OFFSET_KEY, 0 );
+    if (empty($psycholodzy)) {
+        update_option(BOOKERO_OFFSET_KEY, 0);
         return;
     }
 
     // Nowy offset PRZED przetwarzaniem — PHP timeout nie cofa postępu
-    update_option( BOOKERO_OFFSET_KEY, $offset + $perRun );
+    update_option(BOOKERO_OFFSET_KEY, $offset + $perRun);
 
     // ─── Inicjalizacja serwisu ─────────────────────────────────────────────────
     // W docelowej architekturze można to wyciągnąć do prostego kontenera DI
@@ -116,9 +117,9 @@ function np_bookero_worker_sync_v2(): void {
     );
 
     // ─── Pętla synchronizacji — 50 linii zastąpione 3 ────────────────────────
-    foreach ( $psycholodzy as $postId ) {
-        usleep( 300_000 ); // 0.3s — zapobiega throttlingowi Bookero (HTTP 429)
-        $service->syncSingleWorker( (int) $postId );
+    foreach ($psycholodzy as $postId) {
+        usleep(300_000); // 0.3s — zapobiega throttlingowi Bookero (HTTP 429)
+        $service->syncSingleWorker((int) $postId);
     }
 }
 

@@ -1,15 +1,19 @@
 <?php
+
 /**
  * CPT: Psycholog
  * Rejestruje typ postu i taksonomie dla psychologów.
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
-add_action( 'init', 'np_register_cpt_psycholog' );
+add_action('init', 'np_register_cpt_psycholog');
 
-function np_register_cpt_psycholog(): void {
-    register_post_type( 'psycholog', [
+function np_register_cpt_psycholog(): void
+{
+    register_post_type('psycholog', [
         'labels' => [
             'name'               => 'Psycholodzy',
             'singular_name'      => 'Psycholog',
@@ -27,7 +31,7 @@ function np_register_cpt_psycholog(): void {
         'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
         'menu_icon'          => 'dashicons-businessperson',
         'menu_position'      => 5,
-    ] );
+    ]);
 
     // Taksonomie
     $taxonomies = [
@@ -38,12 +42,12 @@ function np_register_cpt_psycholog(): void {
         'rodzaj-konsultacji' => [ 'Rodzaj konsultacji', 'Rodzaj konsultacji' ],
     ];
 
-    foreach ( $taxonomies as $slug => [ $plural, $singular ] ) {
-        register_taxonomy( $slug, 'psycholog', [
+    foreach ($taxonomies as $slug => [ $plural, $singular ]) {
+        register_taxonomy($slug, 'psycholog', [
             'labels'       => [ 'name' => $plural, 'singular_name' => $singular ],
             'hierarchical' => false,
             'show_in_rest' => true,
             'rewrite'      => [ 'slug' => $slug ],
-        ] );
+        ]);
     }
 }

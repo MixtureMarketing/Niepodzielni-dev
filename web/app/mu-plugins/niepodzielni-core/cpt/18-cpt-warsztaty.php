@@ -1,14 +1,18 @@
 <?php
+
 /**
  * CPT: Warsztaty
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
-add_action( 'init', 'np_register_cpt_warsztaty' );
+add_action('init', 'np_register_cpt_warsztaty');
 
-function np_register_cpt_warsztaty(): void {
-    register_post_type( 'warsztaty', [
+function np_register_cpt_warsztaty(): void
+{
+    register_post_type('warsztaty', [
         'labels' => [
             'name'          => 'Warsztaty',
             'singular_name' => 'Warsztat',
@@ -22,5 +26,5 @@ function np_register_cpt_warsztaty(): void {
         'supports'      => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
         'menu_icon'     => 'dashicons-groups',
         'menu_position' => 8,
-    ] );
+    ]);
 }

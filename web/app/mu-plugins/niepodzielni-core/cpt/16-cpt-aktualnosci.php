@@ -1,14 +1,18 @@
 <?php
+
 /**
  * CPT: Aktualności
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (! defined('ABSPATH')) {
+    exit;
+}
 
-add_action( 'init', 'np_register_cpt_aktualnosci' );
+add_action('init', 'np_register_cpt_aktualnosci');
 
-function np_register_cpt_aktualnosci(): void {
-    register_post_type( 'aktualnosci', [
+function np_register_cpt_aktualnosci(): void
+{
+    register_post_type('aktualnosci', [
         'labels' => [
             'name'          => 'Aktualności',
             'singular_name' => 'Aktualność',
@@ -22,12 +26,12 @@ function np_register_cpt_aktualnosci(): void {
         'supports'     => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
         'menu_icon'    => 'dashicons-megaphone',
         'menu_position' => 6,
-    ] );
+    ]);
 
-    register_taxonomy( 'temat', 'aktualnosci', [
+    register_taxonomy('temat', 'aktualnosci', [
         'labels'       => [ 'name' => 'Tematy', 'singular_name' => 'Temat' ],
         'hierarchical' => true,
         'show_in_rest' => true,
         'rewrite'      => [ 'slug' => 'temat' ],
-    ] );
+    ]);
 }
