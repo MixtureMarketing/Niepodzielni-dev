@@ -143,6 +143,26 @@ function np_ajax_refresh_termin_single(): void {
     ] );
 }
 
+// ─── Shared Calendar: fabryka serwisu ────────────────────────────────────────
+
+/**
+ * Singleton-fabryka SharedCalendarService.
+ * Tworzy instancję raz na żądanie HTTP i zwraca ją przy kolejnych wywołaniach.
+ * Dzięki temu WP_Query (batch meta load) jest wykonywane maksymalnie raz na request.
+ */
+function np_bookero_shared_calendar_service(): \Niepodzielni\Bookero\SharedCalendarService {
+    static $service = null;
+
+    if ( $service === null ) {
+        $client  = new \Niepodzielni\Bookero\BookeroApiClient();
+        $repo    = new \Niepodzielni\Bookero\PsychologistRepository();
+        $sync    = new \Niepodzielni\Bookero\BookeroSyncService( $client, $repo );
+        $service = new \Niepodzielni\Bookero\SharedCalendarService( $repo, $client, $sync );
+    }
+
+    return $service;
+}
+
 // ─── Shared Calendar: dane miesięczne ────────────────────────────────────────
 
 add_action( 'wp_ajax_bk_get_shared_month',        'np_ajax_bk_get_shared_month' );
@@ -154,104 +174,15 @@ function np_ajax_bk_get_shared_month(): void {
     $typ         = sanitize_text_field( $_POST['typ'] ?? 'nisko' );
     $plus_months = max( 0, min( 12, (int) ( $_POST['plus_months'] ?? 0 ) ) );
 
-    $cache_key = 'np_bk_month_' . $typ . '_' . $plus_months;
-    $cached    = get_transient( $cache_key );
-    if ( false !== $cached ) {
-        wp_send_json_success( $cached );
-    }
-
-    $data = np_bk_build_month_data( $typ, $plus_months );
-    set_transient( $cache_key, $data, 5 * MINUTE_IN_SECONDS );
-    wp_send_json_success( $data );
+    wp_send_json_success( np_bookero_shared_calendar_service()->buildMonthData( $typ, $plus_months ) );
 }
 
+/**
+ * @deprecated  Pozostawiona dla kompatybilności wstecznej — używaj SharedCalendarService::buildMonthData().
+ *              Wewnętrznie deleguje do nowego serwisu (transient cache jest wspólny).
+ */
 function np_bk_build_month_data( string $typ, int $plus_months ): array {
-    $ts_start      = strtotime( "+{$plus_months} months", mktime( 0, 0, 0, (int) date( 'n' ), 1 ) );
-    $year          = (int) date( 'Y', $ts_start );
-    $month         = (int) date( 'n', $ts_start );
-    $year_month    = date( 'Y-m', $ts_start );
-    $days_in_month = (int) date( 't', $ts_start );
-    $first_dow     = (int) date( 'N', $ts_start ); // 1=Pn, 7=Nd
-    $today         = date( 'Y-m-d' );
-
-    $months_pl  = [ '', 'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-                    'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień' ];
-    $month_name = $months_pl[ $month ] . ' ' . $year;
-
-    $meta_bk_key   = ( $typ === 'nisko' ) ? 'bookero_id_niski'              : 'bookero_id_pelny';
-    $meta_slots    = ( $typ === 'nisko' ) ? 'bookero_slots_nisko'            : 'bookero_slots_pelno';
-    $meta_stawka   = ( $typ === 'nisko' ) ? 'stawka_niskoplatna'             : 'stawka_wysokoplatna';
-    $meta_term_key = ( $typ === 'nisko' ) ? 'najblizszy_termin_niskoplatny'  : 'najblizszy_termin_pelnoplatny';
-
-    $cal_hash    = np_bookero_cal_id_for( $typ );
-    $account_cfg = np_bookero_get_account_config( $typ );
-    $service_id  = $account_cfg['service_id'] ?? 0;
-
-    // Wczytaj wszystkich psychologów z worker ID — dane z bazy, zero requestów do API.
-    $psycholodzy = get_posts( [
-        'post_type'      => 'psycholog',
-        'posts_per_page' => -1,
-        'post_status'    => 'publish',
-        'meta_query'     => [
-            [ 'key' => $meta_bk_key, 'compare' => 'EXISTS' ],
-            [ 'key' => $meta_bk_key, 'value' => '', 'compare' => '!=' ],
-        ],
-    ] );
-
-    $dates = [];
-
-    foreach ( $psycholodzy as $post ) {
-        $pid       = $post->ID;
-        $worker_id = get_post_meta( $pid, $meta_bk_key, true );
-        if ( ! $worker_id ) continue;
-
-        // Pobierz wszystkie dostępne daty z bookero_slots_* (JSON)
-        $slots_json = get_post_meta( $pid, $meta_slots, true );
-        $all_dates  = $slots_json ? json_decode( $slots_json, true ) : [];
-        if ( ! is_array( $all_dates ) ) $all_dates = [];
-
-        // Fallback: użyj najblizszy_termin_* gdy slots jeszcze nie zostały wypełnione przez cron
-        if ( empty( $all_dates ) ) {
-            $termin_str = get_post_meta( $pid, $meta_term_key, true );
-            if ( $termin_str ) {
-                $sortable = np_get_sortable_date( $termin_str );
-                if ( $sortable !== '99999999' ) {
-                    $date_ymd  = substr( $sortable, 0, 4 ) . '-' . substr( $sortable, 4, 2 ) . '-' . substr( $sortable, 6, 2 );
-                    $all_dates = [ $date_ymd ];
-                }
-            }
-        }
-
-        // Filtruj daty z żądanego miesiąca
-        $month_dates = array_filter( $all_dates, fn( $d ) => substr( $d, 0, 7 ) === $year_month );
-        if ( empty( $month_dates ) ) continue;
-
-        $worker_entry = [
-            'bookero_id'  => $worker_id,
-            'cal_hash'    => $cal_hash,
-            'service_id'  => $service_id ?: null,
-            'name'        => $post->post_title,
-            'avatar'      => np_get_post_image_url( $pid, [ '_thumbnail_id', 'zdjecie_profilowe', 'zdjecie' ], 'medium' ),
-            'price'       => get_post_meta( $pid, $meta_stawka, true ) ?: ( $typ === 'nisko' ? '55 zł' : '145 zł' ),
-            'rodzaj'      => get_post_meta( $pid, 'rodzaj_wizyty', true ) ?: '',
-            'profile_url' => get_the_permalink( $pid ),
-            'hours'       => [],
-        ];
-
-        foreach ( $month_dates as $date ) {
-            $dates[ $date ][] = $worker_entry;
-        }
-    }
-
-    return [
-        'month_name'    => $month_name,
-        'year_month'    => $year_month,
-        'first_dow'     => $first_dow,
-        'days_in_month' => $days_in_month,
-        'today'         => $today,
-        'oldest_sync'   => time() - 60,
-        'dates'         => $dates,
-    ];
+    return np_bookero_shared_calendar_service()->buildMonthData( $typ, $plus_months );
 }
 
 // ─── Shared Calendar: sloty dla konkretnego dnia ─────────────────────────────
@@ -269,92 +200,7 @@ function np_ajax_bk_get_date_slots(): void {
         wp_send_json_error( [ 'message' => 'Nieprawidłowa data' ] );
     }
 
-    $meta_bk_key   = ( $typ === 'nisko' ) ? 'bookero_id_niski'              : 'bookero_id_pelny';
-    $meta_slots    = ( $typ === 'nisko' ) ? 'bookero_slots_nisko'            : 'bookero_slots_pelno';
-    $meta_stawka   = ( $typ === 'nisko' ) ? 'stawka_niskoplatna'             : 'stawka_wysokoplatna';
-    $meta_term_key = ( $typ === 'nisko' ) ? 'najblizszy_termin_niskoplatny'  : 'najblizszy_termin_pelnoplatny';
-
-    $cal_hash    = np_bookero_cal_id_for( $typ );
-    $account_cfg = np_bookero_get_account_config( $typ );
-    $service_id  = $account_cfg['service_id'] ?? 0;
-
-    // Pobierz psychologów z worker ID
-    $psycholodzy = get_posts( [
-        'post_type'      => 'psycholog',
-        'posts_per_page' => -1,
-        'post_status'    => 'publish',
-        'meta_query'     => [
-            [ 'key' => $meta_bk_key, 'compare' => 'EXISTS' ],
-            [ 'key' => $meta_bk_key, 'value' => '', 'compare' => '!=' ],
-        ],
-    ] );
-
-    // Wyfiltruj tych, którzy mają $date w swoich slotach
-    $matched = [];
-    foreach ( $psycholodzy as $post ) {
-        $pid       = $post->ID;
-        $worker_id = get_post_meta( $pid, $meta_bk_key, true );
-        if ( ! $worker_id ) continue;
-
-        $slots_json = get_post_meta( $pid, $meta_slots, true );
-        $all_dates  = $slots_json ? json_decode( $slots_json, true ) : [];
-        if ( ! is_array( $all_dates ) ) $all_dates = [];
-
-        // Fallback: użyj najblizszy_termin_* gdy bookero_slots_* jeszcze puste
-        if ( empty( $all_dates ) ) {
-            $termin_str = get_post_meta( $pid, $meta_term_key, true );
-            if ( $termin_str ) {
-                $sortable = np_get_sortable_date( $termin_str );
-                if ( $sortable !== '99999999' ) {
-                    $date_ymd  = substr( $sortable, 0, 4 ) . '-' . substr( $sortable, 4, 2 ) . '-' . substr( $sortable, 6, 2 );
-                    $all_dates = [ $date_ymd ];
-                }
-            }
-        }
-
-        if ( ! in_array( $date, $all_dates, true ) ) continue;
-
-        $matched[] = [
-            'pid'       => $pid,
-            'worker_id' => $worker_id,
-            'name'      => $post->post_title,
-            'avatar'    => np_get_post_image_url( $pid, [ '_thumbnail_id', 'zdjecie_profilowe', 'zdjecie' ], 'medium' ),
-            'price'     => get_post_meta( $pid, $meta_stawka, true ) ?: ( $typ === 'nisko' ? '55 zł' : '145 zł' ),
-            'rodzaj'    => get_post_meta( $pid, 'rodzaj_wizyty', true ) ?: '',
-            'profile_url' => get_the_permalink( $pid ),
-        ];
-    }
-
-    // Dla każdego dopasowanego psychologa pobierz godziny — najpierw z DB, fallback API
-    $workers = [];
-    foreach ( $matched as $m ) {
-        // Krok 1: sprawdź cache w DB (natychmiastowy)
-        $hours = np_bookero_get_cached_hours( $m['pid'], $typ, $date );
-
-        if ( $hours === null ) {
-            // Krok 2: brak w cache — pobierz z API i zapisz do DB
-            $hours = np_bookero_get_month_day( $m['worker_id'], $typ, $date );
-            np_bookero_cache_hours( $m['pid'], $typ, $date, $hours );
-        }
-
-        if ( empty( $hours ) ) continue; // Brak dostępnych godzin — pomiń
-
-        $workers[] = [
-            'bookero_id'  => $m['worker_id'],
-            'cal_hash'    => $cal_hash,
-            'service_id'  => $service_id ?: null,
-            'name'        => $m['name'],
-            'avatar'      => $m['avatar'],
-            'price'       => $m['price'],
-            'rodzaj'      => $m['rodzaj'],
-            'profile_url' => $m['profile_url'],
-            'hours'       => $hours,
-        ];
-    }
-
-    usort( $workers, fn( $a, $b ) => strcmp( $a['name'], $b['name'] ) );
-
-    wp_send_json_success( [ 'workers' => $workers ] );
+    wp_send_json_success( np_bookero_shared_calendar_service()->getDateSlots( $typ, $date ) );
 }
 
 // ─── Shared Calendar: weryfikacja dostępności godziny ─────────────────────────

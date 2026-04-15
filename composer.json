@@ -80,6 +80,11 @@
     },
     "wordpress-install-dir": "web/wp"
   },
+  "autoload": {
+    "psr-4": {
+      "Niepodzielni\\Bookero\\": "web/app/mu-plugins/niepodzielni-core/src/Bookero/"
+    }
+  },
   "scripts": {
     "lint": "pint --test",
     "lint:fix": "pint",
