@@ -20,6 +20,14 @@ define( 'BOOKERO_OFFSET_KEY', 'terminy_cron_offset' );
 // Wersja cache listingu psychologów — zmień żeby wymusić odświeżenie transientów
 define( 'NP_PSY_LISTING_VERSION', '1.1.0' );
 
+// Zabezpieczenie: jeśli katalog niepodzielni-core/ nie istnieje, pomiń ładowanie
+if ( ! is_dir( NIEPODZIELNI_CORE_PATH ) ) {
+    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+        error_log( 'Niepodzielni Core: katalog ' . NIEPODZIELNI_CORE_PATH . ' nie istnieje. Sklonuj lub skopiuj pliki z repozytorium.' );
+    }
+    return;
+}
+
 // 1. REJESTRACJA CPT, TAKSONOMII I METABOXÓW
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/14-cpt-psycholog.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/16-cpt-aktualnosci.php';

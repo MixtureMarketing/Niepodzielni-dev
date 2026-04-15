@@ -10,22 +10,54 @@
  */
 
 // ─── BOOKERO API INTERCEPTOR ─────────────────────────────────────────────────
-// Przechwytuje odpowiedzi getMonthDay z widgetu Bookero i przesyła godziny
-// do WP (bk_ingest_day_slots) — fire-and-forget, zero dodatkowych requestów
-// do Bookero. Dane trafiają do per-worker transient (20 min) i są używane
-// przez wspólny kalendarz zamiast kolejnego wywołania getMonthDay.
+// Przechwytuje odpowiedzi Bookero API i zapisuje dane do WP — fire-and-forget.
+//
+// getMonth  → wyciąga najbliższą dostępną datę → bk_ingest_month
+//   Dzięki temu "Najbliższy termin" w profilu psychologa aktualizuje się
+//   automatycznie przy każdym wyświetleniu kalendarza — zero dodatkowych
+//   requestów do Bookero, zero crona na stronie psychologa.
+//
+// getMonthDay → godziny dla wybranego dnia → bk_ingest_day_slots
+//   Używane przez wspólny kalendarz listingu.
 
 (function () {
     const _origFetch   = window.fetch.bind( window );
     const _origXHROpen = XMLHttpRequest.prototype.open;
     const _origXHRSend = XMLHttpRequest.prototype.send;
 
-    function isTarget( url ) {
+    function isGetMonth( url ) {
+        return typeof url === 'string'
+            && url.includes( 'plugin.bookero.pl' )
+            && url.includes( 'getMonth' )
+            && ! url.includes( 'getMonthDay' );
+    }
+
+    function isGetMonthDay( url ) {
         return typeof url === 'string'
             && url.includes( 'plugin.bookero.pl' )
             && url.includes( 'getMonthDay' );
     }
 
+    // Wyciąga najbliższą datę z odpowiedzi getMonth
+    // Struktura: { result:1, days: { "1":{date:"YYYY-MM-DD", valid_day:1, ...}, ... } }
+    function extractNearestDate( data ) {
+        try {
+            const d    = typeof data === 'string' ? JSON.parse( data ) : data;
+            const days = Object.values( d?.days || {} );
+            const now  = Date.now();
+            for ( const day of days ) {
+                if ( day.valid_day > 0 && day.date ) {
+                    const ts = new Date( day.date ).getTime();
+                    if ( ts >= now - 86400000 ) { // od wczoraj (uwzględnia strefę)
+                        return day.date; // "YYYY-MM-DD"
+                    }
+                }
+            }
+        } catch ( e ) {}
+        return null;
+    }
+
+    // Wyciąga godziny z odpowiedzi getMonthDay
     function parseHours( data ) {
         try {
             const d = typeof data === 'string' ? JSON.parse( data ) : data;
@@ -33,7 +65,37 @@
         } catch ( e ) { return []; }
     }
 
-    function ingest( urlStr, hours ) {
+    function postToWP( action, params ) {
+        const cfg = window.niepodzielniBookero || {};
+        const fd  = new FormData();
+        fd.append( 'action', action );
+        fd.append( 'nonce',  cfg.nonce || '' );
+        for ( const [ k, v ] of Object.entries( params ) ) {
+            fd.append( k, v );
+        }
+        _origFetch( cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: fd } )
+            .catch( () => {} );
+    }
+
+    function ingestMonth( urlStr, data ) {
+        try {
+            const nearestDate = extractNearestDate( data );
+            if ( ! nearestDate ) return;
+
+            const u    = new URL( urlStr );
+            const bkId = u.searchParams.get( 'worker' );
+            const cal  = u.searchParams.get( 'bookero_id' );
+            if ( ! bkId || ! cal ) return;
+
+            postToWP( 'bk_ingest_month', {
+                worker_bk_id: bkId,
+                cal_hash:     cal,
+                nearest_date: nearestDate,
+            } );
+        } catch ( e ) {}
+    }
+
+    function ingestDaySlots( urlStr, hours ) {
         if ( ! hours.length ) return;
         try {
             const u    = new URL( urlStr );
@@ -42,42 +104,53 @@
             const cal  = u.searchParams.get( 'bookero_id' );
             if ( ! bkId || ! date || ! cal ) return;
 
-            const cfg = window.niepodzielniBookero || {};
-            const fd  = new FormData();
-            fd.append( 'action',       'bk_ingest_day_slots' );
-            fd.append( 'nonce',        cfg.nonce || '' );
-            fd.append( 'worker_bk_id', bkId );
-            fd.append( 'cal_hash',     cal );
-            fd.append( 'date',         date );
-            fd.append( 'hours',        JSON.stringify( hours ) );
-            _origFetch( cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body: fd } )
-                .catch( () => {} );
+            postToWP( 'bk_ingest_day_slots', {
+                worker_bk_id: bkId,
+                cal_hash:     cal,
+                date:         date,
+                hours:        JSON.stringify( hours ),
+            } );
         } catch ( e ) {}
     }
 
-    // fetch interceptor
+    // ── fetch interceptor ──────────────────────────────────────────────────────
     window.fetch = function ( input, init ) {
         const url = typeof input === 'string' ? input : ( input?.url || '' );
         const p   = _origFetch( input, init );
-        if ( isTarget( url ) ) {
+
+        if ( isGetMonth( url ) ) {
             p.then( r => r.clone().json()
-                .then( d => ingest( url, parseHours( d ) ) )
+                .then( d => ingestMonth( url, d ) )
+                .catch( () => {} )
+            ).catch( () => {} );
+        } else if ( isGetMonthDay( url ) ) {
+            p.then( r => r.clone().json()
+                .then( d => ingestDaySlots( url, parseHours( d ) ) )
                 .catch( () => {} )
             ).catch( () => {} );
         }
         return p;
     };
 
-    // XHR interceptor (Bookero może używać axios/XHR)
+    // ── XHR interceptor (Bookero używa axios, który może fallować na XHR) ────
     XMLHttpRequest.prototype.open = function ( method, url ) {
-        if ( isTarget( url ) ) this._bk_url = url;
+        this._bk_getmonth = isGetMonth( url )    ? url : null;
+        this._bk_url      = isGetMonthDay( url ) ? url : null;
         return _origXHROpen.apply( this, arguments );
     };
     XMLHttpRequest.prototype.send = function () {
+        if ( this._bk_getmonth ) {
+            const url = this._bk_getmonth;
+            this._bk_getmonth = null;
+            this.addEventListener( 'load', function () {
+                ingestMonth( url, this.responseText );
+            } );
+        }
         if ( this._bk_url ) {
             const url = this._bk_url;
+            this._bk_url = null;
             this.addEventListener( 'load', function () {
-                ingest( url, parseHours( this.responseText ) );
+                ingestDaySlots( url, parseHours( this.responseText ) );
             } );
         }
         return _origXHRSend.apply( this, arguments );
@@ -212,7 +285,7 @@ if (calendarWrapper) {
                     config = {
                         id: isPelno ? (bkr.pelnoId || '') : (bkr.niskoId || ''),
                         container: 'bookero_render_target', type: 'calendar', position: '',
-                        plugin_css: false, lang,
+                        plugin_css: true, lang,
                         custom_config: { use_worker_id: isPelno ? id_pel : id_nis, hide_worker_info: 1 }
                     };
                     if (whatCalendarEl) whatCalendarEl.innerHTML = 'Umów wizytę';
@@ -234,7 +307,7 @@ if (calendarWrapper) {
                         container: 'bookero_render_target',
                         type:      widok,
                         position:  '',
-                        plugin_css: false,
+                        plugin_css: true,
                         lang,
                         custom_config: { use_worker_ids: workerIds, hide_worker_info: 1 },
                     };
@@ -251,7 +324,7 @@ if (calendarWrapper) {
                         container: 'bookero_render_target',
                         type: 'calendar',
                         position: '',
-                        plugin_css: false,
+                        plugin_css: true,
                         lang: lang,
                         custom_config: { use_worker_id: serviceId, hide_worker_info: 1 }
                     };

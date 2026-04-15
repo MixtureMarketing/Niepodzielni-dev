@@ -28,11 +28,20 @@
 }
 
 .psy-card-photo {
-    width: 200px !important;
-    height: 200px !important;
-    min-width: 200px;
+    width: 300px !important;
+    height: 300px !important;
+    min-width: 300px;
+    flex-shrink: 0;
     border-radius: 30px;
     overflow: hidden;
+}
+
+.psy-card-photo img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
 }
 
 /* NAZWISKO */
@@ -170,4 +179,9 @@
     .psy-profile-card { padding: 40px 20px; }
     .psy-header-meta { position: static; text-align: center; align-items: center; margin-top: 20px; }
     .psy-card-header { flex-direction: column; align-items: center; text-align: center; }
+    .psy-card-photo {
+        width: 220px !important;
+        height: 220px !important;
+        min-width: 220px;
+    }
 }

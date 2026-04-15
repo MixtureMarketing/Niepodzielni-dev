@@ -1,0 +1,83 @@
+services:
+  app:
+    build: .
+    container_name: niepodzielni-app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      COMPOSER_ALLOW_SUPERUSER: "1"
+      DISABLE_WP_CRON: "true"
+    volumes:
+      # Kod źródłowy z Windows (bind mount) — edytowalne pliki projektu
+      - .:/var/www/html
+      - ./docker/web.htaccess:/var/www/html/web/.htaccess
+      # Composer artifacts w natywnych volumenach Dockera (Linux I/O — brak narzutu Windows)
+      - vendor_root:/var/www/html/vendor
+      - vendor_theme:/var/www/html/web/app/themes/niepodzielni-theme/vendor
+      - webwp:/var/www/html/web/wp
+      - plugins:/var/www/html/web/app/plugins
+      - acorn_cache:/var/www/html/web/app/cache
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: /entrypoint.sh
+
+  db:
+    image: mysql:8.0
+    container_name: niepodzielni-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: bedrock_niepodzielni
+      MYSQL_USER: niepodzielni
+      MYSQL_PASSWORD: niepodzielni_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database-template.sql:/docker-entrypoint-initdb.d/01-database.sql:ro
+      - ./docker/db-init/02-update-urls.sql:/docker-entrypoint-initdb.d/02-update-urls.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_secret"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    container_name: niepodzielni-redis
+    restart: unless-stopped
+    # Bez persystencji (--save "") — cache może być czyste po restarcie
+    # maxmemory-policy: allkeys-lru usuwa najstarsze klucze gdy pamięć jest pełna
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: niepodzielni-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: niepodzielni
+      PMA_PASSWORD: niepodzielni_pass
+    depends_on:
+      - db
+
+volumes:
+  db_data:
+  vendor_root:
+  vendor_theme:
+  webwp:
+  plugins:
+  acorn_cache:

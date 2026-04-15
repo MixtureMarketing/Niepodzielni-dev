@@ -1,0 +1,17 @@
+.git
+.gitignore
+vendor/
+web/wp/
+web/app/uploads/
+web/app/cache/
+*.log
+.env
+.env.local
+.env.*.local
+node_modules/
+.phpunit.cache
+.phpunit.result.cache
+database-template.sql
+README.md
+LICENSE.md
+tests/

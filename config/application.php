@@ -138,6 +138,27 @@ Config::define('LOGGED_IN_SALT', env('LOGGED_IN_SALT'));
 Config::define('NONCE_SALT', env('NONCE_SALT'));
 
 /**
+ * Redis Object Cache
+ */
+if (env('REDIS_HOST')) {
+    Config::define('WP_REDIS_HOST', env('REDIS_HOST'));
+    Config::define('WP_REDIS_PORT', env('REDIS_PORT') ?: 6379);
+    Config::define('WP_REDIS_DATABASE', 0);
+    Config::define('WP_REDIS_TIMEOUT', 1);
+    Config::define('WP_REDIS_READ_TIMEOUT', 1);
+    Config::define('WP_REDIS_CLIENT', 'phpredis');
+    Config::define('WP_REDIS_PREFIX', env('WP_REDIS_PREFIX') ?: 'np_');
+}
+
+/**
+ * Bookero API — dwa osobne konta (pelnoplatne / niskoplatne)
+ */
+Config::define('NP_BOOKERO_API_KEY_PELNY', env('BOOKERO_API_KEY_PELNY') ?: '');
+Config::define('NP_BOOKERO_API_KEY_NISKO', env('BOOKERO_API_KEY_NISKO') ?: '');
+Config::define('NP_BOOKERO_CAL_ID_PELNY',  env('BOOKERO_CAL_ID_PELNY')  ?: '');
+Config::define('NP_BOOKERO_CAL_ID_NISKO',  env('BOOKERO_CAL_ID_NISKO')  ?: '');
+
+/**
  * Custom Settings
  */
 Config::define('AUTOMATIC_UPDATER_DISABLED', true);
@@ -187,5 +208,7 @@ if (!defined('ABSPATH')) {
 }
 
 define( 'QM_ENABLE_CAPSULE', true );
-define( 'SAVEQUERIES', true );
+if ( ! defined( 'SAVEQUERIES' ) ) {
+    define( 'SAVEQUERIES', true );
+}
 define( 'QM_SHOW_ALL_QUERIES', true ); // To pozwoli crawlerowi "widzieć" SQL i RAM

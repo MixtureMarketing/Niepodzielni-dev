@@ -1,0 +1,21 @@
+# BEGIN WordPress
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+
+# Redirect /wp/wp-admin without trailing slash
+RewriteRule ^wp/wp-admin$ /wp/wp-admin/ [R=301,L]
+
+# Route wp-admin, wp-includes, wp-login without /wp/ prefix to the /wp/ subdirectory
+RewriteRule ^wp-admin/(.*)$ wp/wp-admin/$1 [L]
+RewriteRule ^wp-includes/(.*)$ wp/wp-includes/$1 [L]
+RewriteRule ^wp-login\.php$ wp/wp-login.php [L]
+RewriteRule ^wp-cron\.php$ wp/wp-cron.php [L]
+RewriteRule ^xmlrpc\.php$ wp/xmlrpc.php [L]
+
+# Standard WordPress front controller (all other non-file, non-dir requests)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+# END WordPress

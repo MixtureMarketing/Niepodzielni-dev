@@ -655,11 +655,18 @@ class BkSharedCalendar {
         body.append('agree_tp',  tp  ? '1' : '');
         body.append('agree_tel', tel ? '1' : '');
 
+        body.append('typ', this.typ);
+
         fetch(cfg.ajaxUrl || '/wp-admin/admin-ajax.php', { method: 'POST', body })
             .then(r => r.json())
             .then(res => {
                 if (!res.success) throw new Error(res.data || 'Błąd rezerwacji');
-                window.location.href = res.data.payment_url;
+                if (res.data.payment_url) {
+                    window.location.href = res.data.payment_url;
+                } else {
+                    // Rezerwacja potwierdzona bez płatności — pokaż potwierdzenie
+                    this._showBookingConfirmed(worker);
+                }
             })
             .catch(err => {
                 btn.disabled    = false;
@@ -667,6 +674,18 @@ class BkSharedCalendar {
                 this._formErr(errEl, err.message || 'Wystąpił błąd. Spróbuj ponownie.');
             })
             .finally(() => { this._bookingInFlight = false; });
+    }
+
+    _showBookingConfirmed(worker) {
+        const inner = this.q('.bk-sc__booking-inner');
+        inner.innerHTML = `
+            <div class="bk-sc__booking-confirmed">
+                <div class="bk-sc__confirmed-icon">✓</div>
+                <h3 class="bk-sc__confirmed-title">Rezerwacja potwierdzona!</h3>
+                <p class="bk-sc__confirmed-body">Szczegóły zostaną przesłane na podany adres e-mail. Dziękujemy!</p>
+                <button class="bk-sc__booking-back bk-sc__booking-back--center" onclick="location.reload()">Wróć do kalendarza</button>
+            </div>
+        `;
     }
 
     _formErr(el, msg) { el.textContent = msg; el.hidden = false; }

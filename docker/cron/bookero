@@ -1,0 +1,5 @@
+# Bookero cron — uruchamia zaległe zadania WP co minutę
+# Plik musi kończyć się nową linią (wymóg crona)
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+* * * * * root /usr/local/bin/php /usr/local/bin/wp cron event run --due-now --path=/var/www/html/web/wp --url=http://localhost:8000 --allow-root >> /proc/1/fd/1 2>/proc/1/fd/2
+

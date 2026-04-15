@@ -23,6 +23,15 @@
     text-transform: uppercase;
 }
 
+.help-areas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+}
+
 .help-area-tag {
     display: inline-block;
     background-color: var(--mix-color-background-grey-light);
@@ -34,6 +43,14 @@
     font-weight: var(--mix-font-weight-medium);
     white-space: nowrap;
     transition: all 0.2s var(--mix-transition-timing-ease);
+}
+
+.help-area-tag.is-hidden {
+    display: none;
+}
+
+[data-help-areas-container].is-expanded .help-area-tag.is-hidden {
+    display: inline-block;
 }
 
 .help-area-tag:hover {

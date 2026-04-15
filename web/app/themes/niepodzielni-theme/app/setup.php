@@ -57,6 +57,14 @@ add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('sage/app.css', Vite::asset('resources/css/app.css'), false, null);
     wp_enqueue_script('sage/app.js', Vite::asset('resources/js/app.js'), [], null, true);
 
+    // Globalny obiekt konfiguracyjny dla skryptów JS (ajaxUrl, nonce, globalne hashe Bookero)
+    wp_localize_script('sage/app.js', 'niepodzielniBookero', [
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce'   => wp_create_nonce('np_bookero_nonce'),
+        'pelnoId' => np_bookero_cal_id_for('pelnoplatny'),
+        'niskoId' => np_bookero_cal_id_for('nisko'),
+    ]);
+
     // Flag icons — tylko na stronach specjalistów i listingów (flagi języków)
     if (is_singular('psycholog') || is_page_template(['template-psy-listing-pelno.blade.php', 'template-psy-listing-nisko.blade.php'])) {
         wp_enqueue_style('flag-icons', 'https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css', [], null);

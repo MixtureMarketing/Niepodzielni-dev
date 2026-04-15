@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0670ae2e626ac767a13a355757ed31a1",
+    "content-hash": "f0ea106c097f22e113001005b12035a4",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -2053,6 +2053,24 @@
             },
             "type": "wordpress-plugin",
             "homepage": "https://wordpress.org/plugins/media-cloud-sync/"
+        },
+        {
+            "name": "wpackagist-plugin/redis-cache",
+            "version": "2.7.0",
+            "source": {
+                "type": "svn",
+                "url": "https://plugins.svn.wordpress.org/redis-cache/",
+                "reference": "tags/2.7.0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://downloads.wordpress.org/plugin/redis-cache.2.7.0.zip"
+            },
+            "require": {
+                "composer/installers": "^1.0 || ^2.0"
+            },
+            "type": "wordpress-plugin",
+            "homepage": "https://wordpress.org/plugins/redis-cache/"
         }
     ],
     "packages-dev": [

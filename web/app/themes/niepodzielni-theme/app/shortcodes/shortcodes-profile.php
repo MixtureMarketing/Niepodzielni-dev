@@ -78,6 +78,36 @@ function niepodzielni_jezyki_shortcode( $atts ) {
 }
 
 /**
+ * [dynamiczna_stawka_konsultacji]
+ * Wyświetla stawkę odpowiednią do typu konsultacji (?konsultacje=nisko|pelno).
+ */
+add_shortcode( 'dynamiczna_stawka_konsultacji', 'np_shortcode_dynamiczna_stawka' );
+function np_shortcode_dynamiczna_stawka(): string {
+    $post_id   = get_the_ID();
+    $kons_type = sanitize_key( $_GET['konsultacje'] ?? '' );
+    $meta_key  = ( $kons_type === 'nisko' ) ? 'stawka_niskoplatna' : 'stawka_wysokoplatna';
+    $stawka    = get_post_meta( $post_id, $meta_key, true );
+    if ( ! $stawka ) {
+        $stawka = ( $kons_type === 'nisko' ) ? '55 zł' : '145 zł';
+    }
+    return '<span class="dynamic-rate-price">' . esc_html( $stawka ) . '</span>'
+         . '<span class="dynamic-rate-unit"> / 50 min</span>';
+}
+
+/**
+ * [termin_z_bazy typ="pelnoplatny|niskoplatny"]
+ * Wyświetla najbliższy termin pobrany z postmeta.
+ */
+add_shortcode( 'termin_z_bazy', 'np_shortcode_termin_z_bazy' );
+function np_shortcode_termin_z_bazy( $atts ): string {
+    $atts    = shortcode_atts( [ 'typ' => 'pelnoplatny' ], $atts );
+    $meta_key = np_bk_meta_key( $atts['typ'] );
+    $termin   = get_post_meta( get_the_ID(), $meta_key, true );
+    if ( ! $termin ) return '';
+    return 'Najbliższy termin: <span class="bookero-date-value">' . esc_html( $termin ) . '</span>';
+}
+
+/**
  * [nurty_produktu]
  */
 add_shortcode( 'nurty_produktu', 'niepodzielni_nurty_shortcode' );

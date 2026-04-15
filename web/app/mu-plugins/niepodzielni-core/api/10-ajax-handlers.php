@@ -1,0 +1,550 @@
+<?php
+/**
+ * AJAX Handlers — obsługa zapytań AJAX (frontend i admin)
+ */
+
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+// ─── Real-time ingest: przechwycony getMonth z bookero-init.js ───────────────
+// Gdy calendar widget ładuje miesiąc, JS interceptor wzywa tę akcję
+// z najbliższą dostępną datą — zero dodatkowych requestów do Bookero.
+
+add_action( 'wp_ajax_bk_ingest_month',        'np_ajax_bk_ingest_month' );
+add_action( 'wp_ajax_nopriv_bk_ingest_month', 'np_ajax_bk_ingest_month' );
+
+function np_ajax_bk_ingest_month(): void {
+    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+
+    $worker_bk_id = sanitize_text_field( $_POST['worker_bk_id'] ?? '' );
+    $cal_hash     = sanitize_text_field( $_POST['cal_hash']     ?? '' );
+    $nearest_date = sanitize_text_field( $_POST['nearest_date'] ?? '' );
+
+    if ( ! $worker_bk_id || ! $cal_hash || ! $nearest_date ) {
+        wp_send_json_success( [ 'skipped' => true ] );
+    }
+
+    // Ustal typ konta (pelnoplatny / nisko) na podstawie hasha kalendarza
+    $cal_id_nisko = np_bookero_cal_id_for( 'nisko' );
+    $typ          = ( $cal_hash === $cal_id_nisko ) ? 'nisko' : 'pelnoplatny';
+    $meta_key     = ( $typ === 'nisko' ) ? 'najblizszy_termin_niskoplatny' : 'najblizszy_termin_pelnoplatny';
+    $worker_meta  = ( $typ === 'nisko' ) ? 'bookero_id_niski' : 'bookero_id_pelny';
+
+    // Znajdź psychologa po worker ID
+    $posts = get_posts( [
+        'post_type'      => 'psycholog',
+        'posts_per_page' => 1,
+        'post_status'    => 'publish',
+        'meta_query'     => [
+            [ 'key' => $worker_meta, 'value' => $worker_bk_id, 'compare' => '=' ],
+        ],
+        'fields' => 'ids',
+    ] );
+
+    if ( empty( $posts ) ) {
+        wp_send_json_success( [ 'skipped' => 'worker_not_found' ] );
+    }
+
+    $post_id = (int) $posts[0];
+
+    // Sformatuj datę po polsku
+    $ts     = strtotime( $nearest_date );
+    $label  = $ts ? date_i18n( 'j F Y', $ts ) : $nearest_date;
+
+    update_post_meta( $post_id, $meta_key, $label );
+    update_post_meta( $post_id, 'np_termin_updated_at', time() );
+    update_option( 'np_bookero_last_cron_run', time(), false );
+
+    wp_send_json_success( [ 'saved' => $label, 'post_id' => $post_id ] );
+}
+
+// ─── Frontend: pobieranie terminów dla widgetów kalendarza ────────────────────
+
+add_action( 'wp_ajax_np_get_terminy',        'np_ajax_get_terminy' );
+add_action( 'wp_ajax_nopriv_np_get_terminy', 'np_ajax_get_terminy' );
+
+function np_ajax_get_terminy(): void {
+    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+
+    $bookero_id = sanitize_text_field( $_POST['bookero_id'] ?? '' );
+    $typ        = sanitize_key( $_POST['typ'] ?? 'pelnoplatny' );
+    if ( ! $bookero_id ) {
+        wp_send_json_error( [ 'message' => 'Brak bookero_id' ] );
+    }
+
+    $terminy = np_bookero_get_terminy( $bookero_id, $typ );
+    wp_send_json_success( $terminy );
+}
+
+// ─── Admin: odświeżenie wszystkich terminów ───────────────────────────────────
+
+add_action( 'wp_ajax_np_refresh_terminy', 'np_ajax_refresh_terminy' );
+
+function np_ajax_refresh_terminy(): void {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'message' => 'Brak uprawnień' ] );
+    }
+
+    np_bookero_sync_all();
+    wp_send_json_success( [ 'message' => 'Terminy odświeżone dla wszystkich psychologów' ] );
+}
+
+// ─── Admin: odświeżenie terminów dla jednego psychologa ───────────────────────
+
+add_action( 'wp_ajax_np_refresh_termin_single', 'np_ajax_refresh_termin_single' );
+
+function np_ajax_refresh_termin_single(): void {
+    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'message' => 'Brak uprawnień' ] );
+    }
+
+    $post_id = (int) ( $_POST['post_id'] ?? 0 );
+    if ( ! $post_id ) {
+        wp_send_json_error( [ 'message' => 'Brak post_id' ] );
+    }
+
+    $bk_pelny = get_post_meta( $post_id, 'bookero_id_pelny', true );
+    $bk_niski = get_post_meta( $post_id, 'bookero_id_niski', true );
+
+    $termin_pelny = '';
+    $termin_niski = '';
+
+    if ( $bk_pelny ) {
+        // Wyczyść cache transientów dla wszystkich miesięcy
+        for ( $i = 0; $i <= 2; $i++ ) {
+            delete_transient( 'np_bk_' . md5( 'pelnoplatny' . $bk_pelny ) . '_m' . $i );
+        }
+        $termin_pelny = np_bookero_najblizszy_termin( $bk_pelny, 'pelnoplatny' );
+        update_post_meta( $post_id, 'najblizszy_termin_pelnoplatny', $termin_pelny );
+    }
+    if ( $bk_niski ) {
+        for ( $i = 0; $i <= 2; $i++ ) {
+            delete_transient( 'np_bk_' . md5( 'nisko' . $bk_niski ) . '_m' . $i );
+        }
+        $termin_niski = np_bookero_najblizszy_termin( $bk_niski, 'nisko' );
+        update_post_meta( $post_id, 'najblizszy_termin_niskoplatny', $termin_niski );
+    }
+
+    $now = time();
+    update_post_meta( $post_id, 'np_termin_updated_at', $now );
+
+    // Ostrzeżenie gdy IDs są ustawione, ale brak terminów (prawdopodobnie błąd API)
+    $api_warning = '';
+    if ( $bk_pelny && ! $termin_pelny ) $api_warning .= 'Pełny: brak odpowiedzi. ';
+    if ( $bk_niski && ! $termin_niski ) $api_warning .= 'Niski: brak odpowiedzi.';
+
+    wp_send_json_success( [
+        'message'      => $api_warning ? trim( $api_warning ) : 'Terminy zaktualizowane',
+        'termin_pelny' => $termin_pelny ?: '—',
+        'termin_niski' => $termin_niski ?: '—',
+        'updated_at'   => date_i18n( 'd.m.Y H:i', $now ),
+        'warning'      => (bool) $api_warning,
+    ] );
+}
+
+// ─── Shared Calendar: dane miesięczne ────────────────────────────────────────
+
+add_action( 'wp_ajax_bk_get_shared_month',        'np_ajax_bk_get_shared_month' );
+add_action( 'wp_ajax_nopriv_bk_get_shared_month', 'np_ajax_bk_get_shared_month' );
+
+function np_ajax_bk_get_shared_month(): void {
+    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+
+    $typ         = sanitize_text_field( $_POST['typ'] ?? 'nisko' );
+    $plus_months = max( 0, min( 12, (int) ( $_POST['plus_months'] ?? 0 ) ) );
+
+    $cache_key = 'np_bk_month_' . $typ . '_' . $plus_months;
+    $cached    = get_transient( $cache_key );
+    if ( false !== $cached ) {
+        wp_send_json_success( $cached );
+    }
+
+    $data = np_bk_build_month_data( $typ, $plus_months );
+    set_transient( $cache_key, $data, 5 * MINUTE_IN_SECONDS );
+    wp_send_json_success( $data );
+}
+
+function np_bk_build_month_data( string $typ, int $plus_months ): array {
+    $ts_start      = strtotime( "+{$plus_months} months", mktime( 0, 0, 0, (int) date( 'n' ), 1 ) );
+    $year          = (int) date( 'Y', $ts_start );
+    $month         = (int) date( 'n', $ts_start );
+    $year_month    = date( 'Y-m', $ts_start );
+    $days_in_month = (int) date( 't', $ts_start );
+    $first_dow     = (int) date( 'N', $ts_start ); // 1=Pn, 7=Nd
+    $today         = date( 'Y-m-d' );
+
+    $months_pl  = [ '', 'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+                    'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień' ];
+    $month_name = $months_pl[ $month ] . ' ' . $year;
+
+    $meta_bk_key   = ( $typ === 'nisko' ) ? 'bookero_id_niski'              : 'bookero_id_pelny';
+    $meta_slots    = ( $typ === 'nisko' ) ? 'bookero_slots_nisko'            : 'bookero_slots_pelno';
+    $meta_stawka   = ( $typ === 'nisko' ) ? 'stawka_niskoplatna'             : 'stawka_wysokoplatna';
+    $meta_term_key = ( $typ === 'nisko' ) ? 'najblizszy_termin_niskoplatny'  : 'najblizszy_termin_pelnoplatny';
+
+    $cal_hash    = np_bookero_cal_id_for( $typ );
+    $account_cfg = np_bookero_get_account_config( $typ );
+    $service_id  = $account_cfg['service_id'] ?? 0;
+
+    // Wczytaj wszystkich psychologów z worker ID — dane z bazy, zero requestów do API.
+    $psycholodzy = get_posts( [
+        'post_type'      => 'psycholog',
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+        'meta_query'     => [
+            [ 'key' => $meta_bk_key, 'compare' => 'EXISTS' ],
+            [ 'key' => $meta_bk_key, 'value' => '', 'compare' => '!=' ],
+        ],
+    ] );
+
+    $dates = [];
+
+    foreach ( $psycholodzy as $post ) {
+        $pid       = $post->ID;
+        $worker_id = get_post_meta( $pid, $meta_bk_key, true );
+        if ( ! $worker_id ) continue;
+
+        // Pobierz wszystkie dostępne daty z bookero_slots_* (JSON)
+        $slots_json = get_post_meta( $pid, $meta_slots, true );
+        $all_dates  = $slots_json ? json_decode( $slots_json, true ) : [];
+        if ( ! is_array( $all_dates ) ) $all_dates = [];
+
+        // Fallback: użyj najblizszy_termin_* gdy slots jeszcze nie zostały wypełnione przez cron
+        if ( empty( $all_dates ) ) {
+            $termin_str = get_post_meta( $pid, $meta_term_key, true );
+            if ( $termin_str ) {
+                $sortable = np_get_sortable_date( $termin_str );
+                if ( $sortable !== '99999999' ) {
+                    $date_ymd  = substr( $sortable, 0, 4 ) . '-' . substr( $sortable, 4, 2 ) . '-' . substr( $sortable, 6, 2 );
+                    $all_dates = [ $date_ymd ];
+                }
+            }
+        }
+
+        // Filtruj daty z żądanego miesiąca
+        $month_dates = array_filter( $all_dates, fn( $d ) => substr( $d, 0, 7 ) === $year_month );
+        if ( empty( $month_dates ) ) continue;
+
+        $worker_entry = [
+            'bookero_id'  => $worker_id,
+            'cal_hash'    => $cal_hash,
+            'service_id'  => $service_id ?: null,
+            'name'        => $post->post_title,
+            'avatar'      => np_get_post_image_url( $pid, [ '_thumbnail_id', 'zdjecie_profilowe', 'zdjecie' ], 'medium' ),
+            'price'       => get_post_meta( $pid, $meta_stawka, true ) ?: ( $typ === 'nisko' ? '55 zł' : '145 zł' ),
+            'rodzaj'      => get_post_meta( $pid, 'rodzaj_wizyty', true ) ?: '',
+            'profile_url' => get_the_permalink( $pid ),
+            'hours'       => [],
+        ];
+
+        foreach ( $month_dates as $date ) {
+            $dates[ $date ][] = $worker_entry;
+        }
+    }
+
+    return [
+        'month_name'    => $month_name,
+        'year_month'    => $year_month,
+        'first_dow'     => $first_dow,
+        'days_in_month' => $days_in_month,
+        'today'         => $today,
+        'oldest_sync'   => time() - 60,
+        'dates'         => $dates,
+    ];
+}
+
+// ─── Shared Calendar: sloty dla konkretnego dnia ─────────────────────────────
+
+add_action( 'wp_ajax_bk_get_date_slots',        'np_ajax_bk_get_date_slots' );
+add_action( 'wp_ajax_nopriv_bk_get_date_slots', 'np_ajax_bk_get_date_slots' );
+
+function np_ajax_bk_get_date_slots(): void {
+    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+
+    $typ  = sanitize_text_field( $_POST['typ'] ?? 'nisko' );
+    $date = sanitize_text_field( $_POST['date'] ?? '' );
+
+    if ( ! $date || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+        wp_send_json_error( [ 'message' => 'Nieprawidłowa data' ] );
+    }
+
+    $meta_bk_key   = ( $typ === 'nisko' ) ? 'bookero_id_niski'              : 'bookero_id_pelny';
+    $meta_slots    = ( $typ === 'nisko' ) ? 'bookero_slots_nisko'            : 'bookero_slots_pelno';
+    $meta_stawka   = ( $typ === 'nisko' ) ? 'stawka_niskoplatna'             : 'stawka_wysokoplatna';
+    $meta_term_key = ( $typ === 'nisko' ) ? 'najblizszy_termin_niskoplatny'  : 'najblizszy_termin_pelnoplatny';
+
+    $cal_hash    = np_bookero_cal_id_for( $typ );
+    $account_cfg = np_bookero_get_account_config( $typ );
+    $service_id  = $account_cfg['service_id'] ?? 0;
+
+    // Pobierz psychologów z worker ID
+    $psycholodzy = get_posts( [
+        'post_type'      => 'psycholog',
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+        'meta_query'     => [
+            [ 'key' => $meta_bk_key, 'compare' => 'EXISTS' ],
+            [ 'key' => $meta_bk_key, 'value' => '', 'compare' => '!=' ],
+        ],
+    ] );
+
+    // Wyfiltruj tych, którzy mają $date w swoich slotach
+    $matched = [];
+    foreach ( $psycholodzy as $post ) {
+        $pid       = $post->ID;
+        $worker_id = get_post_meta( $pid, $meta_bk_key, true );
+        if ( ! $worker_id ) continue;
+
+        $slots_json = get_post_meta( $pid, $meta_slots, true );
+        $all_dates  = $slots_json ? json_decode( $slots_json, true ) : [];
+        if ( ! is_array( $all_dates ) ) $all_dates = [];
+
+        // Fallback: użyj najblizszy_termin_* gdy bookero_slots_* jeszcze puste
+        if ( empty( $all_dates ) ) {
+            $termin_str = get_post_meta( $pid, $meta_term_key, true );
+            if ( $termin_str ) {
+                $sortable = np_get_sortable_date( $termin_str );
+                if ( $sortable !== '99999999' ) {
+                    $date_ymd  = substr( $sortable, 0, 4 ) . '-' . substr( $sortable, 4, 2 ) . '-' . substr( $sortable, 6, 2 );
+                    $all_dates = [ $date_ymd ];
+                }
+            }
+        }
+
+        if ( ! in_array( $date, $all_dates, true ) ) continue;
+
+        $matched[] = [
+            'pid'       => $pid,
+            'worker_id' => $worker_id,
+            'name'      => $post->post_title,
+            'avatar'    => np_get_post_image_url( $pid, [ '_thumbnail_id', 'zdjecie_profilowe', 'zdjecie' ], 'medium' ),
+            'price'     => get_post_meta( $pid, $meta_stawka, true ) ?: ( $typ === 'nisko' ? '55 zł' : '145 zł' ),
+            'rodzaj'    => get_post_meta( $pid, 'rodzaj_wizyty', true ) ?: '',
+            'profile_url' => get_the_permalink( $pid ),
+        ];
+    }
+
+    // Dla każdego dopasowanego psychologa pobierz godziny — najpierw z DB, fallback API
+    $workers = [];
+    foreach ( $matched as $m ) {
+        // Krok 1: sprawdź cache w DB (natychmiastowy)
+        $hours = np_bookero_get_cached_hours( $m['pid'], $typ, $date );
+
+        if ( $hours === null ) {
+            // Krok 2: brak w cache — pobierz z API i zapisz do DB
+            $hours = np_bookero_get_month_day( $m['worker_id'], $typ, $date );
+            np_bookero_cache_hours( $m['pid'], $typ, $date, $hours );
+        }
+
+        if ( empty( $hours ) ) continue; // Brak dostępnych godzin — pomiń
+
+        $workers[] = [
+            'bookero_id'  => $m['worker_id'],
+            'cal_hash'    => $cal_hash,
+            'service_id'  => $service_id ?: null,
+            'name'        => $m['name'],
+            'avatar'      => $m['avatar'],
+            'price'       => $m['price'],
+            'rodzaj'      => $m['rodzaj'],
+            'profile_url' => $m['profile_url'],
+            'hours'       => $hours,
+        ];
+    }
+
+    usort( $workers, fn( $a, $b ) => strcmp( $a['name'], $b['name'] ) );
+
+    wp_send_json_success( [ 'workers' => $workers ] );
+}
+
+// ─── Shared Calendar: weryfikacja dostępności godziny ─────────────────────────
+
+add_action( 'wp_ajax_bk_verify_hour',        'np_ajax_bk_verify_hour' );
+add_action( 'wp_ajax_nopriv_bk_verify_hour', 'np_ajax_bk_verify_hour' );
+
+function np_ajax_bk_verify_hour(): void {
+    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+
+    $date        = sanitize_text_field( $_POST['date'] ?? '' );
+    $hour        = sanitize_text_field( $_POST['hour'] ?? '' );
+    $typ         = sanitize_text_field( $_POST['typ'] ?? 'pelnoplatny' );
+    $bookero_ids = array_map( 'sanitize_text_field', (array) ( $_POST['bookero_ids'] ?? [] ) );
+
+    if ( ! $date || ! $hour || empty( $bookero_ids ) ) {
+        wp_send_json_success( [ 'removed' => [] ] );
+    }
+
+    $removed = [];
+
+    // Batch lookup: worker_id → post_id (1 zapytanie zamiast N)
+    $meta_bk_key    = in_array( $typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true )
+        ? 'bookero_id_niski' : 'bookero_id_pelny';
+    global $wpdb;
+    $ids_escaped    = implode( ',', array_map( fn( $id ) => $wpdb->prepare( '%s', $id ), $bookero_ids ) );
+    $rows           = $wpdb->get_results(
+        "SELECT post_id, meta_value FROM {$wpdb->postmeta}
+         WHERE meta_key = '{$meta_bk_key}' AND meta_value IN ({$ids_escaped})"
+    );
+    $worker_to_post = [];
+    foreach ( $rows as $row ) {
+        $worker_to_post[ $row->meta_value ] = (int) $row->post_id;
+    }
+
+    foreach ( $bookero_ids as $worker_id ) {
+        // Wymuś świeże dane — usuń transient przed wywołaniem
+        $cache_key = 'np_bkday_' . md5( $typ . $worker_id . $date );
+        delete_transient( $cache_key );
+
+        $fresh_hours = np_bookero_get_month_day( $worker_id, $typ, $date );
+
+        // Zaktualizuj DB świeżymi danymi z API
+        $post_id = $worker_to_post[ $worker_id ] ?? 0;
+        if ( $post_id ) {
+            np_bookero_cache_hours( $post_id, $typ, $date, $fresh_hours );
+        }
+
+        if ( ! in_array( $hour, $fresh_hours, true ) ) {
+            $removed[] = $worker_id;
+        }
+    }
+
+    wp_send_json_success( [ 'removed' => $removed ] );
+}
+
+// ─── Shared Calendar: tworzenie rezerwacji ────────────────────────────────────
+
+add_action( 'wp_ajax_bk_create_booking',        'np_ajax_bk_create_booking' );
+add_action( 'wp_ajax_nopriv_bk_create_booking', 'np_ajax_bk_create_booking' );
+
+function np_ajax_bk_create_booking(): void {
+    check_ajax_referer( 'np_bookero_nonce', 'nonce' );
+
+    $cal_hash  = sanitize_text_field( $_POST['cal_hash'] ?? '' );
+    $worker_id = sanitize_text_field( $_POST['worker']   ?? '' );
+    $service   = (int) ( $_POST['service'] ?? 0 );
+    $date      = sanitize_text_field( $_POST['date']     ?? '' );
+    $hour      = sanitize_text_field( $_POST['hour']     ?? '' );
+    $name      = sanitize_text_field( $_POST['name']     ?? '' );
+    $email     = sanitize_email( $_POST['email']         ?? '' );
+    $phone     = sanitize_text_field( $_POST['phone']    ?? '' );
+    $ulica     = sanitize_text_field( $_POST['ulica']    ?? '' );
+    $nr_domu   = sanitize_text_field( $_POST['nr_domu']  ?? '' );
+    $kod       = sanitize_text_field( $_POST['kod_poczt'] ?? '' );
+    $miasto    = sanitize_text_field( $_POST['miasto']   ?? '' );
+    $powod     = sanitize_textarea_field( $_POST['powod'] ?? '' );
+    $zaimki    = sanitize_text_field( $_POST['zaimki']   ?? '' );
+    $agree_18  = ! empty( $_POST['agree_18'] );
+    $agree_tel = ! empty( $_POST['agree_tel'] );
+
+    if ( ! $cal_hash || ! $worker_id || ! $date || ! $hour || ! $name || ! $email || ! $phone ) {
+        wp_send_json_error( 'Proszę wypełnić wszystkie wymagane pola.' );
+    }
+
+    // Ustal typ konta na podstawie cal_hash
+    $cal_id_nisko   = np_bookero_cal_id_for( 'nisko' );
+    $typ            = ( $cal_hash === $cal_id_nisko ) ? 'nisko' : 'pelnoplatny';
+    $account_cfg    = np_bookero_get_account_config( $typ );
+    $service_id     = $service ?: ( $account_cfg['service_id'] ?? 0 );
+    $payment_id     = $account_cfg['payment_id'] ?? 0;
+    $service_name   = $account_cfg['service_name'] ?? 'Konsultacja psychologiczna';
+
+    // Zbuduj plugin_comment z parametrami formularza (stałe IDs dla konta Bookero Niepodzielni)
+    $parameters = [];
+    if ( $powod ) {
+        $parameters[] = [ 'id' => '15663', 'value' => $powod, 'value_id' => null ];
+    }
+    if ( $agree_18 ) {
+        $parameters[] = [ 'id' => '16483', 'value' => [ 'Oświadczam, że mam ukończone 18 lat.' ], 'value_id' => [ 17856 ] ];
+    }
+    if ( $ulica ) {
+        $parameters[] = [ 'id' => '16488', 'value' => $ulica, 'value_id' => null ];
+    }
+    if ( $nr_domu ) {
+        $parameters[] = [ 'id' => '16489', 'value' => $nr_domu, 'value_id' => null ];
+    }
+    if ( $kod ) {
+        $parameters[] = [ 'id' => '16490', 'value' => $kod, 'value_id' => null ];
+    }
+    if ( $miasto ) {
+        $parameters[] = [ 'id' => '16492', 'value' => $miasto, 'value_id' => null ];
+    }
+    if ( $zaimki ) {
+        $parameters[] = [ 'id' => '20215', 'value' => $zaimki, 'value_id' => null ];
+    }
+
+    $plugin_comment = wp_json_encode( [
+        'data' => [
+            'name'            => $name,
+            'phone'           => $phone,
+            'parameters'      => $parameters,
+            'services_names'  => [ [ 'category' => '', 'value' => $service_name, 'require_people' => 0 ] ],
+            'services_values' => [ [ 'category' => 0, 'value' => $service_id, 'require_people' => 0 ] ],
+        ],
+    ] );
+
+    $payload = [
+        'bookero_id'               => $cal_hash,
+        'agree_tp'                 => 1,
+        'agree_newsletter'         => 0,
+        'agree_telemarketing'      => $agree_tel ? 1 : 0,
+        'discount_code'            => '',
+        'configuration_payment_id' => $payment_id,
+        'lang'                     => 'pl',
+        'cart_id'                  => 0,
+        'name'                     => $name,
+        'phone'                    => $phone,
+        'email'                    => $email,
+        'inquiries'                => [
+            [
+                'plugin_comment'     => $plugin_comment,
+                'phone'              => $phone,
+                'people'             => 1,
+                'date'               => $date,
+                'hour'               => $hour,
+                'email'              => $email,
+                'service'            => $service_id,
+                'worker'             => $worker_id,
+                'periodicity_id'     => 0,
+                'custom_duration_id' => 0,
+                'plugin_inquiry_id'  => null,
+            ],
+        ],
+    ];
+
+    $response = wp_remote_post( 'https://plugin.bookero.pl/plugin-api/v2/add', [
+        'timeout' => 20,
+        'headers' => [
+            'Accept'       => 'application/json, text/plain, */*',
+            'Content-Type' => 'application/json',
+            'User-Agent'   => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+            'Origin'       => get_site_url(),
+            'Referer'      => get_site_url() . '/',
+        ],
+        'body' => wp_json_encode( $payload ),
+    ] );
+
+    if ( is_wp_error( $response ) ) {
+        np_bookero_log_error( 'add', "worker={$worker_id} date={$date} hour={$hour}: " . $response->get_error_message() );
+        wp_send_json_error( 'Błąd połączenia z Bookero. Spróbuj ponownie.' );
+    }
+
+    $code = (int) wp_remote_retrieve_response_code( $response );
+    $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    if ( (int) ( $body['result'] ?? 0 ) !== 1 ) {
+        $msg = $body['message'] ?? '';
+        if ( ! $msg ) $msg = 'Błąd rezerwacji (kod ' . $code . '). Spróbuj ponownie.';
+        np_bookero_log_error( 'add', "worker={$worker_id} date={$date} hour={$hour}: result=0, msg={$msg}" );
+        wp_send_json_error( $msg );
+    }
+
+    $inquiry     = $body['data']['inquiries'][0] ?? [];
+    $payment_url = $body['data']['payment_url']  ?? '';
+
+    wp_send_json_success( [
+        'payment_url'       => $payment_url,
+        'inquiry_id'        => $inquiry['id']               ?? null,
+        'plugin_inquiry_id' => $inquiry['plugin_inquiry_id'] ?? null,
+        'status'            => $inquiry['status']            ?? null,
+    ] );
+}
