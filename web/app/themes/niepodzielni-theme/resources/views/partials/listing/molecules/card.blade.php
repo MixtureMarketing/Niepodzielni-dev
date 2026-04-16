@@ -62,7 +62,9 @@
 >
     <a href="{{ $item['link'] }}" class="nlisting-card__media-link" tabindex="-1" aria-hidden="true">
         <div class="nlisting-card__media">
-            @if( !empty($item['thumb']) )
+            @if( !empty($item['thumb_tag']) )
+                {!! $item['thumb_tag'] !!}
+            @elseif( !empty($item['thumb']) )
                 <img src="{{ $item['thumb'] }}" alt="{{ $item['title'] }}" loading="lazy">
             @else
                 <div class="nlisting-card__media-placeholder"></div>

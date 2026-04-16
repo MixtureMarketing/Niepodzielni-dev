@@ -87,7 +87,11 @@ class PsychologistListingService
                 'termin'     => $termin ?: 'Brak wolnych terminów',
                 'sort_date'  => $sort_date,
                 'has_termin' => $has_termin,
-                'stawka'     => get_post_meta($pid, $meta_stawka, true) ?: (($rodzaj === 'nisko') ? '55 zł' : '145 zł'),
+                'stawka'     => get_post_meta($pid, $meta_stawka, true)
+                    ?: get_option(
+                        ($rodzaj === 'nisko') ? 'np_domyslna_stawka_nisko' : 'np_domyslna_stawka_pelno',
+                        ($rodzaj === 'nisko') ? '55 zł' : '145 zł',
+                    ),
                 'wizyta'     => get_post_meta($pid, 'rodzaj_wizyty', true),
                 'has_pelno'  => ! empty(get_post_meta($pid, 'bookero_id_pelny', true)),
                 'has_nisko'  => ! empty(get_post_meta($pid, 'bookero_id_niski', true)),

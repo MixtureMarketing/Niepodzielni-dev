@@ -48,12 +48,13 @@ class EventsListingService
             $date = get_post_meta($pid, 'data', true);
 
             // Poprawka: np_get_post_image_url() zwraca URL (nie ID) — używamy bezpośrednio
+            $title   = get_post_meta($pid, 'temat', true) ?: $post->post_title;
             $zdj_url = np_get_post_image_url($pid, [ 'zdjecie_glowne', 'zdjecie' ], 'medium_large');
 
             $data[] = [
                 'id'          => $pid,
                 'post_type'   => $post->post_type,
-                'title'       => get_post_meta($pid, 'temat', true) ?: $post->post_title,
+                'title'       => $title,
                 'date'        => $date,
                 'time'        => get_post_meta($pid, 'godzina', true),
                 'time_end'    => get_post_meta($pid, 'godzina_zakonczenia', true),
@@ -64,6 +65,7 @@ class EventsListingService
                 'prowadzacy'  => np_get_event_leader_name($pid),
                 'stanowisko'  => get_post_meta($pid, 'stanowisko', true),
                 'thumb'       => $zdj_url,
+                'thumb_tag'   => np_get_post_image_tag($pid, [ 'zdjecie_glowne', 'zdjecie' ], 'medium_large', [ 'alt' => $title ]),
                 'link'        => get_the_permalink($pid),
                 'excerpt'     => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
                 'is_active'   => $date && $date >= $today,
@@ -121,6 +123,7 @@ class EventsListingService
                 'koszt'       => get_post_meta($pid, 'koszt', true),
                 'opis'        => wp_trim_words(get_post_meta($pid, 'opis', true) ?: $post->post_excerpt, 20),
                 'thumb'       => $zdj_url,
+                'thumb_tag'   => np_get_post_image_tag($pid, [ 'zdjecie', 'zdjecie_tla' ], 'medium_large', [ 'alt' => $post->post_title ]),
                 'link'        => get_the_permalink($pid),
                 'is_upcoming' => $date && $date >= $today,
                 'sort_date'   => $date ?: '9999-12-31',
@@ -167,12 +170,13 @@ class EventsListingService
                 ?: (string) get_the_post_thumbnail_url($pid, 'medium_large');
 
             $data[] = [
-                'id'      => $pid,
-                'title'   => $post->post_title,
-                'date'    => get_post_meta($pid, 'data_wydarzenia', true) ?: get_the_date('Y-m-d', $post),
-                'miejsce' => get_post_meta($pid, 'miejsce', true),
-                'excerpt' => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
-                'thumb'   => $zdj_url,
+                'id'        => $pid,
+                'title'     => $post->post_title,
+                'date'      => get_post_meta($pid, 'data_wydarzenia', true) ?: get_the_date('Y-m-d', $post),
+                'miejsce'   => get_post_meta($pid, 'miejsce', true),
+                'excerpt'   => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
+                'thumb'     => $zdj_url,
+                'thumb_tag' => np_get_post_image_tag($pid, [ 'zdjecie_glowne' ], 'medium_large', [ 'alt' => $post->post_title ]),
                 'link'    => get_the_permalink($pid),
             ];
         }
@@ -210,11 +214,12 @@ class EventsListingService
             $tags = get_the_tags($pid) ?: [];
 
             $data[] = [
-                'id'      => $pid,
-                'title'   => $post->post_title,
-                'date'    => get_the_date('Y-m-d', $post),
-                'excerpt' => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
-                'thumb'   => get_the_post_thumbnail_url($pid, 'medium_large'),
+                'id'        => $pid,
+                'title'     => $post->post_title,
+                'date'      => get_the_date('Y-m-d', $post),
+                'excerpt'   => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
+                'thumb'     => get_the_post_thumbnail_url($pid, 'medium_large'),
+                'thumb_tag' => np_get_post_image_tag($pid, [], 'medium_large', [ 'alt' => $post->post_title ]),
                 'link'    => get_the_permalink($pid),
                 'tags'    => array_map(fn($t) => $t->slug, $tags),
             ];

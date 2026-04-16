@@ -19,15 +19,21 @@
     $m[$k] = get_post_meta($post_id, $k, true);
   }
 
-  $title   = $m['temat'] ?: get_the_title($post_id);
-  $bg_url  = $m['zdjecie_glowne'] ? wp_get_attachment_image_url($m['zdjecie_glowne'], 'full') : '';
+  $title  = $m['temat'] ?: get_the_title($post_id);
+  $bg_tag = np_get_post_image_tag($post_id, ['zdjecie_glowne'], 'full', [
+      'class' => 'nsingle-hero__bg',
+      'alt'   => $title,
+  ]);
   $is_free = empty($m['cena']) || (int)$m['cena'] === 0;
 
   // Dane prowadzącego — psycholog z bazy lub ręczne
   $prowadzacy_id = (int) $m['prowadzacy_id'];
   if ($prowadzacy_id) {
     $fac_name      = get_post_meta($prowadzacy_id, 'imie_i_nazwisko', true) ?: get_the_title($prowadzacy_id);
-    $fac_photo_url = get_the_post_thumbnail_url($prowadzacy_id, 'medium') ?: '';
+    $fac_photo_tag = np_get_post_image_tag($prowadzacy_id, [], 'medium', [
+        'class' => 'nsingle-facilitator-card__photo',
+        'alt'   => $fac_name,
+    ]);
     $fac_link      = get_permalink($prowadzacy_id);
 
     // stanowisko — ręczny override lub specjalizacje z taksonomii
@@ -47,10 +53,11 @@
     // bio — ręczny override (opis_117) lub biogram psychologa
     $fac_bio = $m['opis_117'] ?: wp_strip_all_tags(get_post_meta($prowadzacy_id, 'biogram', true));
   } else {
-    $fac_name       = $m['imie_i_nazwisko'];
-    $fac_photo_url  = $m['zdjecie_prowadzacego']
-      ? wp_get_attachment_image_url($m['zdjecie_prowadzacego'], 'medium')
-      : '';
+    $fac_name      = $m['imie_i_nazwisko'];
+    $fac_photo_tag = np_get_post_image_tag($post_id, ['zdjecie_prowadzacego'], 'medium', [
+        'class' => 'nsingle-facilitator-card__photo',
+        'alt'   => $fac_name,
+    ]);
     $fac_link       = $m['link_do_psychologa'];
     $fac_stanowisko = $m['stanowisko'];
     $fac_nurt       = $m['nurt'];
@@ -72,8 +79,8 @@
 
 {{-- 1. HERO --}}
 <div class="nsingle-hero nsingle-hero--tall">
-  @if($bg_url)
-    <img class="nsingle-hero__bg" src="{{ esc_url($bg_url) }}" alt="{{ esc_attr($title) }}">
+  @if($bg_tag)
+    {!! $bg_tag !!}
   @else
     <div class="nsingle-hero__bg" style="background: var(--mix-color-brand-secondary);"></div>
   @endif
@@ -158,10 +165,8 @@
       {{-- RIGHT: facilitator card --}}
       <div class="nsingle-side-col">
         <div class="nsingle-facilitator-card">
-          @if($fac_photo_url)
-            <img class="nsingle-facilitator-card__photo"
-                 src="{{ esc_url($fac_photo_url) }}"
-                 alt="{{ esc_attr($fac_name) }}">
+          @if($fac_photo_tag)
+            {!! $fac_photo_tag !!}
           @endif
           <p class="nsingle-facilitator-card__label">{{ esc_html($label) }}</p>
           @if($fac_name)
