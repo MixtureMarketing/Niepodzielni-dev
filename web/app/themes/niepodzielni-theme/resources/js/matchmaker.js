@@ -37,6 +37,8 @@ import {
     tplResults,
 } from './matchmaker/Templates.js';
 
+import { debounce } from './utils/debounce.js';
+
 // ─── Dane z PHP (window.NP_MATCHMAKER ustawiane przez shortcode) ──────────────
 
 const MM_DATA    = window.NP_MATCHMAKER || {};
@@ -211,14 +213,18 @@ class NpMatchmaker {
         }
 
         // Wyszukiwarka obszarów (krok 2 — rozwinięta lista)
+        // Debounce 200 ms: filtrowanie kafelków to operacja DOM (style.display) bez
+        // scoringu — 200 ms daje responsywność przy jednoczesnej ochronie przed
+        // flood-em na słabych smartfonach. Arrow function zachowuje `this` klasy
+        // (NpMatchmaker) przez domknięcie — nie potrzeba .bind().
         const search = this.el.querySelector( '.np-mm__search' );
         if ( search ) {
-            search.addEventListener( 'input', () => {
+            search.addEventListener( 'input', debounce( () => {
                 const q = search.value.toLowerCase();
                 this.el.querySelectorAll( '.np-mm__tile-grid--extended .np-mm__tile' ).forEach( t => {
                     t.style.display = t.textContent.toLowerCase().includes( q ) ? '' : 'none';
                 } );
-            } );
+            }, 200 ) );
         }
 
         // Nawigacja dalej / wstecz

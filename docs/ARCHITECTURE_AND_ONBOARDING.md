@@ -13,7 +13,8 @@
 4. [Struktura repozytorium](#4-struktura-repozytorium)
 5. [Architektura integracji Bookero](#5-architektura-integracji-bookero)
 6. [Frontend — Matchmaker i SharedCalendar](#6-frontend--matchmaker-i-sharedcalendar)
-7. [Proponowany Backlog Techniczny](#7-proponowany-backlog-techniczny)
+7. [Jakość kodu — testy i analiza statyczna](#7-jakość-kodu--testy-i-analiza-statyczna)
+8. [Proponowany Backlog Techniczny](#8-proponowany-backlog-techniczny)
 
 ---
 
@@ -242,28 +243,76 @@ Nie wymagają Bearer tokena — to ten sam publiczny endpoint co widget JS na st
 > (=1 = pracownik w grafiku, ale może nie mieć wolnych miejsc). Nasza logika zlicza
 > **wyłącznie** dni z `valid_day > 0`. Ignorowanie `open` zapobiega wyświetlaniu fałszywych terminów.
 
-### Cykl synchronizacji — schemat przepływu danych
+### Cykl synchronizacji — OOP z Circuit Breaker i Smart Polling
+
+Cron uruchamia się co 60 sekund. Każdy przebieg przetwarza **5 psychologów**
+(`BOOKERO_SYNC_PER_RUN`) wybranych przez mechanizm Smart Polling.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  System cron (co 60s)  →  np_bookero_worker_sync()             │
+│  System cron (co 60s)  →  np_bookero_worker_sync_oop()         │
 │                                                                  │
-│  offset = get_option('terminy_cron_offset', 0)                 │
-│  Pobierz 3 psychologów od offsetu (get_posts)                  │
-│  Zapisz offset + 3 PRZED przetwarzaniem (zabezp. przed timeout) │
+│  ① Circuit Breaker check                                        │
+│     get_transient('bookero_api_lockout') → jeśli true: STOP    │
 │                                                                  │
-│  Dla każdego psychologa (usleep 300ms między):                  │
-│    ├─ np_bookero_get_availability(worker_id, 'pelnoplatny')     │
-│    │   └─ getMonth × 3 miesiące → nearest + all_dates[]        │
-│    │   ├─ update_post_meta: najblizszy_termin_pelnoplatny       │
-│    │   ├─ update_post_meta: bookero_slots_pelno (JSON dates[])  │
-│    │   └─ pre-warm: getMonthDay dla nearest → bookero_hours_pelno│
-│    └─ (identycznie dla 'nisko')                                 │
+│  ② Smart Polling — priorytet absolutny (nigdy nie synced)      │
+│     get_posts(meta_query: np_termin_updated_at NOT EXISTS)      │
+│     → max 5 psychologów bez timestampu (pierwsze w kolejce)    │
 │                                                                  │
-│  Koniec listy → offset = 0 → nowy cykl                         │
-│  128 psychologów / 3 = ~43 minuty na pełny cykl                │
+│  ③ Smart Polling — uzupełnij pozostałe sloty                   │
+│     get_posts(orderby: np_termin_updated_at ASC)                │
+│     → najdłużej nieodświeżani jako pierwsi                     │
+│                                                                  │
+│  ④ Pętla synchronizacji (usleep 300ms między psychologami)     │
+│     BookeroSyncService::syncSingleWorker(postId)                │
+│       ├─ getAvailability(worker, typ) × 2 konta                 │
+│       │   └─ getMonthSlots × 3 miesiące → nearest + dates[]    │
+│       ├─ saveNearestDate / clearNearestDate                     │
+│       ├─ saveAvailableDates                                     │
+│       ├─ prewarmHours (getMonthDay dla daty[0])                 │
+│       └─ touchSyncTimestamp(postId)                             │
+│              ↑ powoduje "opuszczenie" kolejki (timestamp rośnie)│
+│                                                                  │
+│     BookeroRateLimitException (HTTP 429 / timeout):            │
+│       set_transient('bookero_api_lockout', 1, 15min)           │
+│       STOP — kolejne crony wstrzymane na 15 minut              │
+│                                                                  │
+│  ⑤ System samobalansujący                                      │
+│     Każdy sync → touchSyncTimestamp → worker spada na koniec   │
+│     kolejki → brak potrzeby ręcznego zarządzania offsetem      │
+│     ~200 psychologów / 5 per run × 1min = ~40min pełny cykl   │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+#### Circuit Breaker — szczegóły
+
+| Zdarzenie                     | Akcja                                     | TTL     |
+|-------------------------------|-------------------------------------------|---------|
+| HTTP 429 Too Many Requests    | `set_transient(BOOKERO_LOCKOUT_KEY, 1)`  | 15 min  |
+| cURL timeout / error 28       | j.w.                                      | 15 min  |
+| Inny błąd HTTP (503, 502...)  | Per-worker backoff transient              | 2 min   |
+| Lockout aktywny               | Cron kończy się natychmiast, loguje błąd | —       |
+
+`BookeroRateLimitException` jest osobną klasą dziedziczącą po `BookeroApiException`.
+Rzucana przez `BookeroApiClient::parseResponse()`, re-throwowana przez
+`BookeroSyncService::getMonthSlots()` i `prewarmHours()`, łapana przez cron.
+
+#### Warstwa OOP (`src/Bookero/`)
+
+```
+BookeroApiClient         — transport HTTP (GET/POST), parsowanie odpowiedzi
+BookeroApiException      — błąd komunikacji z API
+BookeroRateLimitException — podklasa dla HTTP 429 i timeout (circuit breaker)
+AccountConfig            — DTO: serviceId, serviceName, paymentId (readonly)
+SyncResult               — DTO: postId, hasPelny, hasNisko, nearestPelny, nearestNisko
+WorkerRecord             — DTO: dane workera z postmeta (read-only)
+PsychologistRepository   — warstwa DB/cache (postmeta + transienty)
+BookeroSyncService       — logika biznesowa synchronizacji (DI: client + repo)
+SharedCalendarService    — logika kalendarza współdzielonego (DI: client + repo)
+```
+
+Wszystkie klasy obsługują wstrzykiwanie zależności przez konstruktor — pozwala
+na testy jednostkowe bez uruchamiania WordPress (anonymous class mocks).
 
 ### Cache godzin — dwupoziomowy
 
@@ -473,56 +522,136 @@ zwraca listę ID, dla których godzina jest już niedostępna. JS usuwa te karty
 
 ---
 
-## 7. Proponowany Backlog Techniczny
+## 7. Jakość kodu — testy i analiza statyczna
+
+### Testy PHP (Pest 4)
+
+Testy jednostkowe uruchamiamy przez:
+
+```bash
+vendor/bin/pest
+```
+
+Katalog testów: `tests/Unit/`. Stubs funkcji WP w `tests/Pest.php`.
+
+#### Pokryte scenariusze
+
+| Plik testowy                    | Co testuje                                                       |
+|---------------------------------|------------------------------------------------------------------|
+| `BookeroSyncServiceTest.php`    | Propagacja `BookeroRateLimitException` przez `syncSingleWorker` |
+|                                 | Pochłanianie `BookeroApiException` (503) → pusty `SyncResult`  |
+|                                 | Semantyka `SyncResult::hasSynced()` i `hasAnyAvailability()`   |
+| `SharedCalendarServiceTest.php` | Negative cache: `worker-A` error nie blokuje `worker-B`         |
+|                                 | Izolacja per-datę i per-typ konta                               |
+|                                 | `setMonthTransientBackoff` → pusta tablica (nie `false`)        |
+|                                 | `clearMonthTransients` czyści N miesięcy do przodu              |
+
+#### Strategia mockowania
+
+Brak Mockery w projekcie — mocking przez **anonimowe klasy** rozszerzające produkcyjne klasy:
+
+```php
+$client = new class extends BookeroApiClient {
+    public function getMonth(string $calHash, string $workerId, int $serviceId, int $plusMonths): array {
+        throw new BookeroRateLimitException('getMonth', 'HTTP 429 Too Many Requests');
+    }
+};
+```
+
+Stan WP (transienty, postmeta) zarządzany przez in-memory `$GLOBALS['_wp_transients']`
+i `$GLOBALS['_wp_postmeta']` — resetowane w `beforeEach` dla każdego testu.
+
+### Testy JavaScript (Vitest)
+
+Testy silnika matchmakera uruchamiamy z katalogu motywu:
+
+```bash
+cd web/app/themes/niepodzielni-theme
+npm run test   # lub: npx vitest run
+```
+
+Plik testowy: `resources/js/__tests__/ScoringEngine.test.js`
+
+#### Pokryte scenariusze
+
+| Zestaw testów            | Co testuje                                                     |
+|--------------------------|----------------------------------------------------------------|
+| `PRIMARY_MULT`           | Obszar główny podwaja wynik (2.0× vs 1.0×)                    |
+| `AREA_CLUSTER`           | Fuzzy matching — `ptsd` + `trauma` w tej samej grupie → 0.5 pkt |
+| Hard filter `visitType`  | `Stacjonarnie` wykluczone gdy `visitType=Online`               |
+| `PRECISION_W`            | Specjalista (1/1 obszarów) > generalista (1/5 obszarów)        |
+| `countWith`              | Liczenie po filtrach (who, visitType, par)                     |
+| `getRelaxedSuggestions`  | Propozycje poluzowania + struktura `{label, patch}`            |
+| Sortowanie               | Wyższy `matchScore` → wyżej; max `W.MAX_FULL` wyników         |
+
+### Analiza statyczna (PHPStan, level 8)
+
+```bash
+vendor/bin/phpstan analyse --no-progress
+```
+
+Konfiguracja: `phpstan.neon` (korzeń projektu).
+
+- **Zakres**: `web/app/mu-plugins/niepodzielni-core/src/Bookero/`
+- **Poziom 8**: generics, dead code, mixed types, type narrowing
+- **Stubs WP**: `stubs/wordpress.php` — załadowane przez `bootstrapFiles`
+  bez uruchamiania WordPress. Pokrywa `WP_Query`, `WP_Post`, `WP_Error`,
+  wszystkie funkcje używane przez `src/Bookero/`.
+
+### Debounce w frontend
+
+Plik `utils/debounce.js` (eksportowany jako ES6 moduł) chroni drogie operacje
+DOM przed zalewem eventów przy szybkim pisaniu:
+
+| Punkt zastosowania                      | Opóźnienie | Co chroni                                      |
+|-----------------------------------------|------------|------------------------------------------------|
+| `#psy-search` (psy-listing-atomic.js)  | 300 ms     | Pełny re-render listy + `filterPsychologists`  |
+| `.multiselect-inner-search` (j.w.)     | 150 ms     | `classList.toggle` na opcjach dropdownu        |
+| `.np-mm__search` (matchmaker.js)       | 200 ms     | `display:none` na kafelkach obszarów           |
+
+Scoring matchmakera i zmiana checkboxów NIE są debounce-owane — to zdarzenia
+dyskretne (kliknięcia), nie ciągłe strumienie wejścia.
 
 ---
 
-### Ticket 1: Refaktor `matchmaker.js` — dekompozycja monolitycznej klasy na moduły ES6
+## 8. Proponowany Backlog Techniczny
 
-**Co jest problemem**
+---
+
+### Ticket 1: Refaktor `matchmaker.js` — pełna dekompozycja na moduły ES6
+
+**Status**: ✅ Silnik scoringowy wyekstrahowany (`matchmaker/ScoringEngine.js`)
+
+`ScoringEngine.js` to czysta funkcja bez zależności od DOM — zawiera `W` (wagi),
+`runMatchmakerWith()`, `countWith()`, `getRelaxedSuggestions()` i jest objęty
+testami Vitest (`__tests__/ScoringEngine.test.js`).
+
+**Pozostało do zrobienia**
 
 Plik [matchmaker.js](../web/app/themes/niepodzielni-theme/resources/js/matchmaker.js)
-zawiera ~600 LOC w jednej klasie `NpMatchmaker`, która łączy w sobie:
-- logikę scoringową (silnik),
-- zarządzanie stanem (store),
-- całość renderowania HTML (generacja stringów przez template literals),
-- obsługę eventów DOM,
-- persystencję (sessionStorage + URL).
+nadal zawiera ~600 LOC łączących: zarządzanie stanem, renderowanie HTML,
+obsługę eventów DOM i persystencję (sessionStorage + URL).
 
-Skutki: każda zmiana w szablonie HTML wymaga zrozumienia całego silnika scoringowego.
-Dodanie nowego filtra zmusza do modyfikacji `_set()`, `_runMatchmakerWith()`,
-`_saveToUrl()`, `_restoreFromUrl()`, `_countWith()` i `_tplStep2()` jednocześnie.
-Brak testowalności — nie da się przetestować logiki scoringowej bez DOM.
-
-**Dlaczego należy to zmienić**
-
-Każda nowa funkcjonalność matchmakera zwiększa rozmiar pliku proporcjonalnie do liczby
-miejsc, które trzeba dotknąć. Aktualny `Math.random()` jako fallback sortowania sugeruje,
-że wyniki bywają nieprzewidywalne — niemożliwe do zweryfikowania bez izolacji logiki.
-
-**Jak to technicznie wykonać**
-
-Podziel plik na moduły ES6 (Vite przetworzy je automatycznie):
+Kolejne kroki dekompozycji:
 
 ```
 resources/js/matchmaker/
-├── data.js          # Stałe: MM_PSY, MM_AREAS, MM_CLUSTERS, MM_FAMILIES, W (wagi)
-├── state.js         # Klasa Store: get/set state, save/restore session+URL
-├── filters.js       # hardFilter(psy[], state) → psy[] (czysta funkcja)
-├── scorer.js        # score(psycholog, state) → { matchScore, matchedAreas, ... }
-├── sort.js          # sort(scored[]) → sorted[]
-├── renderer.js      # Klasa: step→HTML, _tplProgress, _tplStep1, _tplResults
-├── events.js        # Podpinanie event listenerów
-└── index.js         # Orkiestrator — montuje wszystko, inicjalizuje
+├── ScoringEngine.js  ✅ gotowe — testy Vitest
+├── state.js          ⬜ Klasa Store: get/set state, save/restore session+URL
+├── renderer.js       ⬜ Klasa: step→HTML, _tplProgress, _tplStep1, _tplResults
+├── events.js         ⬜ Podpinanie event listenerów
+└── index.js          ⬜ Orkiestrator — montuje wszystko, inicjalizuje
 ```
 
-`scorer.js` i `filters.js` będą czystymi funkcjami bez zależności od DOM — można
-je przetestować jednostkowo (np. Vitest) bez przeglądarki. Dodanie nowego filtru
-będzie wymagało zmiany tylko `filters.js` i `state.js`.
+Dodanie nowego filtru po refaktorze będzie wymagało zmiany tylko `ScoringEngine.js`
+(logika) i `state.js` (persist), bez dotykania renderowania.
 
 ---
 
-### Ticket 2: Wzorzec Repository dla operacji bazodanowych Bookero
+### Ticket 2: Wzorzec Repository dla operacji bazodanowych Bookero ✅ ZREALIZOWANE
+
+> **Status**: Zaimplementowane jako `PsychologistRepository` + `BookeroSyncService` + `SharedCalendarService`
+> w `web/app/mu-plugins/niepodzielni-core/src/Bookero/`. Opis poniżej zachowany jako dokumentacja historyczna.
 
 **Co jest problemem**
 
@@ -569,7 +698,13 @@ eliminując potrzebę ręcznego escapowania.
 
 ---
 
-### Ticket 3: Odporność na błędy HTTP w `np_bookero_get_terminy()` — retry + circuit breaker
+### Ticket 3: Odporność na błędy HTTP — Circuit Breaker ✅ ZREALIZOWANE
+
+> **Status**: Zaimplementowany Circuit Breaker w `api/13-bookero-worker-sync.php` i
+> `BookeroApiClient::parseResponse()`. `BookeroRateLimitException` (HTTP 429, cURL timeout)
+> → `BOOKERO_LOCKOUT_KEY` transient 15 min. Opis poniżej zachowany jako dokumentacja historyczna.
+>
+> Oryginalny tytuł: "Odporność na błędy HTTP w `np_bookero_get_terminy()` — retry + circuit breaker"
 
 **Co jest problemem**
 

@@ -188,13 +188,30 @@ function np_get_sortable_date(string $date_string): string
 }
 
 /**
- * Zapisuje błąd do logu Bookero API (max 30 ostatnich wpisów).
+ * Loguje błąd Bookero API do dwóch miejsc docelowych.
  *
- * @param string $context  Kontekst (np. 'getMonth', 'init')
+ * Cel 1 — Apache error_log / Bedrock debug.log:
+ *   Gdy WP_DEBUG jest true, wysyła sformatowaną linię przez natywne error_log().
+ *   W Bedrock (Apache) trafi do php_error_log lub web/app/debug.log zależnie
+ *   od konfiguracji WP_DEBUG_LOG w config/environments/*.php.
+ *   Format: [BOOKERO API] [Action: {context}] {message}
+ *
+ * Cel 2 — WP option ring buffer (max 30 wpisów):
+ *   Zawsze zapisuje do np_bookero_error_log — do podglądu w panelu WP Admin
+ *   niezależnie od ustawień debugowania środowiska.
+ *
+ * @param string $context  Akcja API (np. 'getMonth', 'init', 'cron')
  * @param string $msg      Opis błędu
  */
 function np_bookero_log_error(string $context, string $msg): void
 {
+    // Apache / Bedrock: natywny error_log gdy debugowanie aktywne.
+    // error_log() używa php.ini error_log directive → Apache error log lub WP_DEBUG_LOG.
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log(sprintf('[BOOKERO API] [Action: %s] %s', $context, $msg));
+    }
+
+    // DB ring buffer — panel WP Admin → Bookero → Log błędów
     $log = get_option('np_bookero_error_log', []);
     if (! is_array($log)) {
         $log = [];
@@ -206,9 +223,7 @@ function np_bookero_log_error(string $context, string $msg): void
         'msg'     => $msg,
     ]);
 
-    // Trzymaj max 30 ostatnich błędów
-    $log = array_slice($log, 0, 30);
-    update_option('np_bookero_error_log', $log, false);
+    update_option('np_bookero_error_log', array_slice($log, 0, 30), false);
 }
 
 /**
@@ -249,6 +264,69 @@ function np_get_post_image_url(int $post_id, array $keys, string $size = 'large'
 
     // Fallback: miniaturka posta
     return (string) get_the_post_thumbnail_url($post_id, $size);
+}
+
+/**
+ * Zwraca zoptymalizowany tag <img> z atrybutami srcset, sizes i loading="lazy".
+ *
+ * Różnica względem np_get_post_image_url():
+ *   - Zwraca kompletny tag HTML (nie surowy URL)
+ *   - Korzysta z wp_get_attachment_image() → automatyczne srcset i sizes
+ *   - Obsługuje te same źródła obrazka co np_get_post_image_url()
+ *
+ * Priorytety:
+ *   1. Meta klucze z $keys → ID attachmentu (numeryczne) → wp_get_attachment_image()
+ *   2. Meta klucze z $keys → array z kluczem 'ID' (pole ACF image) → wp_get_attachment_image()
+ *   3. Meta klucze z $keys → URL string → <img src="..." loading="lazy"> (bez srcset)
+ *   4. Miniaturka posta (featured image) → wp_get_attachment_image()
+ *
+ * @param int          $post_id  ID postu
+ * @param string[]     $keys     Lista kluczy postmeta do sprawdzenia po kolei
+ * @param string|int[] $size     Rozmiar obrazka WP (np. 'medium', 'large', [320,240])
+ * @param string[]     $attr     Dodatkowe atrybuty HTML (nadpisują wartości domyślne)
+ * @return string  Kompletny tag <img> lub pusty string gdy brak obrazka
+ */
+function np_get_post_image_tag(int $post_id, array $keys, string|array $size = 'medium', array $attr = []): string
+{
+    $default_attr = [ 'loading' => 'lazy' ];
+    $merged_attr  = array_merge($default_attr, $attr);
+
+    foreach ($keys as $key) {
+        $val = get_post_meta($post_id, $key, true);
+        if (empty($val)) {
+            continue;
+        }
+
+        // Numeryczne ID attachmentu — pełny srcset + sizes
+        if (is_numeric($val)) {
+            $tag = wp_get_attachment_image((int) $val, $size, false, $merged_attr);
+            if ($tag) {
+                return $tag;
+            }
+        }
+
+        // Tablica ACF image z kluczem 'ID'
+        if (is_array($val) && ! empty($val['ID'])) {
+            $tag = wp_get_attachment_image((int) $val['ID'], $size, false, $merged_attr);
+            if ($tag) {
+                return $tag;
+            }
+        }
+
+        // Surowy URL — brak srcset, ale dodajemy loading="lazy"
+        if (is_string($val) && filter_var($val, FILTER_VALIDATE_URL)) {
+            $alt = isset($merged_attr['alt']) ? esc_attr($merged_attr['alt']) : '';
+            return '<img src="' . esc_url($val) . '" alt="' . $alt . '" loading="lazy">';
+        }
+    }
+
+    // Fallback: miniaturka posta
+    $thumb_id = get_post_thumbnail_id($post_id);
+    if ($thumb_id) {
+        return wp_get_attachment_image($thumb_id, $size, false, $merged_attr);
+    }
+
+    return '';
 }
 
 /**

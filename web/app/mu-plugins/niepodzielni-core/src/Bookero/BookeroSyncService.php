@@ -104,7 +104,7 @@ class BookeroSyncService
             $slots = $this->getMonthSlots($workerId, $typ, $i);
 
             foreach ($slots as $slot) {
-                $date = $slot['date'] ?? '';
+                $date = $slot['date'];
                 if (! $date || $date < $today) {
                     continue;
                 }
@@ -180,6 +180,10 @@ class BookeroSyncService
             $this->repo->setMonthTransient($typ, $workerId, $plusMonths, $slots);
 
             return $slots;
+        } catch (BookeroRateLimitException $e) {
+            // Rate limit / timeout — nie ustawiaj backoffu per-worker, rzuć wyżej.
+            // Circuit breaker w cron przechwyci to i ustawi globalny lockout.
+            throw $e;
         } catch (BookeroApiException $e) {
             np_bookero_log_error('getMonth', "worker={$workerId} typ={$typ}: " . $e->getMessage());
             $this->repo->setMonthTransientBackoff($typ, $workerId, $plusMonths);
@@ -216,6 +220,9 @@ class BookeroSyncService
             $config = $this->getAccountConfig($typ);
             $hours  = $this->client->getMonthDay($calHash, $workerId, $nearestDate, $config->serviceId);
             $this->repo->saveHours($postId, $typ, $nearestDate, $hours);
+        } catch (BookeroRateLimitException $e) {
+            // Rate limit podczas pre-warmu — rzuć wyżej do circuit breaker w cron.
+            throw $e;
         } catch (BookeroApiException $e) {
             np_bookero_log_error('getMonthDay', "worker={$workerId} date={$nearestDate}: " . $e->getMessage());
         }

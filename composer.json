@@ -52,7 +52,8 @@
   },
   "require-dev": {
     "laravel/pint": "^1.27",
-    "pestphp/pest": "^4.0"
+    "pestphp/pest": "^4.0",
+    "phpstan/phpstan": "^2.1"
   },
   "config": {
     "optimize-autoloader": true,

@@ -55,6 +55,7 @@ class SharedCalendarService
         // L1: transient cache
         $cached = $this->repo->getSharedMonthTransient($typ, $plusMonths);
         if ($cached !== false) {
+            /** @var array{month_name: string, year_month: string, first_dow: int, days_in_month: int, today: string, oldest_sync: int, dates: array<string, array<int, array<string, mixed>>>} $cached */
             return $cached;
         }
 
@@ -167,10 +168,10 @@ class SharedCalendarService
      */
     private function buildMonthMeta(int $plusMonths): array
     {
-        $tsStart     = strtotime("+{$plusMonths} months", mktime(0, 0, 0, (int) date('n'), 1));
-        $year        = (int) date('Y', $tsStart);
-        $month       = (int) date('n', $tsStart);
-        $yearMonth   = date('Y-m', $tsStart);
+        $tsStart   = strtotime("+{$plusMonths} months", mktime(0, 0, 0, (int) date('n'), 1) ?: time()) ?: time();
+        $year      = (int) date('Y', $tsStart);
+        $month     = (int) date('n', $tsStart);
+        $yearMonth = date('Y-m', $tsStart);
 
         return [
             'month_name'    => self::MONTHS_PL[ $month ] . ' ' . $year,
@@ -277,9 +278,16 @@ class SharedCalendarService
 
         try {
             $hours = $this->client->getMonthDay($calHash, $worker->workerId, $date, $config->serviceId);
+        } catch (BookeroRateLimitException $e) {
+            // Rate limit z frontendu — graceful degradation: zwróć [] i ustaw negative cache.
+            // Nie rzucamy dalej (inaczej crash całego kalendarza dla użytkownika).
+            // Cron ma własny circuit breaker — tutaj tylko chronimy frontend.
+            np_bookero_log_error('getMonthDay', "Rate limit — worker={$worker->workerId} date={$date}: " . $e->getMessage());
+            $this->repo->setHoursErrorTransient($typ, $worker->workerId, $date);
+            return [];
         } catch (BookeroApiException $e) {
             np_bookero_log_error('getMonthDay', "worker={$worker->workerId} date={$date}: " . $e->getMessage());
-            // Flaga błędu scoped do tego konkretnego pracownika — pozostali nie są blokowaní
+            // Flaga błędu scoped do tego konkretnego pracownika — pozostali nie są blokowani
             $this->repo->setHoursErrorTransient($typ, $worker->workerId, $date);
             return [];
         }

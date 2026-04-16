@@ -210,18 +210,45 @@ class BookeroApiClient
     /**
      * Waliduje odpowiedź HTTP i zwraca zdekodowaną tablicę lub rzuca wyjątek.
      *
+     * Circuit Breaker — dwie sytuacje rzucają BookeroRateLimitException zamiast
+     * zwykłego BookeroApiException:
+     *   - HTTP 429 Too Many Requests  — jawny sygnał rate-limit od serwera
+     *   - Timeout (cURL error 28)     — objaw przeciążenia lub blokady IP
+     *
+     * Pozostałe błędy (WP_Error != timeout, HTTP 4xx/5xx != 429, result != 1)
+     * rzucają BookeroApiException — obsługiwane lokalnie przez caller.
+     *
      * @param  \WP_Error|array<string, mixed> $response
      * @return array<string, mixed>
-     * @throws BookeroApiException
+     * @throws BookeroRateLimitException  przy HTTP 429 lub timeout
+     * @throws BookeroApiException        przy pozostałych błędach
      */
     private function parseResponse(string $endpoint, \WP_Error|array $response): array
     {
         if (is_wp_error($response)) {
-            throw new BookeroApiException($endpoint, $response->get_error_message());
+            $message = $response->get_error_message();
+
+            // cURL error 28 = CURLE_OPERATION_TIMEDOUT — timeout jest objawem rate limitingu
+            if (
+                str_contains($message, 'timed out')
+                || str_contains($message, 'cURL error 28')
+                || str_contains($message, 'Operation timed out')
+            ) {
+                throw new BookeroRateLimitException($endpoint, "Timeout: {$message}");
+            }
+
+            throw new BookeroApiException($endpoint, $message);
         }
 
         $code = (int) wp_remote_retrieve_response_code($response);
         $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        // HTTP 429 — Bookero jawnie prosi o backoff
+        if ($code === 429) {
+            $retryAfter = wp_remote_retrieve_header($response, 'retry-after');
+            $hint       = $retryAfter ? " (Retry-After: {$retryAfter}s)" : '';
+            throw new BookeroRateLimitException($endpoint, "HTTP 429 Too Many Requests{$hint}");
+        }
 
         if ($code !== 200) {
             throw new BookeroApiException($endpoint, "HTTP {$code}");
@@ -243,6 +270,7 @@ class BookeroApiClient
      * Kluczowa zasada: valid_day > 0 = prawdziwe wolne miejsce.
      * open=1 przy valid_day=0 = grafik istnieje, ale zero wolnych slotów ("Nieczynne").
      *
+     * @param  array<string, mixed> $body
      * @return array<array{date: string, hour: string}>
      */
     private function normalizeSlots(array $body): array

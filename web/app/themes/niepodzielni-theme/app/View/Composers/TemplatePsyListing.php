@@ -2,6 +2,8 @@
 
 namespace App\View\Composers;
 
+use App\Services\PsychologistListingService;
+use Illuminate\Contracts\View\View;
 use Roots\Acorn\View\Composer;
 
 class TemplatePsyListing extends Composer
@@ -11,10 +13,17 @@ class TemplatePsyListing extends Composer
         'template-psy-listing-pelno',
     ];
 
+    public function __construct(
+        View $view,
+        private PsychologistListingService $service,
+    ) {
+        parent::__construct($view);
+    }
+
     public function with(): array
     {
         $rodzaj = str_contains($this->view->getName(), 'nisko') ? 'nisko' : 'pelno';
 
-        return ['all_psy_data' => get_psy_listing_json_data($rodzaj)];
+        return ['all_psy_data' => $this->service->getData($rodzaj)];
     }
 }

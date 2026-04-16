@@ -1,0 +1,24 @@
+# Wymagania przed uruchomieniem: composer install (generuje vendor/ z PSR-4 dla src/Bookero/)
+# Uruchomienie: vendor/bin/phpstan analyse --no-progress
+parameters:
+    # Poziom 8 — strict: generics, dead code, mixed types
+    # Poziom 9 = max (mixed as error), zbyt głośny przy WP stub fallbacks
+    level: 8
+
+    paths:
+        - web/app/mu-plugins/niepodzielni-core/src/Bookero
+
+    # Stubs WP — ładowane przed analizą (zero WP autoloadera w CI)
+    bootstrapFiles:
+        - stubs/wordpress.php
+
+    # Wyklucz pliki nie-PSR (sync-example.php to skrypt demonstracyjny)
+    excludePaths:
+        - web/app/mu-plugins/niepodzielni-core/src/Bookero/sync-example.php
+
+    # Nie zgłaszaj błędów dla nieznanych klas WP — stub pokrywa używane klasy,
+    # ale mogą pojawić się edge-case w hookowaniu (add_action itp.)
+    universalObjectCratesClasses:
+        - WP_Post
+        - WP_Query
+        - WP_Error

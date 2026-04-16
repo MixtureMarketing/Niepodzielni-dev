@@ -180,7 +180,11 @@ class PsychologistRepository
     public function getAccountConfigTransient(string $typ): array|false
     {
         $cached = get_transient($this->configCacheKey($typ));
-        return is_array($cached) ? $cached : false;
+        if (! is_array($cached)) {
+            return false;
+        }
+        /** @var array{service_id: int, service_name: string, payment_id: int} $cached */
+        return $cached;
     }
 
     /**

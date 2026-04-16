@@ -82,20 +82,8 @@ jobs:
         run: vendor/bin/pint --test
 
       # ── 6. PHPStan — statyczna analiza ───────────────────────────────────────
-      # PHPStan nie jest jeszcze w composer.json require-dev.
-      # Aby aktywować ten krok:
-      #   1. composer require --dev phpstan/phpstan
-      #   2. Utwórz plik phpstan.neon w katalogu głównym projektu:
-      #      parameters:
-      #        level: 5
-      #        paths:
-      #          - web/app/mu-plugins/niepodzielni-core/src
-      #          - web/app/themes/niepodzielni-theme/app
-      #        excludePaths:
-      #          - web/wp
-      #          - web/app/plugins
+      # Konfiguracja: phpstan.neon (level 8, ścieżka: src/Bookero, stubs: stubs/wordpress.php)
       - name: "Statyczna analiza — PHPStan"
-        if: ${{ hashFiles('vendor/bin/phpstan') != '' }}
         run: vendor/bin/phpstan analyse --no-progress
 
       # ── 7. Pest — testy jednostkowe i integracyjne ───────────────────────────

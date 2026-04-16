@@ -2,6 +2,7 @@
  * Psychologist Listing - Atomic JS Logic (Animation Optimized v8)
  */
 import { filterPsychologists, esc } from './utils/listing.js';
+import { debounce } from './utils/debounce.js';
 
 /** Strip HTML tags — używane przed substring() na biogramach z bazy */
 function stripHtml(html) {
@@ -246,18 +247,29 @@ function stripHtml(html) {
         });
 
         filterForm.addEventListener('change', () => { currentPage = 1; refreshList(); });
+
+        // Debounce 300 ms: refreshList() przebudowuje cały DOM listing + uruchamia
+        // filterPsychologists() + updateFacets(). Przy szybkim pisaniu bez debounce
+        // każde naciśnięcie klawisza triggerowało pełny re-render — odczuwalnie
+        // spowalniało słabsze urządzenia mobilne i generowało nadmiarowe przeliczenia.
         if (searchInput) {
-            searchInput.addEventListener('input', () => { currentPage = 1; refreshList(); });
+            searchInput.addEventListener('input', debounce(() => {
+                currentPage = 1;
+                refreshList();
+            }, 300));
         }
 
+        // Debounce 150 ms: filtrowanie opcji wewnątrz dropdownu to czysta operacja
+        // DOM (classList.toggle), bez requestów sieciowych. Krótsze opóźnienie zapewnia
+        // responsywność przy jednoczesnej ochronie przed flood-em przy szybkim pisaniu.
         document.querySelectorAll('.multiselect-inner-search').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const val = e.target.value.toLowerCase();
+            input.addEventListener('input', debounce((e) => {
+                const val  = e.target.value.toLowerCase();
                 const list = e.target.closest('.multiselect-content').querySelector('.multiselect-options-list');
                 list.querySelectorAll('.multiselect-option').forEach(opt => {
                     opt.classList.toggle('opt-hidden', !opt.textContent.toLowerCase().includes(val));
                 });
-            });
+            }, 150));
         });
 
         pagTarget.addEventListener('click', (e) => {
