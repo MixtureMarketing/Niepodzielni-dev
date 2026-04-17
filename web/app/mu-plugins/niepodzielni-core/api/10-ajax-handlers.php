@@ -108,18 +108,36 @@ function np_ajax_get_terminy(): void
     wp_send_json_success($terminy);
 }
 
-// ─── Admin: odświeżenie wszystkich terminów ───────────────────────────────────
+// ─── Admin: inicjator synchronizacji wsadowej (Batching) ─────────────────────
+// Zamiast synchronizować wszystkich naraz (bomba API), endpoint zwraca listę
+// post_ids. JS na stronie ustawień wywołuje np_refresh_termin_single dla każdego
+// ID z osobna, z małym opóźnieniem i paskiem postępu.
 
 add_action('wp_ajax_np_refresh_terminy', 'np_ajax_refresh_terminy');
 
 function np_ajax_refresh_terminy(): void
 {
+    check_ajax_referer('np_bookero_nonce', 'nonce');
+
     if (! current_user_can('manage_options')) {
         wp_send_json_error([ 'message' => 'Brak uprawnień' ]);
     }
 
-    np_bookero_sync_all();
-    wp_send_json_success([ 'message' => 'Terminy odświeżone dla wszystkich psychologów' ]);
+    // Zwróć wyłącznie psychologów z przypisanym Bookero ID — reszta nie wymaga sync.
+    $post_ids = get_posts([
+        'post_type'      => 'psycholog',
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+        'meta_query'     => [
+            'relation' => 'OR',
+            [ 'key' => 'bookero_id_pelny', 'value' => '', 'compare' => '!=' ],
+            [ 'key' => 'bookero_id_niski',  'value' => '', 'compare' => '!=' ],
+        ],
+    ]);
+
+    wp_send_json_success([ 'post_ids' => array_map('intval', $post_ids) ]);
 }
 
 // ─── Admin: odświeżenie terminów dla jednego psychologa ───────────────────────
@@ -145,7 +163,15 @@ function np_ajax_refresh_termin_single(): void
     $repo   = new \Niepodzielni\Bookero\PsychologistRepository();
     $sync   = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo);
 
-    $result = $sync->syncSingleWorker($post_id);
+    try {
+        $result = $sync->syncSingleWorker($post_id);
+    } catch (\Niepodzielni\Bookero\BookeroRateLimitException $e) {
+        np_bookero_log_error('refresh_termin_single rate-limit', [ 'post_id' => $post_id, 'msg' => $e->getMessage() ]);
+        wp_send_json_error([ 'message' => 'Bookero API: limit zapytań. Spróbuj ponownie za chwilę.', 'rate_limit' => true ]);
+    } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
+        np_bookero_log_error('refresh_termin_single api-error', [ 'post_id' => $post_id, 'msg' => $e->getMessage() ]);
+        wp_send_json_error([ 'message' => 'Bookero API: ' . $e->getMessage() ]);
+    }
 
     // Odczytaj świeżo zapisane etykiety z repo (w WP object cache po syncSingleWorker)
     $termin_pelny = $result->hasPelny ? $result->nearestPelny : '';

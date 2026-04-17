@@ -115,10 +115,87 @@ function np_render_settings_page(): void
         <hr>
         <h2>Narzędzia</h2>
         <p>
-            <a href="<?= esc_url(admin_url('admin-ajax.php?action=np_refresh_terminy&_wpnonce=' . wp_create_nonce('np_bookero_nonce'))) ?>" class="button button-secondary">
+            <button type="button" id="np-bulk-sync-btn" class="button button-secondary">
                 Odśwież terminy Bookero ręcznie
-            </a>
+            </button>
+            <span id="np-bulk-sync-status" style="display:inline-block;margin-left:12px;color:#666;font-size:13px;vertical-align:middle;"></span>
         </p>
+        <script>
+        (function () {
+            var btn     = document.getElementById('np-bulk-sync-btn');
+            var status  = document.getElementById('np-bulk-sync-status');
+            var ajaxUrl = <?= wp_json_encode(admin_url('admin-ajax.php')) ?>;
+            var nonce   = <?= wp_json_encode(wp_create_nonce('np_bookero_nonce')) ?>;
+
+            function post(action, extra) {
+                var fd = new FormData();
+                fd.append('action', action);
+                fd.append('nonce', nonce);
+                Object.keys(extra || {}).forEach(function (k) { fd.append(k, extra[k]); });
+                return fetch(ajaxUrl, { method: 'POST', body: fd }).then(function (r) { return r.json(); });
+            }
+
+            btn.addEventListener('click', function () {
+                btn.disabled        = true;
+                status.style.color  = '#666';
+                status.textContent  = 'Pobieranie listy psychologów…';
+
+                post('np_refresh_terminy')
+                    .then(function (res) {
+                        if (!res.success || !Array.isArray(res.data.post_ids)) {
+                            status.style.color = 'red';
+                            status.textContent = '✗ Błąd pobierania listy.';
+                            btn.disabled = false;
+                            return;
+                        }
+
+                        var ids    = res.data.post_ids;
+                        var total  = ids.length;
+                        var done   = 0;
+                        var errors = 0;
+
+                        if (total === 0) {
+                            status.style.color = '#888';
+                            status.textContent = 'Brak psychologów z Bookero ID.';
+                            btn.disabled = false;
+                            return;
+                        }
+
+                        status.textContent = 'Zsynchronizowano 0 z ' + total + '…';
+
+                        function syncNext(index) {
+                            if (index >= total) {
+                                btn.disabled = false;
+                                if (errors > 0) {
+                                    status.style.color = '#b45309';
+                                    status.textContent = '⚠ Zsynchronizowano ' + done + ' z ' + total + ' (błędy: ' + errors + ')';
+                                } else {
+                                    status.style.color = 'green';
+                                    status.textContent = '✓ Zsynchronizowano ' + done + ' z ' + total;
+                                }
+                                return;
+                            }
+
+                            post('np_refresh_termin_single', { post_id: ids[index] })
+                                .then(function (r) { if (!r.success) errors++; })
+                                .catch(function () { errors++; })
+                                .finally(function () {
+                                    done++;
+                                    status.textContent = 'Zsynchronizowano ' + done + ' z ' + total + '…';
+                                    setTimeout(function () { syncNext(index + 1); }, 400);
+                                });
+                        }
+
+                        syncNext(0);
+                    })
+                    .catch(function () {
+                        status.style.color = 'red';
+                        status.textContent = '✗ Błąd sieci.';
+                        btn.disabled = false;
+                    });
+            });
+        }());
+        </script>
         <p><strong>Wersja cache listingu:</strong> <?= esc_html(NP_PSY_LISTING_VERSION) ?></p>
     </div>
     <?php
