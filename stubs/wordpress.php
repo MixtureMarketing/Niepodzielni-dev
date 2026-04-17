@@ -264,7 +264,30 @@ if (! function_exists('get_posts')) {
     }
 }
 
-// ─── Projekt-specificzne funkcje (z mu-plugins) ───────────────────────────────
+// ─── WP Object Cache ──────────────────────────────────────────────────────────
+
+if (! function_exists('wp_cache_get')) {
+    function wp_cache_get(string $key, string $group = '', bool $force = false, ?bool &$found = null): mixed
+    {
+        return false;
+    }
+}
+
+if (! function_exists('wp_cache_set')) {
+    function wp_cache_set(string $key, mixed $data, string $group = '', int $expire = 0): bool
+    {
+        return true;
+    }
+}
+
+if (! function_exists('wp_cache_delete')) {
+    function wp_cache_delete(string $key, string $group = ''): bool
+    {
+        return true;
+    }
+}
+
+// ─── Projekt-specifyczne funkcje (z mu-plugins) ───────────────────────────────
 
 if (! function_exists('np_bookero_cal_id_for')) {
     function np_bookero_cal_id_for(string $typ): string

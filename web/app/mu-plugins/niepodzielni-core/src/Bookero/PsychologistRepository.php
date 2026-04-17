@@ -40,6 +40,8 @@ class PsychologistRepository
      * Zapisuje posortowaną listę dostępnych dat do postmeta.
      *
      * @param string[] $dates  Daty w formacie YYYY-MM-DD
+     * @param int      $postId Post ID psychologa
+     * @param string   $typ    'pelnoplatny' | 'nisko'
      */
     public function saveAvailableDates(int $postId, string $typ, array $dates): void
     {
@@ -101,7 +103,10 @@ class PsychologistRepository
     /**
      * Zapisuje godziny do cache DB. Przy okazji czyści przeszłe daty.
      *
-     * @param string[] $hours
+     * @param int      $postId Post ID psychologa
+     * @param string   $typ    'pelnoplatny' | 'nisko'
+     * @param string   $date   Data YYYY-MM-DD
+     * @param string[] $hours  Lista godzin, np. ['10:00', '11:00']
      */
     public function saveHours(int $postId, string $typ, string $date, array $hours): void
     {
@@ -228,10 +233,40 @@ class PsychologistRepository
 
     // ─── Batch load — eliminacja N+1 ─────────────────────────────────────────────
 
+    // ─── Object Cache — lista pracowników ────────────────────────────────────────
+
+    private const WORKERS_CACHE_GROUP = 'np_bookero';
+    private const WORKERS_CACHE_TTL   = 7 * MINUTE_IN_SECONDS;  // 7 min — między 5-10 jak zalecono
+
+    /**
+     * Inwaliduje WP Object Cache listy pracowników dla danego typu.
+     *
+     * Wołaj przy każdej zmianie postmeta psychologa: save_post_psycholog,
+     * niepodzielni_bookero_batch_synced, ręczna synchronizacja z panelu admina.
+     */
+    public function invalidateWorkersCache(string $typ): void
+    {
+        wp_cache_delete($this->workersCacheKey($typ), self::WORKERS_CACHE_GROUP);
+    }
+
+    private function workersCacheKey(string $typ): string
+    {
+        return 'workers_' . ($this->isNisko($typ) ? 'nisko' : 'pelno');
+    }
+
+    // ─── Batch load — eliminacja N+1 ─────────────────────────────────────────────
+
     /**
      * Pobiera wszystkich aktywnych psychologów z pełnymi metadanymi w 2 zapytaniach SQL.
      *
+     * Wyniki są cache'owane w WP Object Cache (Redis) przez WORKERS_CACHE_TTL (7 min),
+     * eliminując wielokrotne WP_Query + batch postmeta dla każdego żądania AJAX
+     * bk_get_shared_month / bk_get_date_slots w obrębie tego samego okna czasowego.
+     *
      * Mechanizm:
+     *   L1 — WP Object Cache (Redis):  zero SQL, zero PHP, ~0.1 ms RTT do Redisa
+     *   L2 — WP_Query + batch postmeta: 2 zapytania SQL, ~5-20 ms
+     *
      *   SQL 1 (WP_Query): SELECT ID FROM posts WHERE type='psycholog' AND worker_id EXISTS
      *   SQL 2 (WP automat): SELECT meta_key,meta_value FROM postmeta WHERE post_id IN (...)
      *
@@ -239,11 +274,22 @@ class PsychologistRepository
      * get_post_meta() dla tych postów trafiają do pamięci (WP object cache / Redis) —
      * zero dodatkowego SQL niezależnie od liczby psychologów.
      *
+     * Inwalidacja: invalidateWorkersCache() — wywoływana przez hook save_post_psycholog
+     * oraz niepodzielni_bookero_batch_synced.
+     *
      * @param  string $typ  'pelnoplatny' | 'nisko'
      * @return array<int, WorkerRecord>  Indeksowane po post_id
      */
     public function getAllWorkersWithMeta(string $typ): array
     {
+        // L1: WP Object Cache (Redis) — zero SQL przy trafieniu w cache
+        $cacheKey = $this->workersCacheKey($typ);
+        $cached   = wp_cache_get($cacheKey, self::WORKERS_CACHE_GROUP);
+        if (is_array($cached)) {
+            /** @var array<int, WorkerRecord> $cached */
+            return $cached;
+        }
+
         $isNisko     = $this->isNisko($typ);
         $metaBkKey   = $isNisko ? 'bookero_id_niski' : 'bookero_id_pelny';
         $metaSlots   = $isNisko ? 'bookero_slots_nisko' : 'bookero_slots_pelno';
@@ -318,6 +364,9 @@ class PsychologistRepository
                 hoursCache: $hoursCache,
             );
         }
+
+        // L1 miss — zapisz wynik w WP Object Cache (Redis) na WORKERS_CACHE_TTL
+        wp_cache_set($cacheKey, $records, self::WORKERS_CACHE_GROUP, self::WORKERS_CACHE_TTL);
 
         return $records;
     }

@@ -242,6 +242,25 @@ function np_ajax_refresh_termin_single(): void
     ]);
 }
 
+// ─── Shared Calendar: inwalidacja Object Cache listy psychologów ─────────────
+
+/**
+ * Czyści WP Object Cache (Redis) listy psychologów po zapisaniu posta.
+ * Wywoływane przez save_post_psycholog i niepodzielni_bookero_batch_synced.
+ *
+ * Bez tej inwalidacji stara lista byłaby serwowana przez max WORKERS_CACHE_TTL (7 min)
+ * nawet po dodaniu nowego psychologa lub zmianie jego worker ID.
+ */
+function np_bookero_invalidate_workers_cache(): void
+{
+    $repo = new \Niepodzielni\Bookero\PsychologistRepository();
+    $repo->invalidateWorkersCache('nisko');
+    $repo->invalidateWorkersCache('pelnoplatny');
+}
+
+add_action('save_post_psycholog',              'np_bookero_invalidate_workers_cache');
+add_action('niepodzielni_bookero_batch_synced', 'np_bookero_invalidate_workers_cache');
+
 // ─── Shared Calendar: fabryka serwisu ────────────────────────────────────────
 
 /**
