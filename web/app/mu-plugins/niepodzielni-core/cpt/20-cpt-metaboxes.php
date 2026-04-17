@@ -9,8 +9,8 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-// Jeśli ACF aktywny — nie rejestrujemy własnych metaboxów
-if (function_exists('acf_add_local_field_group')) {
+// Fallback — pomiń gdy ACF lub Carbon Fields są aktywne
+if (function_exists('acf_add_local_field_group') || class_exists(\Carbon_Fields\Carbon_Fields::class)) {
     return;
 }
 

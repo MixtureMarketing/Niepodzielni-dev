@@ -183,9 +183,11 @@ class BookeroSyncService
         } catch (BookeroRateLimitException $e) {
             // Rate limit / timeout — nie ustawiaj backoffu per-worker, rzuć wyżej.
             // Circuit breaker w cron przechwyci to i ustawi globalny lockout.
+            error_log('[Bookero] RateLimit getMonth worker=' . $workerId . ' typ=' . $typ . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             throw $e;
         } catch (BookeroApiException $e) {
             np_bookero_log_error('getMonth', "worker={$workerId} typ={$typ}: " . $e->getMessage());
+            error_log('[Bookero] ApiException getMonth worker=' . $workerId . ' typ=' . $typ . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             $this->repo->setMonthTransientBackoff($typ, $workerId, $plusMonths);
 
             return [];
@@ -222,9 +224,11 @@ class BookeroSyncService
             $this->repo->saveHours($postId, $typ, $nearestDate, $hours);
         } catch (BookeroRateLimitException $e) {
             // Rate limit podczas pre-warmu — rzuć wyżej do circuit breaker w cron.
+            error_log('[Bookero] RateLimit prewarm worker=' . $workerId . ' date=' . $nearestDate . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             throw $e;
         } catch (BookeroApiException $e) {
             np_bookero_log_error('getMonthDay', "worker={$workerId} date={$nearestDate}: " . $e->getMessage());
+            error_log('[Bookero] ApiException prewarm worker=' . $workerId . ' date=' . $nearestDate . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
         }
     }
 }

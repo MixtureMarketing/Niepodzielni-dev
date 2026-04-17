@@ -22,11 +22,22 @@ class PsychologistListingService
      */
     public function getData(string $rodzaj = 'nisko'): array
     {
-        $version       = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.2';
-        $transient_key = 'psy_listing_data_' . $rodzaj . '_' . $version;
+        $version     = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.2';
+        $cache_key   = 'psy_listing_' . $rodzaj . '_' . $version;
+        $cache_group = 'np_psy_listing';
 
-        $cached = get_transient($transient_key);
-        if ($cached !== false) {
+        // L0: WP Object Cache (Redis) — zero SQL przy trafieniu
+        $cached = wp_cache_get($cache_key, $cache_group);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        // L1: transient (fallback dla środowisk bez Redis — cache w DB)
+        $transient_key = 'psy_listing_data_' . $rodzaj . '_' . $version;
+        $cached        = get_transient($transient_key);
+        if (is_array($cached)) {
+            // Przepisz do Object Cache żeby kolejne requesty nie trafiały do DB
+            wp_cache_set($cache_key, $cached, $cache_group, 15 * MINUTE_IN_SECONDS);
             return $cached;
         }
 
@@ -38,12 +49,19 @@ class PsychologistListingService
 
         $flagMap = np_get_flag_map();
 
+        // update_post_meta_cache + update_post_term_cache eliminują N+1:
+        //   SQL 1: SELECT ID FROM posts WHERE ... (WP_Query)
+        //   SQL 2: SELECT meta_key,meta_value FROM postmeta WHERE post_id IN (...)
+        //   SQL 3: SELECT t.*,tt.* FROM terms JOIN term_taxonomy JOIN term_relationships WHERE object_id IN (...)
+        // Bez tych flag każde get_post_meta() i get_the_terms() generowałoby osobne zapytanie SQL.
         $query = new \WP_Query([
-            'post_type'      => 'psycholog',
-            'posts_per_page' => -1,
-            'post_status'    => 'publish',
-            'no_found_rows'  => true,
-            'meta_query'     => [
+            'post_type'              => 'psycholog',
+            'posts_per_page'         => -1,
+            'post_status'            => 'publish',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => true,
+            'meta_query'             => [
                 'relation' => 'AND',
                 [
                     'key'     => $meta_id_key,
@@ -106,19 +124,24 @@ class PsychologistListingService
         }
 
         set_transient($transient_key, $all_psy_data, 15 * MINUTE_IN_SECONDS);
+        wp_cache_set($cache_key, $all_psy_data, $cache_group, 15 * MINUTE_IN_SECONDS);
 
         return $all_psy_data;
     }
 
     /**
-     * Czyści oba transienty listingu (nisko + pelno).
+     * Czyści oba transienty i Object Cache listingu (nisko + pelno).
      * Wywoływana przez hooki WP zarejestrowane poniżej.
      */
     public static function clearCache(): void
     {
-        $v = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.2';
-        delete_transient('psy_listing_data_nisko_' . $v);
-        delete_transient('psy_listing_data_pelno_' . $v);
+        $v     = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.2';
+        $group = 'np_psy_listing';
+
+        foreach (['nisko', 'pelno'] as $rodzaj) {
+            delete_transient('psy_listing_data_' . $rodzaj . '_' . $v);
+            wp_cache_delete('psy_listing_' . $rodzaj . '_' . $v, $group);
+        }
     }
 }
 

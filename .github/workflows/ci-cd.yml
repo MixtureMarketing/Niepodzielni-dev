@@ -1,24 +1,30 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # Niepodzielni CI/CD Pipeline
 #
-# Uruchamia się przy każdym push i pull_request do gałęzi main i develop.
-# Trzy niezależne job-y: backend → frontend → deploy (placeholder).
+# Graf zależności (wszystkie ścieżki równoległe tam gdzie to możliwe):
+#
+#   static-analysis ──┐
+#   backend-tests   ──┤
+#   frontend-build  ──┼──► deploy  (tylko push do main)
+#   frontend-unit   ──┤
+#   e2e-tests       ──┘  (warunkowo: push + PLAYWRIGHT_BASE_URL skonfigurowany)
+#
+# Caching:
+#   Composer  — actions/cache@v4 z kluczem po composer.lock (~60 s oszczędności)
+#   npm       — actions/setup-node@v4 z cache:'npm'       (~30 s oszczędności)
+#   Playwright— actions/cache@v4 ~250 MB binarek           (~90 s oszczędności)
 # ──────────────────────────────────────────────────────────────────────────────
 
 name: CI/CD
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
-# Anuluje w locie poprzedni run dla tej samej gałęzi/PR gdy nowy commit trafi
-# zanim poprzedni się skończy — oszczędza minuty runners na niepotrzebnych runach.
+# Anuluje poprzedni run dla tej samej gałęzi/PR gdy nowy commit trafi zanim
+# poprzedni się zakończy — oszczędza minuty runner-ów na niepotrzebnych runach.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -27,43 +33,86 @@ concurrency:
 jobs:
 
   # ┌──────────────────────────────────────────────────────────────────────────┐
-  # │  JOB 1 — Backend: PHP checks & tests                                    │
+  # │  JOB 1 — Static Analysis: Pint + PHPStan                                │
+  # │  Brak macierzy PHP — narzędzia analizy nie testują kompatybilności       │
+  # │  z wersjami. Jedna instancja runner-a wystarczy; działa równolegle        │
+  # │  z backend-tests i frontend-*.                                           │
   # └──────────────────────────────────────────────────────────────────────────┘
-  backend:
-    name: "Backend — PHP ${{ matrix.php-version }}"
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false        # Pozwól obu wersjom PHP dobiec do końca
-      matrix:
-        php-version:
-          - "8.4"             # Wersja produkcyjna
-          # - "8.3"           # Odkomentuj aby testować też na 8.3 (composer.json: >=8.3)
+  static-analysis:
+    name: "Static Analysis (Pint + PHPStan)"
+    runs-on: ubuntu-24.04
 
     env:
-      # Composer cache dir dla cache action
       COMPOSER_CACHE_DIR: ~/.cache/composer
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
-      - name: Checkout repozytorium
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Konfiguracja PHP ───────────────────────────────────────────────────
-      - name: Konfiguracja PHP ${{ matrix.php-version }}
+      - name: PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, xml, ctype, fileinfo, curl, intl, json, zip
+          coverage: none
+          tools: composer:v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Cache kluczowany po composer.lock — inwalidacja tylko przy zmianie zależności.
+      # restore-keys: fallback gdy nie ma dokładnego hitu (np. nowa gałąź).
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.COMPOSER_CACHE_DIR }}
+          key: composer-8.4-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-8.4-
+            composer-
+
+      - name: Composer install
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: "Pint — styl kodu (--test)"
+        run: vendor/bin/pint --test
+
+      - name: "PHPStan — analiza statyczna (level 8)"
+        run: vendor/bin/phpstan analyse --no-progress
+
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │  JOB 2 — Backend Tests: Pest                                             │
+  # │  Osobny job od static-analysis — oba startują równocześnie.             │
+  # │  Macierz PHP testuje kompatybilność z >=8.3 (per composer.json).        │
+  # └──────────────────────────────────────────────────────────────────────────┘
+  backend-tests:
+    name: "Pest (PHP ${{ matrix.php-version }})"
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "8.4"   # Wersja produkcyjna
+          - "8.3"   # Minimalna wersja wg composer.json: >=8.3
+
+    env:
+      COMPOSER_CACHE_DIR: ~/.cache/composer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: >-
-            mbstring, xml, ctype, fileinfo, curl,
-            intl, json, zip, bcmath, redis
-          coverage: none          # Nie zbieramy coverage w CI (przyspiesza Pest)
+          extensions: mbstring, xml, ctype, fileinfo, curl, intl, json, zip, bcmath
+          coverage: none
           tools: composer:v2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Wymagane przez shivammathur dla wyższych rate limitów
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 3. Cache Composera ────────────────────────────────────────────────────
-      - name: Cache paczek Composer
+      - name: Cache Composer
         uses: actions/cache@v4
         with:
           path: ${{ env.COMPOSER_CACHE_DIR }}
@@ -72,169 +121,243 @@ jobs:
             composer-${{ matrix.php-version }}-
             composer-
 
-      # ── 4. Instalacja zależności ──────────────────────────────────────────────
-      - name: Instalacja zależności Composer
+      - name: Composer install
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      # ── 5. Laravel Pint — styl kodu ───────────────────────────────────────────
-      # Konfiguracja: pint.json (preset: per, wykluczone: web/wp, web/app/plugins)
-      - name: "Linting — Laravel Pint (--test)"
-        run: vendor/bin/pint --test
-
-      # ── 6. PHPStan — statyczna analiza ───────────────────────────────────────
-      # Konfiguracja: phpstan.neon (level 8, ścieżka: src/Bookero, stubs: stubs/wordpress.php)
-      - name: "Statyczna analiza — PHPStan"
-        run: vendor/bin/phpstan analyse --no-progress
-
-      # ── 7. Pest — testy jednostkowe i integracyjne ───────────────────────────
-      # Konfiguracja: phpunit.xml.dist, suite: tests/Feature/**Test.php
-      # Uwaga: --ansi i --no-coverage powodują "Unknown option" w niektórych wersjach Pest.
-      - name: "Testy — Pest"
+      - name: "Pest — testy jednostkowe"
         run: vendor/bin/pest
 
   # ┌──────────────────────────────────────────────────────────────────────────┐
-  # │  JOB 2 — Frontend: Node.js build & lint                                 │
+  # │  JOB 3 — Frontend Build: Vite                                           │
+  # │  Buduje assety produkcyjne i uploaduje je jako artefakt CI.              │
+  # │  Artefakt może być pobrany przez job deploy (zamiast budować drugi raz). │
   # └──────────────────────────────────────────────────────────────────────────┘
-  frontend:
-    name: "Frontend — Node.js ${{ matrix.node-version }}"
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - "20.x"            # Minimalna wersja wg engines: >=20.0.0 w package.json
+  frontend-build:
+    name: "Frontend — Vite build"
+    runs-on: ubuntu-24.04
 
     defaults:
       run:
-        # Wszystkie kroki `run` w tym job-ie wykonują się w katalogu motywu
         working-directory: web/app/themes/niepodzielni-theme
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
-      - name: Checkout repozytorium
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Konfiguracja Node.js ───────────────────────────────────────────────
-      - name: Konfiguracja Node.js ${{ matrix.node-version }}
+      # cache: 'npm' w setup-node korzysta z package-lock.json jako klucza.
+      # Inwalidacja tylko przy zmianie zależności — pierwsze ~30 s oszczędności.
+      - name: Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "20"
           cache: "npm"
-          # Ścieżka do package-lock.json w katalogu motywu — wymagane przez cache
           cache-dependency-path: web/app/themes/niepodzielni-theme/package-lock.json
 
-      # ── 3. Instalacja zależności NPM ──────────────────────────────────────────
-      # `npm ci` wymaga package-lock.json (istnieje w repozytorium).
-      # Jest szybszy i bardziej deterministyczny niż `npm install` w CI.
-      - name: Instalacja zależności NPM
+      # npm ci jest deterministyczne i szybsze niż npm install w CI.
+      - name: npm ci
         run: npm ci
 
-      # ── 4. Vite build produkcyjny ─────────────────────────────────────────────
-      # Buduje: public/build/assets/*.{js,css} + public/build/manifest.json
-      # Odpowiednik ręcznego: cd web/app/themes/niepodzielni-theme && npm run build
-      - name: "Build — Vite (production)"
+      - name: "Vite build (production)"
         run: npm run build
 
-      # ── 5. (Opcjonalne) Upload artefaktu build ────────────────────────────────
-      # Odkomentuj jeśli job deploy ma pobierać gotowe pliki zamiast budować od nowa.
-      # - name: Upload artefaktu public/build
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: frontend-build
-      #     path: web/app/themes/niepodzielni-theme/public/build
-      #     retention-days: 1
+      # Upload artefaktu: deploy job pobiera go zamiast budować po raz drugi.
+      # retention-days: 1 minimalizuje zużycie storage na GitHub.
+      - name: Upload artefaktu public/build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: web/app/themes/niepodzielni-theme/public/build
+          retention-days: 1
+          if-no-files-found: error
 
   # ┌──────────────────────────────────────────────────────────────────────────┐
-  # │  JOB 3 — Deploy (placeholder)                                           │
-  # │  Uruchamia się TYLKO po sukcesie obu poprzednich job-ów                 │
-  # │  oraz TYLKO na push do main (nie na PR, nie na develop)                 │
+  # │  JOB 4 — Frontend Unit Tests: Vitest                                    │
+  # │  Niezależny od frontend-build — Vitest nie potrzebuje zbudowanych        │
+  # │  assetów, więc może startować równocześnie z innymi jobami.              │
+  # └──────────────────────────────────────────────────────────────────────────┘
+  frontend-unit:
+    name: "Frontend — Vitest"
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: web/app/themes/niepodzielni-theme
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/app/themes/niepodzielni-theme/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      # npm run test → vitest run (bez --watch, tryb CI)
+      - name: "Vitest — testy jednostkowe JS"
+        run: npm run test
+
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │  JOB 5 — E2E Tests: Playwright                                          │
+  # │                                                                          │
+  # │  Warunek uruchomienia: PLAYWRIGHT_BASE_URL ustawiony jako GitHub         │
+  # │  Variable (Settings → Secrets and variables → Variables).               │
+  # │  Przykład: https://staging.niepodzielni.pl                              │
+  # │                                                                          │
+  # │  Testy mockują wszystkie wywołania AJAX (page.route) i uruchamiają się  │
+  # │  przeciwko skonfigurowanemu środowisku WP. Bez tego adresu job jest      │
+  # │  pomijany — nie blokuje pipeline'u.                                      │
+  # │                                                                          │
+  # │  Cache przeglądarek (~250 MB): klucz po package-lock.json. Pełny        │
+  # │  download (chromium+firefox) tylko przy zmianie Playwright lub          │
+  # │  package-lock — w kolejnych runach ~90 s oszczędności.                  │
+  # └──────────────────────────────────────────────────────────────────────────┘
+  e2e-tests:
+    name: "E2E — Playwright (Chromium + Firefox)"
+    runs-on: ubuntu-24.04
+
+    # Uruchamia się tylko przy push (nie PR) i tylko gdy staging URL jest skonfigurowany.
+    # Przy PR pomijamy E2E — wystarczą unit testy; staging testujemy po merge.
+    if: >
+      github.event_name == 'push' &&
+      vars.PLAYWRIGHT_BASE_URL != ''
+
+    defaults:
+      run:
+        working-directory: web/app/themes/niepodzielni-theme
+
+    env:
+      # Podaj adres staging w GitHub Variables: PLAYWRIGHT_BASE_URL
+      PLAYWRIGHT_BASE_URL: ${{ vars.PLAYWRIGHT_BASE_URL }}
+      # Stała ścieżka cache — nie zależy od wersji Playwright w binarce
+      PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/app/themes/niepodzielni-theme/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      # Cache binarek przeglądarek: Chromium (~170 MB) + Firefox (~80 MB).
+      # Klucz inwalidowany tylko przy zmianie package-lock.json (nowa wersja @playwright/test).
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      # Gdy cache miss: pobierz binarski chromium + firefox + system deps (~2 min)
+      - name: Install Playwright browsers (cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium firefox
+
+      # Gdy cache hit: binaries z cache, ale system deps (apt) trzeba doinstaować (~15 s)
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium firefox
+
+      - name: "Playwright E2E tests"
+        run: npm run test:e2e
+
+      # Uploaduj raporty tylko przy niepowodzeniu — pomaga debugować bez zaśmiecania UI.
+      - name: Upload Playwright report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: web/app/themes/niepodzielni-theme/playwright-report/
+          retention-days: 7
+
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │  JOB 6 — Deploy (placeholder)                                           │
+  # │  Uruchamia się PO wszystkich testach i TYLKO przy push do main.          │
+  # │  Pobiera artefakt frontendu — nie buduje drugi raz.                      │
   # └──────────────────────────────────────────────────────────────────────────┘
   deploy:
     name: "Deploy — Production"
-    runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    needs: [static-analysis, backend-tests, frontend-build, frontend-unit]
 
-    # Wdrożenie tylko przy bezpośrednim pushu do main — nie przy PR
+    # Nie wdrażaj na PR ani na develop — tylko bezpośredni push do main.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    # Środowisko GitHub Environments — opcjonalne, ale umożliwia:
-    # - ochronę gałęzi z wymaganym approval przed deployem
-    # - secrets scoped do środowiska (np. PROD_SSH_KEY)
-    # - śledzenie historii wdrożeń w UI GitHub
     environment:
       name: production
-      # url: https://niepodzielni.pl   # Odkomentuj gdy masz domenę
+      # url: https://niepodzielni.pl
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
-      - name: Checkout repozytorium
+      - name: Checkout
         uses: actions/checkout@v4
 
+      # Pobierz gotowy artefakt frontendu (zbudowany w frontend-build).
+      # Eliminuje potrzebę ponownego npm ci + Vite build w tym jobie.
+      - name: Download artefaktu public/build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: web/app/themes/niepodzielni-theme/public/build
+
       # ────────────────────────────────────────────────────────────────────────
-      # INSTRUKCJA PODPIĘCIA DEPLOYMENTU
-      # Wybierz jedną z metod poniżej i odkomentuj odpowiedni blok.
+      # INSTRUKCJA PODPIĘCIA DEPLOYMENTU — wybierz jedną metodę
       # ────────────────────────────────────────────────────────────────────────
 
-      # ── METODA A: rsync + SSH ─────────────────────────────────────────────────
-      # Wymaga secretów: PROD_SSH_KEY (klucz prywatny RSA/Ed25519),
-      #                  PROD_SSH_HOST, PROD_SSH_USER, PROD_SSH_PATH
+      # ── METODA A: rsync + SSH ─────────────────────────────────────────────
+      # Secrets wymagane: PROD_SSH_KEY, PROD_SSH_HOST, PROD_SSH_USER, PROD_SSH_PATH
       #
-      # - name: Konfiguracja klucza SSH
+      # - name: Setup SSH
       #   uses: webfactory/ssh-agent@v0.9.0
       #   with:
       #     ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
       #
-      # - name: Dodaj host do known_hosts
-      #   run: |
-      #     mkdir -p ~/.ssh
-      #     ssh-keyscan -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
+      # - name: Add host to known_hosts
+      #   run: ssh-keyscan -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
       #
       # - name: Deploy via rsync
       #   run: |
       #     rsync -azP --delete \
-      #       --exclude='.git/' \
-      #       --exclude='.github/' \
+      #       --exclude='.git/' --exclude='.github/' \
       #       --exclude='node_modules/' \
       #       --exclude='web/app/themes/niepodzielni-theme/node_modules/' \
-      #       --exclude='.env' \
-      #       --exclude='web/wp/' \
+      #       --exclude='.env' --exclude='web/wp/' \
       #       ./ ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_SSH_PATH }}
       #
-      # - name: Post-deploy (composer install + wp cache flush)
+      # - name: Post-deploy (composer install + cache flush)
       #   run: |
       #     ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} \
       #       "cd ${{ secrets.PROD_SSH_PATH }} && \
       #        composer install --no-dev --optimize-autoloader --no-interaction && \
       #        wp cache flush --allow-root"
 
-      # ── METODA B: PHP Deployer (deployer.org) ─────────────────────────────────
-      # Wymaga: composer require --dev deployer/deployer
-      #         pliku deploy.php w katalogu głównym projektu
-      # Zalety nad rsync: atomic deploys, rollback, shared dirs (uploads, .env),
-      #                   automatyczne cache:clear, zero downtime
+      # ── METODA B: PHP Deployer ───────────────────────────────────────────
+      # composer require --dev deployer/deployer + deploy.php w projekcie
       #
       # - name: Deploy via Deployer
       #   run: |
-      #     vendor/bin/dep deploy production \
-      #       --branch=${{ github.ref_name }} \
-      #       -o remote_user=${{ secrets.PROD_SSH_USER }} \
-      #       -o hostname=${{ secrets.PROD_SSH_HOST }} \
+      #     vendor/bin/dep deploy production --branch=${{ github.ref_name }}
       #   env:
       #     SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
 
-      # ── METODA C: GitHub Environments + własny runner na serwerze ─────────────
-      # Zainstaluj self-hosted runner na serwerze produkcyjnym:
-      #   https://docs.github.com/en/actions/hosting-your-own-runners
-      # Następnie zmień: runs-on: self-hosted
-      # i uruchamiaj komendy bezpośrednio na serwerze bez potrzeby SSH.
-
-      # ── Placeholder — usuń gdy podepniesz jedną z powyższych metod ───────────
-      - name: "Placeholder — brak konfiguracji deploymentu"
+      - name: "Placeholder — deployment niezskonfigurowany"
         run: |
-          echo "✓ Backend (PHP) — OK"
-          echo "✓ Frontend (Vite build) — OK"
+          echo "✓ Static Analysis  — OK"
+          echo "✓ Backend Tests    — OK"
+          echo "✓ Frontend Build   — OK"
+          echo "✓ Frontend Unit    — OK"
           echo ""
-          echo "Deployment nie jest jeszcze skonfigurowany."
-          echo "Odkomentuj jedną z metod (rsync/Deployer/self-hosted runner)"
-          echo "w sekcji deploy tego pliku: .github/workflows/ci-cd.yml"
+          echo "Frontend build artifact pobrany z: frontend-build-${{ github.sha }}"
+          echo "Odkomentuj Metodę A (rsync) lub B (Deployer) powyżej."

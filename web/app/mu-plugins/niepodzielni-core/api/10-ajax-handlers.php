@@ -23,6 +23,15 @@ function np_bookero_is_valid_typ(string $typ): bool
     return in_array($typ, [ 'pelno', 'pelnoplatny', 'pelnoplatne', 'nisko', 'niskoplatny', 'niskoplatne' ], true);
 }
 
+/**
+ * Zwraca true jeśli $typ to wariant niskopłatny.
+ * Centralny punkt decyzji — używaj zamiast inline in_array().
+ */
+function np_bookero_is_nisko_typ(string $typ): bool
+{
+    return in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
+}
+
 // ─── Real-time ingest: przechwycony getMonth z bookero-init.js ───────────────
 // Gdy calendar widget ładuje miesiąc, JS interceptor wzywa tę akcję
 // z najbliższą dostępną datą — zero dodatkowych requestów do Bookero.
@@ -62,13 +71,16 @@ function np_ajax_bk_ingest_month(): void
 
     // Znajdź psychologa po worker ID
     $posts = get_posts([
-        'post_type'      => 'psycholog',
-        'posts_per_page' => 1,
-        'post_status'    => 'publish',
-        'meta_query'     => [
+        'post_type'              => 'psycholog',
+        'posts_per_page'         => 1,
+        'post_status'            => 'publish',
+        'fields'                 => 'ids',
+        'no_found_rows'          => true,
+        'update_post_meta_cache' => false,
+        'update_post_term_cache' => false,
+        'meta_query'             => [
             [ 'key' => $worker_meta, 'value' => $worker_bk_id, 'compare' => '=' ],
         ],
-        'fields' => 'ids',
     ]);
 
     if (empty($posts)) {
@@ -197,7 +209,7 @@ function np_ajax_refresh_termin_single(): void
         wp_send_json_error([ 'message' => 'Brak uprawnień' ]);
     }
 
-    $post_id = (int) ($_POST['post_id'] ?? 0);
+    $post_id = absint($_POST['post_id'] ?? 0);
     if (! $post_id) {
         wp_send_json_error([ 'message' => 'Brak post_id' ]);
     }
@@ -355,7 +367,12 @@ function np_ajax_bk_verify_hour(): void
     $date        = sanitize_text_field($_POST['date'] ?? '');
     $hour        = sanitize_text_field($_POST['hour'] ?? '');
     $typ         = sanitize_text_field($_POST['typ'] ?? 'pelnoplatny');
-    $bookero_ids = array_map('sanitize_text_field', (array) ($_POST['bookero_ids'] ?? []));
+    // Limit 50 — zabezpieczenie przed flood-atakiem wypełniającym pętlę API
+    $bookero_ids = array_slice(
+        array_map('sanitize_text_field', (array) ($_POST['bookero_ids'] ?? [])),
+        0,
+        50,
+    );
 
     if (! np_bookero_is_valid_typ($typ)) {
         wp_send_json_error([ 'message' => 'Nieprawidłowy typ' ]);
@@ -369,7 +386,7 @@ function np_ajax_bk_verify_hour(): void
 
     // Batch lookup: worker_id → post_id (1 zapytanie zamiast N)
     // $meta_bk_key pochodzi z whitelisty $typ — ale całe zapytanie chroni $wpdb->prepare().
-    $meta_bk_key  = ($typ === 'nisko') ? 'bookero_id_niski' : 'bookero_id_pelny';
+    $meta_bk_key  = np_bookero_is_nisko_typ($typ) ? 'bookero_id_niski' : 'bookero_id_pelny';
     global $wpdb;
     $placeholders = implode(',', array_fill(0, count($bookero_ids), '%s'));
     $rows         = $wpdb->get_results(

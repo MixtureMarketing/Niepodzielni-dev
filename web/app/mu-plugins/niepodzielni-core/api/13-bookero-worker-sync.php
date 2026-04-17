@@ -122,8 +122,18 @@ function np_bookero_worker_sync_oop(): void
                 'cron',
                 'Circuit breaker wyzwolony — ustawiam lockout na ' . (BOOKERO_LOCKOUT_TTL / 60) . ' min. Przyczyna: ' . $e->getMessage(),
             );
+            error_log('[Bookero] RateLimit cron postId=' . $postId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             set_transient(BOOKERO_LOCKOUT_KEY, 1, BOOKERO_LOCKOUT_TTL);
             return; // Natychmiastowe wyjście — nie przetwarzaj kolejnych psychologów
+        } catch (\Exception $e) {
+            // Nieoczekiwany błąd — izoluj do pojedynczego psychologa.
+            // Loguj z pełnym stack trace i kontynuuj z kolejnym.
+            np_bookero_log_error(
+                'cron',
+                'Błąd syncSingleWorker postId=' . $postId . ': ' . $e->getMessage(),
+            );
+            error_log('[Bookero] Exception cron postId=' . $postId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            continue;
         }
     }
 }

@@ -99,7 +99,7 @@ export function tplStep1( state, data ) {
 
     return `
     <div class="np-mm__step" data-step="1">
-        <h2 class="np-mm__step-title">Powiedz nam o swoich potrzebach</h2>
+        <h2 class="np-mm__step-title" tabindex="-1">Powiedz nam o swoich potrzebach</h2>
         <p class="np-mm__step-desc">Kilka pytań pomoże nam znaleźć najlepszego specjalistę.</p>
 
         <div class="np-mm__section">
@@ -180,16 +180,16 @@ export function tplStep2( state, data, filteredCount ) {
 
     return `
     <div class="np-mm__step" data-step="2">
-        <h2 class="np-mm__step-title">Co sprawia Ci trudność?</h2>
+        <h2 class="np-mm__step-title" tabindex="-1">Co sprawia Ci trudność?</h2>
         <p class="np-mm__step-desc">Wybierz maksymalnie 3 obszary, które dotyczą Twojej sytuacji.</p>
 
-        <div class="np-mm__live-counter" id="np-mm-counter">
+        <div class="np-mm__live-counter" id="np-mm-counter" aria-live="polite" aria-atomic="true">
             ${ count > 0
                 ? `Pasujących specjalistów: <strong>${ count }</strong>`
                 : '<span class="np-mm__counter-warn">Brak specjalistów dla tych filtrów</span>' }
         </div>
 
-        <div class="np-mm__area-counter" id="np-mm-area-counter">
+        <div class="np-mm__area-counter" id="np-mm-area-counter" aria-live="polite" aria-atomic="true">
             ${ selected === 0 ? 'Wybierz 1–3 obszary' : `Wybrano: <strong>${ selected }/3</strong>` }
         </div>
 
@@ -375,7 +375,7 @@ export function tplResults( state, results, fullResults, data, relaxedSuggestion
     // Brak wyników
     if ( results.length === 0 ) {
         return `<div class="np-mm__step np-mm__results-empty">
-            <h2>Nie znaleźliśmy specjalisty</h2>
+            <h2 class="np-mm__step-title" tabindex="-1">Nie znaleźliśmy specjalisty</h2>
             <p>Brak specjalistów dla wybranych kryteriów.</p>
             ${ relaxedSuggestions.length > 0 ? `
             <div class="np-mm__relaxed-suggestions">
@@ -404,7 +404,7 @@ export function tplResults( state, results, fullResults, data, relaxedSuggestion
 
     return `
     <div class="np-mm__step np-mm__results">
-        <h2 class="np-mm__step-title">${ isFallback ? 'Specjaliści z najbliższymi terminami' : 'Twoi specjaliści' }</h2>
+        <h2 class="np-mm__step-title" tabindex="-1">${ isFallback ? 'Specjaliści z najbliższymi terminami' : 'Twoi specjaliści' }</h2>
         ${ isFallback && telefon
             ? `<p class="np-mm__fallback-contact" style="margin-bottom:16px">Możesz też zadzwonić do nas:
                <a href="tel:${ esc( telefon.replace( /\s/g, '' ) ) }" class="np-mm__fallback-phone" style="font-size:inherit;display:inline;margin:0 0 0 8px">${ esc( telefon ) }</a></p>`

@@ -1,17 +1,43 @@
+# ── Kontrola wersji i IDE ──────────────────────────────────────────────────────
 .git
 .gitignore
+.github/
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ── Zależności (baked-in przez multi-stage build) ─────────────────────────────
 vendor/
+node_modules/
+web/app/themes/niepodzielni-theme/node_modules/
+web/app/themes/niepodzielni-theme/vendor/
+
+# ── Assety frontendowe (baked-in z etapu node-builder) ────────────────────────
+web/app/themes/niepodzielni-theme/public/build/
+
+# ── WordPress: wgrywane przez użytkownika / generowane w runtime ──────────────
 web/wp/
 web/app/uploads/
 web/app/cache/
-*.log
+
+# ── Bazy danych i sekrety ─────────────────────────────────────────────────────
+database-template.sql
+docker/db-init/
 .env
 .env.local
 .env.*.local
-node_modules/
+
+# ── Testy i narzędzia QA (nie są potrzebne w produkcji) ───────────────────────
+tests/
+web/app/themes/niepodzielni-theme/tests/
 .phpunit.cache
 .phpunit.result.cache
-database-template.sql
+phpstan.neon
+pint.json
+stubs/
+
+# ── Dokumentacja i logi ───────────────────────────────────────────────────────
 README.md
 LICENSE.md
-tests/
+*.log

@@ -35,7 +35,8 @@ require_once NIEPODZIELNI_CORE_PATH . 'cpt/16-cpt-aktualnosci.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/17-cpt-wydarzenia.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/18-cpt-warsztaty.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/19-cpt-grupy-wsparcia.php';
-require_once NIEPODZIELNI_CORE_PATH . 'cpt/20-cpt-metaboxes.php';
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/20-cpt-metaboxes.php'; // fallback gdy brak CF
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/21-carbon-fields.php'; // Carbon Fields (główny)
 
 // 2. INTEGRACJA API BOOKERO I AJAX
 // 8-bookero-api.php usunięty — logika przeniesiona do BookeroApiClient + PsychologistRepository (OOP)

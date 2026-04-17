@@ -5,7 +5,7 @@
  * Logika i szablony żyją w podmodułach — ten plik odpowiada tylko za:
  *   - inicjalizację stanu (z URL / sessionStorage / default)
  *   - renderowanie (deleguje do Templates)
- *   - obsługę zdarzeń DOM (_attachEvents)
+ *   - obsługę zdarzeń DOM (Event Delegation — jeden listener click + jeden input)
  *   - inline kalendarz Bookero (_toggleCalendar)
  *   - partial update kroku 2 (_updateStep2UI)
  *
@@ -54,12 +54,15 @@ class NpMatchmaker {
         this._showAll          = false;
         this._fullResultsCache = null;
         this._relaxedCache     = null;
+        this._isFirstRender    = true;
 
         // Priorytet przywracania stanu: URL > sessionStorage > domyślny
         const urlState     = restoreFromUrl();
         const sessionState = urlState ? null : restoreFromSession();
         this.state = { ...DEFAULT_STATE, ...( urlState || sessionState || {} ) };
 
+        // Zdarzenia podpinane RAZ — Event Delegation na this.el (nie na dzieciach)
+        this._initEvents();
         this._render();
     }
 
@@ -109,40 +112,57 @@ class NpMatchmaker {
             html += tplStep2( this.state, MM_DATA, this._countFiltered() );
 
         } else if ( step === 4 ) {
-            const results     = this._runMatchmaker();          // wypełnia _fullResultsCache
+            const results     = this._runMatchmaker();
             const fullResults = this._fullResultsCache || [];
-            const suggestions = this._getRelaxedSuggestions(); // wypełnia _relaxedCache
+            const suggestions = this._getRelaxedSuggestions();
             html += tplResults( this.state, results, fullResults, MM_DATA, suggestions, this._showAll );
             saveToUrl( this.state );
         }
 
         this.el.innerHTML = html;
-        this._attachEvents();
-        this._relaxedCache = null; // wyczyść po podpięciu eventów — kolejny render odliczy od nowa
+        this._relaxedCache = null;
+
+        // Zarządzanie focusem (A11y) — pomiń pierwsze renderowanie (nie kradnij focusu strony)
+        if ( ! this._isFirstRender ) {
+            const stepTitle = this.el.querySelector( '.np-mm__step-title' );
+            if ( stepTitle ) stepTitle.focus();
+        }
+        this._isFirstRender = false;
     }
 
-    // ─── Event listeners ─────────────────────────────────────────────────────
+    // ─── Event Delegation — podpinane RAZ w konstruktorze ─────────────────────
 
-    _attachEvents() {
+    /**
+     * Rejestruje JEDEN listener 'click' i JEDEN 'input' na this.el.
+     * Identyfikacja celu przez closest() — działa poprawnie po każdym re-renderze
+     * (innerHTML = ...) bez ponownego podpinania listenerów.
+     *
+     * Korzyści wobec podejścia forEach+addEventListener per-element:
+     *   - Brak wycieków pamięci (nie tworzymy N closures przy każdym renderze)
+     *   - Niższe zużycie pamięci przy dużej liście wyników (np. 50+ kart)
+     *   - Jeden wpis w event queue zamiast N — szybsze _render()
+     */
+    _initEvents() {
 
-        // Przyciski wyboru (krok 1) — who / visitType / pricing / lang
-        this.el.querySelectorAll( '.np-mm__choice-btn' ).forEach( btn => {
-            btn.addEventListener( 'click', () => {
-                this._set( { [ btn.dataset.field ]: btn.dataset.value } );
-            } );
-        } );
+        // ── Click delegation ──────────────────────────────────────────────────
+        this.el.addEventListener( 'click', ( e ) => {
 
-        // Toggle "tylko z terminami" (krok 1)
-        const availToggle = this.el.querySelector( '[data-action="toggle-available"]' );
-        if ( availToggle ) {
-            availToggle.addEventListener( 'click', () => {
+            // 1. Przyciski wyboru opcji (krok 1): who / visitType / pricing / lang
+            const choiceBtn = e.target.closest( '.np-mm__choice-btn' );
+            if ( choiceBtn ) {
+                this._set( { [ choiceBtn.dataset.field ]: choiceBtn.dataset.value } );
+                return;
+            }
+
+            // 2. Toggle "tylko z terminami" (krok 1)
+            if ( e.target.closest( '[data-action="toggle-available"]' ) ) {
                 this._set( { onlyAvailable: ! this.state.onlyAvailable } );
-            } );
-        }
+                return;
+            }
 
-        // Kafelki obszarów (krok 2) — logika: zaznacz / promuj do primary / usuń
-        this.el.querySelectorAll( '.np-mm__tile' ).forEach( tile => {
-            tile.addEventListener( 'click', () => {
+            // 3. Kafelki obszarów (krok 2)
+            const tile = e.target.closest( '.np-mm__tile' );
+            if ( tile ) {
                 const slug  = tile.dataset.area;
                 const areas = [ ...this.state.areas ];
                 const idx   = areas.indexOf( slug );
@@ -171,116 +191,122 @@ class NpMatchmaker {
                 this.state.areas       = areas;
                 this.state.primaryArea = primaryArea;
                 this._updateStep2UI();
-            } );
-        } );
+                return;
+            }
 
-        // Przyciski nurtu (krok 2)
-        this.el.querySelectorAll( '.np-mm__nurt-btn' ).forEach( btn => {
-            btn.addEventListener( 'click', () => {
-                const val = btn.dataset.nurt;
+            // 4. Przyciski nurtu (krok 2)
+            const nurtBtn = e.target.closest( '.np-mm__nurt-btn' );
+            if ( nurtBtn ) {
+                const val = nurtBtn.dataset.nurt;
                 this.state.nurt = val;
                 this.el.querySelectorAll( '.np-mm__nurt-btn' ).forEach( b => {
                     b.classList.toggle( 'np-mm__nurt-btn--active', b.dataset.nurt === val );
                 } );
-            } );
-        } );
+                return;
+            }
 
-        // Toggle panelu nurtu (krok 2)
-        const nurtToggle = this.el.querySelector( '.np-mm__nurt-toggle' );
-        if ( nurtToggle ) {
-            nurtToggle.addEventListener( 'click', () => {
+            // 5. Toggle panelu nurtu (krok 2)
+            const nurtToggle = e.target.closest( '[data-toggle="nurt"]' );
+            if ( nurtToggle ) {
                 const panel = this.el.querySelector( '.np-mm__nurt-panel' );
-                const open  = panel.hidden;
+                const open  = panel.hidden; // true = panel był ukryty → teraz go otwieramy
                 panel.hidden         = ! open;
                 this.state.nurtOpen  = open;
                 nurtToggle.textContent = open
                     ? '▲ Ukryj preferencje nurtu'
                     : '▼ Mam preferencje co do nurtu (opcjonalne)';
-            } );
-        }
+                return;
+            }
 
-        // "Pokaż więcej obszarów"
-        const moreBtn = this.el.querySelector( '.np-mm__more-toggle' );
-        if ( moreBtn ) {
-            moreBtn.addEventListener( 'click', () => {
+            // 6. "Pokaż więcej obszarów" (krok 2)
+            const moreBtn = e.target.closest( '[data-more="areas"]' );
+            if ( moreBtn ) {
                 const section = this.el.querySelector( '.np-mm__more-section' );
                 section.hidden = ! section.hidden;
                 const ext = MM_AREAS.filter( a => ! MM_CURATED.includes( a.slug ) ).length;
                 moreBtn.textContent = section.hidden
                     ? `Pokaż więcej obszarów (${ ext })`
                     : 'Zwiń';
-            } );
-        }
+                return;
+            }
 
-        // Wyszukiwarka obszarów (krok 2 — rozwinięta lista)
-        // Debounce 200 ms: filtrowanie kafelków to operacja DOM (style.display) bez
-        // scoringu — 200 ms daje responsywność przy jednoczesnej ochronie przed
-        // flood-em na słabych smartfonach. Arrow function zachowuje `this` klasy
-        // (NpMatchmaker) przez domknięcie — nie potrzeba .bind().
-        const search = this.el.querySelector( '.np-mm__search' );
-        if ( search ) {
-            search.addEventListener( 'input', debounce( () => {
-                const q = search.value.toLowerCase();
-                this.el.querySelectorAll( '.np-mm__tile-grid--extended .np-mm__tile' ).forEach( t => {
-                    t.style.display = t.textContent.toLowerCase().includes( q ) ? '' : 'none';
-                } );
-            }, 200 ) );
-        }
+            // 7. Nawigacja dalej
+            const nextBtn = e.target.closest( '[data-next]' );
+            if ( nextBtn && ! nextBtn.disabled ) {
+                this._go( parseInt( nextBtn.dataset.next ) );
+                return;
+            }
 
-        // Nawigacja dalej / wstecz
-        this.el.querySelectorAll( '[data-next]' ).forEach( btn => {
-            btn.addEventListener( 'click', () => {
-                if ( ! btn.disabled ) this._go( parseInt( btn.dataset.next ) );
-            } );
-        } );
-        this.el.querySelectorAll( '[data-back]' ).forEach( btn => {
-            btn.addEventListener( 'click', () => this._go( parseInt( btn.dataset.back ) ) );
-        } );
+            // 8. Nawigacja wstecz
+            const backBtn = e.target.closest( '[data-back]' );
+            if ( backBtn ) {
+                this._go( parseInt( backBtn.dataset.back ) );
+                return;
+            }
 
-        // Reset do początku
-        this.el.querySelectorAll( '.np-mm__btn-reset' ).forEach( btn => {
-            btn.addEventListener( 'click', () => {
+            // 9. Reset do początku
+            if ( e.target.closest( '.np-mm__btn-reset' ) ) {
                 this._showAll = false;
                 clearPersistence();
                 this.state = { ...DEFAULT_STATE };
                 this._render();
-            } );
-        } );
+                return;
+            }
 
-        // Inline kalendarz Bookero na kartach wyników
-        this.el.querySelectorAll( '[data-action="open-cal"]' ).forEach( btn => {
-            btn.addEventListener( 'click', () => {
-                const card = btn.closest( '.np-mm__card' );
-                this._toggleCalendar( card );
-            } );
-        } );
+            // 10. Zamknij inline kalendarz — przycisk ✕ generowany przez _toggleCalendar
+            const calClose = e.target.closest( '.np-mm__cal-close' );
+            if ( calClose ) {
+                const panel = calClose.closest( '.np-mm__inline-cal' );
+                const card  = calClose.closest( '.np-mm__card' );
+                if ( panel ) {
+                    panel.hidden    = true;
+                    panel.innerHTML = '';
+                }
+                const openCalBtn = card?.querySelector( '[data-action="open-cal"]' );
+                if ( openCalBtn ) openCalBtn.textContent = 'Umów wizytę';
+                return;
+            }
 
-        // "Nie wiem, czego szukam" — fallback do wyników bez obszarów
-        const fallbackBtn = this.el.querySelector( '[data-action="fallback"]' );
-        if ( fallbackBtn ) {
-            fallbackBtn.addEventListener( 'click', () => {
+            // 11. Otwórz / zamknij inline kalendarz Bookero
+            if ( e.target.closest( '[data-action="open-cal"]' ) ) {
+                const card = e.target.closest( '.np-mm__card' );
+                if ( card ) this._toggleCalendar( card );
+                return;
+            }
+
+            // 12. Fallback "nie wiem, czego szukam"
+            if ( e.target.closest( '[data-action="fallback"]' ) ) {
                 this._set( { step: 4, areas: [], primaryArea: '', nurt: '' } );
-            } );
-        }
+                return;
+            }
 
-        // "Pokaż więcej wyników"
-        const showMoreBtn = this.el.querySelector( '[data-action="show-more"]' );
-        if ( showMoreBtn ) {
-            showMoreBtn.addEventListener( 'click', () => {
+            // 13. "Pokaż więcej wyników"
+            if ( e.target.closest( '[data-action="show-more"]' ) ) {
                 this._showAll = true;
                 this._render();
-            } );
-        }
+                return;
+            }
 
-        // Propozycje poluzowania filtrów (ekran "brak wyników")
-        // _relaxedCache jest jeszcze zapełniony w tym miejscu (zerowany PO _attachEvents)
-        const suggestions = this._getRelaxedSuggestions();
-        this.el.querySelectorAll( '[data-relax]' ).forEach( btn => {
-            const idx = parseInt( btn.dataset.relax );
-            if ( suggestions[ idx ] ) {
-                btn.addEventListener( 'click', () => this._set( suggestions[ idx ].patch ) );
+            // 14. Propozycje poluzowania filtrów (ekran "brak wyników")
+            const relaxBtn = e.target.closest( '[data-relax]' );
+            if ( relaxBtn ) {
+                const idx         = parseInt( relaxBtn.dataset.relax );
+                const suggestions = this._getRelaxedSuggestions();
+                if ( suggestions[ idx ] ) this._set( suggestions[ idx ].patch );
+                return;
             }
         } );
+
+        // ── Input delegation — wyszukiwarka obszarów (krok 2) ─────────────────
+        // Debounce 200 ms: filtrowanie kafelków to operacja DOM (style.display) bez
+        // scoringu — 200 ms daje responsywność z ochroną przed flood-em na smartfonach.
+        this.el.addEventListener( 'input', debounce( ( e ) => {
+            if ( ! e.target.closest( '.np-mm__search' ) ) return;
+            const q = e.target.value.toLowerCase();
+            this.el.querySelectorAll( '.np-mm__tile-grid--extended .np-mm__tile' ).forEach( t => {
+                t.style.display = t.textContent.toLowerCase().includes( q ) ? '' : 'none';
+            } );
+        }, 200 ) );
     }
 
     // ─── Partial update kroku 2 ───────────────────────────────────────────────
@@ -288,6 +314,9 @@ class NpMatchmaker {
     /**
      * Aktualizuje kafelki obszarów i liczniki w kroku 2 bez pełnego re-renderu.
      * Wywołany po każdym kliknięciu kafelka — szybszy niż innerHTML =.
+     *
+     * Regiony #np-mm-counter i #np-mm-area-counter mają aria-live="polite",
+     * więc czytniki ekranu automatycznie ogłoszą zmianę bez dodatkowej obsługi.
      */
     _updateStep2UI() {
         const { areas, primaryArea } = this.state;
@@ -346,7 +375,17 @@ class NpMatchmaker {
 
     /**
      * Otwiera / zamyka inline widget Bookero wewnątrz karty wyników.
-     * Przy otwarciu dynamicznie ładuje bookero-compiled.js z CDN i inicjuje widget.
+     *
+     * Strategia ładowania skryptu (OBSZAR 3):
+     *   1. Pierwsze otwarcie → inject <script> BEZ cache-bustera (?t=).
+     *      Przeglądarka cachuje skrypt po pierwszym pobraniu z CDN.
+     *   2. Kolejne otwarcia → window.bookero_config aktualizowany przed reinit.
+     *      Sprawdzamy znane API reinit dostawcy. Jeśli brak, re-execute przez
+     *      replaceWith() — przeglądarka serwuje z cache (0 ms sieci).
+     *
+     * Zamknięcie panelu obsługiwane przez Event Delegation w _initEvents()
+     * (delegacja na .np-mm__cal-close) — brak lokalnego addEventListener.
+     *
      * @param {HTMLElement} card  Element .np-mm__card
      */
     _toggleCalendar( card ) {
@@ -402,15 +441,9 @@ class NpMatchmaker {
             </div>
             <div id="${ containerId }" style="display:none!important;visibility:hidden!important;"></div>`;
 
-        panel.querySelector( '.np-mm__cal-close' ).addEventListener( 'click', () => {
-            panel.hidden    = true;
-            panel.innerHTML = '';
-            card.querySelector( '[data-action="open-cal"]' ).textContent = 'Umów wizytę';
-        } );
-
         card.querySelector( '[data-action="open-cal"]' ).textContent = 'Zamknij kalendarz';
 
-        // Konfiguracja globalna wymagana przez bookero-compiled.js
+        // Konfiguracja globalna — aktualizowana PRZED każdą inicjalizacją widgetu
         window.bookero_config = {
             id:            pluginId,
             container:     containerId,
@@ -421,15 +454,33 @@ class NpMatchmaker {
             custom_config: { use_worker_id: workerId, hide_worker_info: 1 },
         };
 
-        // Usuń poprzedni script i załaduj świeży (Bookero nie obsługuje wielokrotnej inicjalizacji)
-        const old = document.querySelector( 'script[data-bk-mm]' );
-        if ( old ) old.remove();
+        const BOOKERO_SRC    = 'https://cdn.bookero.pl/plugin/v2/js/bookero-compiled.js';
+        const existingScript = document.querySelector( 'script[data-bk-mm]' );
 
-        const script       = document.createElement( 'script' );
-        script.src         = 'https://cdn.bookero.pl/plugin/v2/js/bookero-compiled.js?t=' + Date.now();
-        script.dataset.bkMm = '1';
-        script.defer        = false;
-        document.body.appendChild( script );
+        if ( ! existingScript ) {
+            // Pierwsze otwarcie — załaduj raz (bez ?t= → browser/CDN cache aktywne)
+            const script        = document.createElement( 'script' );
+            script.src          = BOOKERO_SRC;
+            script.dataset.bkMm = '1';
+            document.body.appendChild( script );
+
+        } else {
+            // Kolejne otwarcia — skrypt już w DOM.
+            // Jeśli dostawca udostępnia publiczne API reinit: użyj go.
+            // Jeśli nie: re-execute przez replaceWith() — przeglądarka użyje cache CDN.
+            const reinit = window.BookeroCalendar?.init
+                        ?? window.Bookero?.init
+                        ?? window.bookeroInit;
+
+            if ( typeof reinit === 'function' ) {
+                reinit( window.bookero_config );
+            } else {
+                const clone         = document.createElement( 'script' );
+                clone.src           = BOOKERO_SRC;
+                clone.dataset.bkMm  = '1';
+                existingScript.replaceWith( clone );
+            }
+        }
 
         setTimeout( () => panel.scrollIntoView( { behavior: 'smooth', block: 'nearest' } ), 100 );
     }
