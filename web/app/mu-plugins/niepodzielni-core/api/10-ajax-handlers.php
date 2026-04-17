@@ -13,10 +13,14 @@ if (! defined('ABSPATH')) {
 /**
  * Sprawdza czy $typ należy do dozwolonych wartości.
  * Wywołuj we wszystkich handlerach przyjmujących $typ z zewnątrz.
+ *
+ * Akceptowane warianty:
+ *   pelno:  'pelno', 'pelnoplatny', 'pelnoplatne'  — data-typ="pelno" z Blade templates
+ *   nisko:  'nisko', 'niskoplatny', 'niskoplatne'
  */
 function np_bookero_is_valid_typ(string $typ): bool
 {
-    return in_array($typ, [ 'pelnoplatny', 'nisko' ], true);
+    return in_array($typ, [ 'pelno', 'pelnoplatny', 'pelnoplatne', 'nisko', 'niskoplatny', 'niskoplatne' ], true);
 }
 
 // ─── Real-time ingest: przechwycony getMonth z bookero-init.js ───────────────
