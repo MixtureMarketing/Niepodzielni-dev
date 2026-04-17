@@ -239,9 +239,9 @@ if (! function_exists('is_wp_error')) {
 
 if (! function_exists('get_site_url')) {
     function get_site_url(
-        int|null $blog_id    = null,
+        ?int $blog_id    = null,
         string   $path       = '',
-        string|null $scheme  = null,
+        ?string $scheme  = null,
     ): string {
         return 'https://example.com';
     }

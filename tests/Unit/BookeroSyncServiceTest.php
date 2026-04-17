@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Niepodzielni\Bookero\AccountConfig;
 use Niepodzielni\Bookero\BookeroApiClient;
 use Niepodzielni\Bookero\BookeroApiException;
 use Niepodzielni\Bookero\BookeroRateLimitException;
@@ -125,7 +124,7 @@ it('propaguje BookeroRateLimitException z syncSingleWorker gdy API zwraca HTTP 4
     $service = new BookeroSyncService($client, $repo);
 
     // WHEN / THEN — wyjątek musi przejść przez serwis, nie zostać pochłonięty
-    expect(fn () => $service->syncSingleWorker(42))
+    expect(fn() => $service->syncSingleWorker(42))
         ->toThrow(BookeroRateLimitException::class);
 });
 

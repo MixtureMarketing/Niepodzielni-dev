@@ -295,20 +295,46 @@ function np_ajax_bk_verify_hour(): void
         $worker_to_post[ $row->meta_value ] = (int) $row->post_id;
     }
 
+    // Micro-Cache: jeśli transient ma < 60 s → nie uderzamy ponownie w API Bookero.
+    // Zapobiega kaskadowym requestom przy równoczesnych rezerwacjach + chroni przed
+    // błędami rate-limit. Dane z bazy (np_bookero_cache_hours) służą jako fallback
+    // dla workerów, dla których pętla zakończyła się wyjątkiem.
+    $api_error_occurred = false;
+
     foreach ($bookero_ids as $worker_id) {
-        // Wymuś świeże dane — usuń transient przed wywołaniem
-        $cache_key = 'np_bkday_' . md5($typ . $worker_id . $date);
-        delete_transient($cache_key);
+        $hash      = md5($typ . $worker_id . $date);
+        $cache_key = 'np_bkday_' . $hash;
+        $ts_key    = 'np_bkday_ts_' . $hash;
 
-        $fresh_hours = np_bookero_get_month_day($worker_id, $typ, $date);
+        $last_fetch = (int) get_transient($ts_key);
+        $is_fresh   = $last_fetch && (time() - $last_fetch) < 60;
 
-        // Zaktualizuj DB świeżymi danymi z API
-        $post_id = $worker_to_post[ $worker_id ] ?? 0;
-        if ($post_id) {
-            np_bookero_cache_hours($post_id, $typ, $date, $fresh_hours);
+        if ($is_fresh) {
+            // Dane wystarczająco świeże — czytamy z istniejącego transienta
+            $hours = (array) get_transient($cache_key);
+        } else {
+            // Transient wygasł lub za stary — odpytujemy Bookero API
+            try {
+                $hours = np_bookero_get_month_day($worker_id, $typ, $date);
+                set_transient($ts_key, time(), 300); // znacznik czasu świeżości, TTL 5 min
+
+                // Zaktualizuj DB świeżymi danymi z API
+                $post_id = $worker_to_post[ $worker_id ] ?? 0;
+                if ($post_id) {
+                    np_bookero_cache_hours($post_id, $typ, $date, $hours);
+                }
+            } catch (\Niepodzielni\Bookero\BookeroRateLimitException $e) {
+                np_bookero_log_error('bk_verify_hour rate-limit', [ 'worker' => $worker_id, 'msg' => $e->getMessage() ]);
+                $api_error_occurred = true;
+                break; // Graceful degradation: pozostałe workery zatwierdzamy na starych danych
+            } catch (\Exception $e) {
+                np_bookero_log_error('bk_verify_hour error', [ 'worker' => $worker_id, 'msg' => $e->getMessage() ]);
+                $api_error_occurred = true;
+                break; // j.w.
+            }
         }
 
-        if (! in_array($hour, $fresh_hours, true)) {
+        if (! in_array($hour, $hours, true)) {
             $removed[] = $worker_id;
         }
     }
