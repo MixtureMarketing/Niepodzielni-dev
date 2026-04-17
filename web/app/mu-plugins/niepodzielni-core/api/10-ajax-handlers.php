@@ -104,8 +104,49 @@ function np_ajax_get_terminy(): void
         wp_send_json_error([ 'message' => 'Nieprawidłowy typ' ]);
     }
 
-    $terminy = np_bookero_get_terminy($bookero_id, $typ);
-    wp_send_json_success($terminy);
+    $client = new \Niepodzielni\Bookero\BookeroApiClient();
+    $repo   = new \Niepodzielni\Bookero\PsychologistRepository();
+
+    // L1: transient cache (ten sam klucz co stara np_bookero_get_terminy)
+    $cached = $repo->getMonthTransient($typ, $bookero_id, 0);
+    if ($cached !== false) {
+        wp_send_json_success($cached);
+    }
+
+    $cal_hash = np_bookero_cal_id_for($typ);
+    if (! $cal_hash) {
+        wp_send_json_success([]);
+    }
+
+    // Account config — z transientu lub API (/init)
+    $service_id = 0;
+    $cfg_arr    = $repo->getAccountConfigTransient($typ);
+    if ($cfg_arr !== false) {
+        $service_id = $cfg_arr['service_id'];
+    } else {
+        try {
+            $cfg = $client->getAccountConfig($cal_hash);
+            $repo->setAccountConfigTransient($typ, $cfg);
+            $service_id = $cfg->serviceId;
+        } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
+            np_bookero_log_error('get_terminy/config', [ 'worker' => $bookero_id, 'msg' => $e->getMessage() ]);
+        }
+    }
+
+    // Pobierz dostępne dni z API Bookero
+    try {
+        $slots = $client->getMonth($cal_hash, $bookero_id, $service_id, 0);
+        $repo->setMonthTransient($typ, $bookero_id, 0, $slots);
+        wp_send_json_success($slots);
+    } catch (\Niepodzielni\Bookero\BookeroRateLimitException $e) {
+        np_bookero_log_error('get_terminy/rate-limit', [ 'worker' => $bookero_id, 'msg' => $e->getMessage() ]);
+        $repo->setMonthTransientBackoff($typ, $bookero_id, 0);
+        wp_send_json_success([]);
+    } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
+        np_bookero_log_error('get_terminy/api-error', [ 'worker' => $bookero_id, 'msg' => $e->getMessage() ]);
+        $repo->setMonthTransientBackoff($typ, $bookero_id, 0);
+        wp_send_json_success([]);
+    }
 }
 
 // ─── Admin: inicjator synchronizacji wsadowej (Batching) ─────────────────────
@@ -321,9 +362,28 @@ function np_ajax_bk_verify_hour(): void
         $worker_to_post[ $row->meta_value ] = (int) $row->post_id;
     }
 
+    // Inicjalizacja warstwy OOP — BookeroApiClient + PsychologistRepository
+    $client     = new \Niepodzielni\Bookero\BookeroApiClient();
+    $repo       = new \Niepodzielni\Bookero\PsychologistRepository();
+    $cal_hash   = np_bookero_cal_id_for($typ);
+    $service_id = 0;
+
+    $cfg_arr = $repo->getAccountConfigTransient($typ);
+    if ($cfg_arr !== false) {
+        $service_id = $cfg_arr['service_id'];
+    } elseif ($cal_hash) {
+        try {
+            $cfg = $client->getAccountConfig($cal_hash);
+            $repo->setAccountConfigTransient($typ, $cfg);
+            $service_id = $cfg->serviceId;
+        } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
+            np_bookero_log_error('bk_verify_hour/config', [ 'msg' => $e->getMessage() ]);
+        }
+    }
+
     // Micro-Cache: jeśli transient ma < 60 s → nie uderzamy ponownie w API Bookero.
     // Zapobiega kaskadowym requestom przy równoczesnych rezerwacjach + chroni przed
-    // błędami rate-limit. Dane z bazy (np_bookero_cache_hours) służą jako fallback
+    // błędami rate-limit. Dane z bazy (repo->saveHours) służą jako fallback
     // dla workerów, dla których pętla zakończyła się wyjątkiem.
     $api_error_occurred = false;
 
@@ -339,22 +399,23 @@ function np_ajax_bk_verify_hour(): void
             // Dane wystarczająco świeże — czytamy z istniejącego transienta
             $hours = (array) get_transient($cache_key);
         } else {
-            // Transient wygasł lub za stary — odpytujemy Bookero API
+            // Transient wygasł lub za stary — odpytujemy Bookero API (OOP)
             try {
-                $hours = np_bookero_get_month_day($worker_id, $typ, $date);
-                set_transient($ts_key, time(), 300); // znacznik czasu świeżości, TTL 5 min
+                $hours = $client->getMonthDay($cal_hash, $worker_id, $date, $service_id);
+                set_transient($cache_key, $hours, 5 * MINUTE_IN_SECONDS); // dla micro-cache odczytu
+                set_transient($ts_key, time(), 300);                       // znacznik świeżości
 
                 // Zaktualizuj DB świeżymi danymi z API
                 $post_id = $worker_to_post[ $worker_id ] ?? 0;
                 if ($post_id) {
-                    np_bookero_cache_hours($post_id, $typ, $date, $hours);
+                    $repo->saveHours($post_id, $typ, $date, $hours);
                 }
             } catch (\Niepodzielni\Bookero\BookeroRateLimitException $e) {
-                np_bookero_log_error('bk_verify_hour rate-limit', [ 'worker' => $worker_id, 'msg' => $e->getMessage() ]);
+                np_bookero_log_error('bk_verify_hour/rate-limit', [ 'worker' => $worker_id, 'msg' => $e->getMessage() ]);
                 $api_error_occurred = true;
                 break; // Graceful degradation: pozostałe workery zatwierdzamy na starych danych
-            } catch (\Exception $e) {
-                np_bookero_log_error('bk_verify_hour error', [ 'worker' => $worker_id, 'msg' => $e->getMessage() ]);
+            } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
+                np_bookero_log_error('bk_verify_hour/api-error', [ 'worker' => $worker_id, 'msg' => $e->getMessage() ]);
                 $api_error_occurred = true;
                 break; // j.w.
             }
@@ -399,12 +460,29 @@ function np_ajax_bk_create_booking(): void
     }
 
     // Ustal typ konta na podstawie cal_hash
-    $cal_id_nisko   = np_bookero_cal_id_for('nisko');
-    $typ            = ($cal_hash === $cal_id_nisko) ? 'nisko' : 'pelnoplatny';
-    $account_cfg    = np_bookero_get_account_config($typ);
-    $service_id     = $service ?: ($account_cfg['service_id'] ?? 0);
-    $payment_id     = $account_cfg['payment_id'] ?? 0;
-    $service_name   = $account_cfg['service_name'] ?? 'Konsultacja psychologiczna';
+    $cal_id_nisko = np_bookero_cal_id_for('nisko');
+    $typ          = ($cal_hash === $cal_id_nisko) ? 'nisko' : 'pelnoplatny';
+
+    // Account config — warstwa OOP (BookeroApiClient + PsychologistRepository)
+    $client  = new \Niepodzielni\Bookero\BookeroApiClient();
+    $repo    = new \Niepodzielni\Bookero\PsychologistRepository();
+    $cfg_arr = $repo->getAccountConfigTransient($typ);
+
+    if ($cfg_arr !== false) {
+        $account_cfg = \Niepodzielni\Bookero\AccountConfig::fromArray($cfg_arr);
+    } else {
+        try {
+            $account_cfg = $client->getAccountConfig($cal_hash);
+            $repo->setAccountConfigTransient($typ, $account_cfg);
+        } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
+            np_bookero_log_error('create_booking/config', [ 'msg' => $e->getMessage() ]);
+            $account_cfg = \Niepodzielni\Bookero\AccountConfig::empty();
+        }
+    }
+
+    $service_id   = $service ?: $account_cfg->serviceId;
+    $payment_id   = $account_cfg->paymentId;
+    $service_name = $account_cfg->serviceName ?: 'Konsultacja psychologiczna';
 
     // Zbuduj plugin_comment z parametrami formularza (stałe IDs dla konta Bookero Niepodzielni)
     $parameters = [];
@@ -471,8 +549,7 @@ function np_ajax_bk_create_booking(): void
 
     // Deleguj do BookeroApiClient::createBooking() — timeout 8s, obsługa błędów i logowanie
     // w jednym miejscu (BookeroApiClient::post() + parseResponse()).
-    $client = new \Niepodzielni\Bookero\BookeroApiClient();
-
+    // $client zainicjalizowany wyżej przy pobieraniu konfiguracji konta.
     try {
         wp_send_json_success($client->createBooking($cal_hash, $payload));
     } catch (\Niepodzielni\Bookero\BookeroApiException $e) {

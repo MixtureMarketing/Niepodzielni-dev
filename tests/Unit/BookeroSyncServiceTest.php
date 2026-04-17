@@ -205,3 +205,31 @@ it('SyncResult::hasAnyAvailability() zwraca true gdy nearestPelny niepuste', fun
 
     expect($result->hasAnyAvailability())->toBeTrue();
 });
+
+/**
+ * Kontrakt Circuit Breakera:
+ *   - BookeroRateLimitException MUSI propagować się przez serwis → cron/AJAX może ją złapać
+ *     i ustawić transient blokady (BOOKERO_LOCKOUT_KEY) lub wywołać break w pętli.
+ *   - Zwykły BookeroApiException (5xx, timeout sieciowy) NIE propaguje — serwis pochłania
+ *     i zwraca pusty SyncResult, żeby jedna awaria jednego psychologa nie przerywała reszty kolejki.
+ */
+it('circuit breaker: BookeroRateLimitException propaguje, zwykły BookeroApiException jest pochłaniany', function () {
+    $repo = makeRepoWithWorker('worker-cb');
+
+    // ── Rate Limit: musi propagować ──────────────────────────────────────────
+    $rateLimitService = new BookeroSyncService(makeRateLimitClient(), $repo);
+
+    expect(fn() => $rateLimitService->syncSingleWorker(10))
+        ->toThrow(BookeroRateLimitException::class, 'HTTP 429');
+
+    // ── Zwykły błąd: musi być pochłonięty, SyncResult z pustymi terminami ───
+    $regularErrorService = new BookeroSyncService(makeRegularErrorClient(), $repo);
+    $result = $regularErrorService->syncSingleWorker(10);
+
+    expect($result)
+        ->toBeInstanceOf(SyncResult::class)
+        ->and($result->hasPelny)->toBeTrue()      // worker_id istniał
+        ->and($result->nearestPelny)->toBe('')     // ale termin pusty
+        ->and($result->hasSynced())->toBeTrue()    // sync nastąpił (worker był)
+        ->and($result->hasAnyAvailability())->toBeFalse();
+});

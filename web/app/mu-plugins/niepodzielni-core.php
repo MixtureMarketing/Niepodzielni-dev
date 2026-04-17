@@ -38,7 +38,7 @@ require_once NIEPODZIELNI_CORE_PATH . 'cpt/19-cpt-grupy-wsparcia.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/20-cpt-metaboxes.php';
 
 // 2. INTEGRACJA API BOOKERO I AJAX
-require_once NIEPODZIELNI_CORE_PATH . 'api/8-bookero-api.php';
+// 8-bookero-api.php usunięty — logika przeniesiona do BookeroApiClient + PsychologistRepository (OOP)
 require_once NIEPODZIELNI_CORE_PATH . 'api/9-bookero-sync.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/10-ajax-handlers.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/11-bookero-shortcodes.php';
