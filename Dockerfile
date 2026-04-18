@@ -69,6 +69,9 @@ FROM php:8.4-apache AS runtime
 # WP-CLI z oficjalnego obrazu
 COPY --from=wordpress:cli /usr/local/bin/wp /usr/local/bin/wp
 
+# Composer — potrzebny przez entrypoint (fallback composer install w dev)
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 # Zależności systemowe (bez git — niepotrzebny w produkcji)
 RUN apt-get update && apt-get install -y \
     libfreetype6-dev \

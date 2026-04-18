@@ -206,8 +206,7 @@ function np_cf_warsztaty_grupy(): void
                 ->set_help_text('Jeśli puste, na listingu używany jest tytuł postu.'),
 
             Field::make('date', 'data', 'Data')
-                ->set_storage_format('Y-m-d')
-                ->set_display_format('d.m.Y'),
+                ->set_storage_format('Y-m-d'),
 
             Field::make('text', 'godzina', 'Godzina rozpoczęcia')
                 ->set_attribute('placeholder', 'np. 18:00')
@@ -269,8 +268,7 @@ function np_cf_wydarzenia(): void
         ->add_fields([
 
             Field::make('date', 'data', 'Data')
-                ->set_storage_format('Y-m-d')
-                ->set_display_format('d.m.Y'),
+                ->set_storage_format('Y-m-d'),
 
             Field::make('text', 'godzina_rozpoczecia', 'Godzina rozpoczęcia')
                 ->set_attribute('placeholder', 'np. 18:00')
@@ -315,7 +313,6 @@ function np_cf_aktualnosci(): void
 
             Field::make('date', 'data_wydarzenia', 'Data wydarzenia')
                 ->set_storage_format('Y-m-d')
-                ->set_display_format('d.m.Y')
                 ->set_help_text('Jeśli puste, na listingu używana jest data publikacji postu.'),
 
             Field::make('text', 'miejsce', 'Miejsce')

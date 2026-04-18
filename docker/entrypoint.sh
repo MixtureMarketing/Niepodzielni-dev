@@ -1,12 +1,23 @@
 #!/bin/bash
 set -e
 
-# Instalacja zależności PHP — pomijana gdy vendor/ istnieje (obraz produkcyjny
-# ma vendor/ wgrany przez COPY --from=composer-* w Dockerfile).
-# Fallback do composer install zachowany dla środowisk dev bez multi-stage build.
-if [ ! -d "vendor" ]; then
-    echo "vendor/ not found — running composer install (dev/fallback mode)"
+# Instalacja zależności PHP.
+# Warunek: brak WordPress core (web/wp/wp-load.php) — znaczy że wolumen webwp
+# jest pusty i trzeba zainstalować wszystko od zera (composer install zapisuje
+# zarówno vendor/ jak i web/wp/ przez installer-paths).
+# Przypadek: vendor/ może być wgrany z obrazu (multi-stage COPY --from), ale
+# web/wp/ pochodzi z osobnego wolumenu — sprawdzamy więc WP, nie vendor.
+if [ ! -f "web/wp/wp-load.php" ]; then
+    echo "WordPress core not found — running composer install"
     composer install --no-interaction --prefer-dist --optimize-autoloader
+    # Jeśli vendor/ był wgrany z obrazu (multi-stage COPY --from), composer install
+    # pomija już-znane paczki i nie wypełnia web/wp/ (wolumen webwp jest pusty).
+    # WP-CLI pobiera WordPress core bezpośrednio — pomija ograniczenie named volume.
+    if [ ! -f "web/wp/wp-load.php" ]; then
+        WP_VERSION=$(grep -o '"roots/wordpress": "[^"]*"' composer.json | grep -o '[0-9][^"]*' || echo "latest")
+        echo "Still missing — downloading WordPress ${WP_VERSION} via WP-CLI"
+        wp core download --path=web/wp --version="${WP_VERSION}" --allow-root --force
+    fi
 fi
 
 if [ ! -d "web/app/themes/niepodzielni-theme/vendor" ]; then
@@ -27,7 +38,7 @@ chown -R www-data:www-data web/app/cache web/app/uploads
 # Redis object cache
 cp -f web/app/plugins/redis-cache/includes/object-cache.php web/app/object-cache.php || true
 
-# Flush reguł przepisywania URL
+# Flush reguł przepisywania URL (|| true — nie blokuj startu gdy WP niezainicjowany)
 php -r '
     define("WP_USE_THEMES", false);
     $_SERVER["HTTP_HOST"]  = "localhost:8000";
@@ -36,7 +47,7 @@ php -r '
     global $wp_rewrite;
     $wp_rewrite->flush_rules(true);
     echo "Rewrite rules flushed." . PHP_EOL;
-'
+' || echo "Rewrite flush skipped (WP not configured yet — run wp core install)"
 
 # Uruchom demona cron (system cron dla Bookero)
 service cron start
