@@ -13,6 +13,9 @@ RewriteRule ^wp-login\.php$ wp/wp-login.php [L]
 RewriteRule ^wp-cron\.php$ wp/wp-cron.php [L]
 RewriteRule ^xmlrpc\.php$ wp/xmlrpc.php [L]
 
+# Carbon Fields assets — pomiń rewrite, serwuj statycznie z web/carbon-fields/
+RewriteRule ^carbon-fields/ - [L]
+
 # Standard WordPress front controller (all other non-file, non-dir requests)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

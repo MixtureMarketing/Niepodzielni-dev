@@ -35,6 +35,15 @@ mkdir -p web/app/cache/acorn/framework/cache \
          web/app/cache/acorn/logs
 chown -R www-data:www-data web/app/cache web/app/uploads
 
+# Carbon Fields assets — vendor/ jest poza DocumentRoot (web/).
+# Kopiujemy CF do web/carbon-fields/ żeby assety były dostępne przez HTTP.
+# Warunek: kopiuj tylko raz (gdy katalogu nie ma lub jest pusty).
+# Filtr carbon_fields_plugin_url w 21-carbon-fields.php wskazuje na ten URL.
+if [ ! -d "web/carbon-fields/core" ]; then
+    echo "Copying Carbon Fields assets to web/carbon-fields/"
+    cp -r vendor/htmlburger/carbon-fields web/carbon-fields
+fi
+
 # Redis object cache
 cp -f web/app/plugins/redis-cache/includes/object-cache.php web/app/object-cache.php || true
 

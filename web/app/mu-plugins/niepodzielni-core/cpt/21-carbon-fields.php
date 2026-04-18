@@ -55,6 +55,13 @@ use Carbon_Fields\Field;
 // Musi nastąpić na after_setup_theme — CF rejestruje własne hooki i assets.
 
 add_action('after_setup_theme', static function (): void {
+    // CF jest zainstalowany w vendor/ (poza DocumentRoot).
+    // Apache Alias /carbon-fields → vendor/htmlburger/carbon-fields udostępnia
+    // assety przez HTTP. Filtr musi być ustawiony PRZED boot().
+    add_filter('carbon_fields_plugin_url', static function (): string {
+        return home_url('/carbon-fields/');
+    });
+
     \Carbon_Fields\Carbon_Fields::boot();
 });
 
