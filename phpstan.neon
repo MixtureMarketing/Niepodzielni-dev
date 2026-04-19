@@ -12,9 +12,6 @@ parameters:
     bootstrapFiles:
         - stubs/wordpress.php
 
-    # Wyklucz pliki nie-PSR (sync-example.php to skrypt demonstracyjny)
-    excludePaths:
-        - web/app/mu-plugins/niepodzielni-core/src/Bookero/sync-example.php
 
     # Nie zgłaszaj błędów dla nieznanych klas WP — stub pokrywa używane klasy,
     # ale mogą pojawić się edge-case w hookowaniu (add_action itp.)
