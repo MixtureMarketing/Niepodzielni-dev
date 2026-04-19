@@ -56,11 +56,14 @@ use Carbon_Fields\Field;
 
 add_action('after_setup_theme', static function (): void {
     // CF jest zainstalowany w vendor/ (poza DocumentRoot).
-    // Apache Alias /carbon-fields → vendor/htmlburger/carbon-fields udostępnia
-    // assety przez HTTP. Filtr musi być ustawiony PRZED boot().
-    add_filter('carbon_fields_plugin_url', static function (): string {
-        return home_url('/carbon-fields/');
-    });
+    // entrypoint.sh kopiuje vendor/htmlburger/carbon-fields → web/carbon-fields/,
+    // więc assety są dostępne przez HTTP pod /carbon-fields/.
+    // config.php definiuje stałą Carbon_Fields\URL tylko gdy nie jest zdefiniowana —
+    // definiujemy ją tutaj PRZED boot(), żeby directory_to_url() nie zwróciło ''
+    // (vendor/ jest poza WP_CONTENT_DIR i ABSPATH w Bedrocku).
+    if (! defined('Carbon_Fields\URL')) {
+        define('Carbon_Fields\URL', rtrim(home_url('/carbon-fields'), '/'));
+    }
 
     \Carbon_Fields\Carbon_Fields::boot();
 });
