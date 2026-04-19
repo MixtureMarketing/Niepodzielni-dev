@@ -182,7 +182,7 @@ function np_cf_psycholog(): void
                 ->set_options(static fn() => np_cf_taxonomy_options('obszar-pomocy'))
                 ->set_help_text(
                     'Zaznaczone obszary wpływają na scoring w Matchmakerze. '
-                    . 'Zmiany są automatycznie synchronizowane do taksonomii WP po zapisaniu.'
+                    . 'Zmiany są automatycznie synchronizowane do taksonomii WP po zapisaniu.',
                 ),
 
             Field::make('multiselect', 'cf_nurty', 'Nurty terapeutyczne')
@@ -194,7 +194,7 @@ function np_cf_psycholog(): void
             Field::make('multiselect', 'cf_specjalizacje', 'Specjalizacje / Rola')
                 ->set_options(static fn() => np_cf_taxonomy_options('specjalizacja'))
                 ->set_help_text(
-                    'Pierwsza zaznaczona wartość wyświetlana jest jako "Rola" na karcie psychologa na listingu.'
+                    'Pierwsza zaznaczona wartość wyświetlana jest jako "Rola" na karcie psychologa na listingu.',
                 ),
         ]);
 }

@@ -157,6 +157,15 @@ class BookeroSyncService
     // ─── Prywatne pomocnicze ──────────────────────────────────────────────────────
 
     /**
+     * Loguje błąd API do np_bookero_log_error (ring buffer WP) i error_log (Apache).
+     */
+    private function logApiError(string $context, string $details, BookeroApiException $e): void
+    {
+        np_bookero_log_error($context, "{$details}: " . $e->getMessage());
+        error_log('[Bookero] ApiException ' . $context . ' ' . $details . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+    }
+
+    /**
      * Zwraca sloty dla jednego miesiąca — repo jako L1 cache, klient jako źródło danych.
      * Błędy HTTP są łapane tutaj, logowane i przekształcane w pustą tablicę + backoff TTL.
      *
@@ -186,8 +195,7 @@ class BookeroSyncService
             error_log('[Bookero] RateLimit getMonth worker=' . $workerId . ' typ=' . $typ . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             throw $e;
         } catch (BookeroApiException $e) {
-            np_bookero_log_error('getMonth', "worker={$workerId} typ={$typ}: " . $e->getMessage());
-            error_log('[Bookero] ApiException getMonth worker=' . $workerId . ' typ=' . $typ . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->logApiError('getMonth', "worker={$workerId} typ={$typ}", $e);
             $this->repo->setMonthTransientBackoff($typ, $workerId, $plusMonths);
 
             return [];
@@ -227,8 +235,7 @@ class BookeroSyncService
             error_log('[Bookero] RateLimit prewarm worker=' . $workerId . ' date=' . $nearestDate . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             throw $e;
         } catch (BookeroApiException $e) {
-            np_bookero_log_error('getMonthDay', "worker={$workerId} date={$nearestDate}: " . $e->getMessage());
-            error_log('[Bookero] ApiException prewarm worker=' . $workerId . ' date=' . $nearestDate . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->logApiError('getMonthDay', "worker={$workerId} date={$nearestDate}", $e);
         }
     }
 }

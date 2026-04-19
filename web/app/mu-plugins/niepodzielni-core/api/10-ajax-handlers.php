@@ -134,20 +134,9 @@ function np_ajax_get_terminy(): void
         wp_send_json_success([]);
     }
 
-    // Account config — z transientu lub API (/init)
-    $service_id = 0;
-    $cfg_arr    = $repo->getAccountConfigTransient($typ);
-    if ($cfg_arr !== false) {
-        $service_id = $cfg_arr['service_id'];
-    } else {
-        try {
-            $cfg = $client->getAccountConfig($cal_hash);
-            $repo->setAccountConfigTransient($typ, $cfg);
-            $service_id = $cfg->serviceId;
-        } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
-            np_bookero_log_error('get_terminy/config', [ 'worker' => $bookero_id, 'msg' => $e->getMessage() ]);
-        }
-    }
+    $sync        = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo);
+    $account_cfg = $sync->getAccountConfig($typ);
+    $service_id  = $account_cfg->serviceId;
 
     // Pobierz dostępne dni z API Bookero
     try {
@@ -274,7 +263,7 @@ function np_bookero_invalidate_workers_cache(): void
     $repo->invalidateWorkersCache('pelnoplatny');
 }
 
-add_action('save_post_psycholog',              'np_bookero_invalidate_workers_cache');
+add_action('save_post_psycholog', 'np_bookero_invalidate_workers_cache');
 add_action('niepodzielni_bookero_batch_synced', 'np_bookero_invalidate_workers_cache');
 
 // ─── Shared Calendar: fabryka serwisu ────────────────────────────────────────
@@ -403,23 +392,12 @@ function np_ajax_bk_verify_hour(): void
     }
 
     // Inicjalizacja warstwy OOP — BookeroApiClient + PsychologistRepository
-    $client     = new \Niepodzielni\Bookero\BookeroApiClient();
-    $repo       = new \Niepodzielni\Bookero\PsychologistRepository();
-    $cal_hash   = np_bookero_cal_id_for($typ);
-    $service_id = 0;
-
-    $cfg_arr = $repo->getAccountConfigTransient($typ);
-    if ($cfg_arr !== false) {
-        $service_id = $cfg_arr['service_id'];
-    } elseif ($cal_hash) {
-        try {
-            $cfg = $client->getAccountConfig($cal_hash);
-            $repo->setAccountConfigTransient($typ, $cfg);
-            $service_id = $cfg->serviceId;
-        } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
-            np_bookero_log_error('bk_verify_hour/config', [ 'msg' => $e->getMessage() ]);
-        }
-    }
+    $client      = new \Niepodzielni\Bookero\BookeroApiClient();
+    $repo        = new \Niepodzielni\Bookero\PsychologistRepository();
+    $cal_hash    = np_bookero_cal_id_for($typ);
+    $sync        = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo);
+    $account_cfg = $sync->getAccountConfig($typ);
+    $service_id  = $account_cfg->serviceId;
 
     // Micro-Cache: jeśli transient ma < 60 s → nie uderzamy ponownie w API Bookero.
     // Zapobiega kaskadowym requestom przy równoczesnych rezerwacjach + chroni przed
@@ -504,21 +482,10 @@ function np_ajax_bk_create_booking(): void
     $typ          = ($cal_hash === $cal_id_nisko) ? 'nisko' : 'pelnoplatny';
 
     // Account config — warstwa OOP (BookeroApiClient + PsychologistRepository)
-    $client  = new \Niepodzielni\Bookero\BookeroApiClient();
-    $repo    = new \Niepodzielni\Bookero\PsychologistRepository();
-    $cfg_arr = $repo->getAccountConfigTransient($typ);
-
-    if ($cfg_arr !== false) {
-        $account_cfg = \Niepodzielni\Bookero\AccountConfig::fromArray($cfg_arr);
-    } else {
-        try {
-            $account_cfg = $client->getAccountConfig($cal_hash);
-            $repo->setAccountConfigTransient($typ, $account_cfg);
-        } catch (\Niepodzielni\Bookero\BookeroApiException $e) {
-            np_bookero_log_error('create_booking/config', [ 'msg' => $e->getMessage() ]);
-            $account_cfg = \Niepodzielni\Bookero\AccountConfig::empty();
-        }
-    }
+    $client      = new \Niepodzielni\Bookero\BookeroApiClient();
+    $repo        = new \Niepodzielni\Bookero\PsychologistRepository();
+    $sync        = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo);
+    $account_cfg = $sync->getAccountConfig($typ);
 
     $service_id   = $service ?: $account_cfg->serviceId;
     $payment_id   = $account_cfg->paymentId;

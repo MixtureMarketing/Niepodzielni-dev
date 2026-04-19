@@ -11,8 +11,7 @@ class TemplateAktualnosci extends Composer
 
     public function __construct(
         private EventsListingService $service,
-    ) {
-    }
+    ) {}
 
     public function with(): array
     {

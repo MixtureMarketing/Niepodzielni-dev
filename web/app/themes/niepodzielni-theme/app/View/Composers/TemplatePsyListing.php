@@ -14,8 +14,7 @@ class TemplatePsyListing extends Composer
 
     public function __construct(
         private PsychologistListingService $service,
-    ) {
-    }
+    ) {}
 
     public function with(): array
     {

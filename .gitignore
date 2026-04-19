@@ -43,4 +43,5 @@ wp-cli.phar
 *.csv
 crawler.php
 full_performance_report.csv
+web/app/object-cache.php
 web/carbon-fields/

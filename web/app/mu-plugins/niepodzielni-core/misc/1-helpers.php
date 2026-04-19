@@ -10,6 +10,26 @@ if (! defined('ABSPATH')) {
 }
 
 /**
+ * Wspólny szkielet dla np_bookero_api_key_for() i np_bookero_cal_id_for().
+ * Priorytet: stała PHP (z .env) → WP option.
+ *
+ * @internal  Tylko na użytek np_bookero_api_key_for() i np_bookero_cal_id_for().
+ */
+function np_bookero_config_for(
+    string $typ,
+    string $const_nisko,
+    string $const_pelny,
+    string $opt_nisko,
+    string $opt_pelny,
+): string {
+    $is_nisko = in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
+    $const    = $is_nisko ? $const_nisko : $const_pelny;
+    $opt      = $is_nisko ? $opt_nisko : $opt_pelny;
+
+    return defined($const) && constant($const) ? (string) constant($const) : get_option($opt, '');
+}
+
+/**
  * Zwraca klucz API Bookero dla danego typu konsultacji.
  * Priorytet: stała PHP (z .env przez config/application.php) → WP option.
  *
@@ -18,15 +38,13 @@ if (! defined('ABSPATH')) {
  */
 function np_bookero_api_key_for(string $typ): string
 {
-    $is_nisko = in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
-    if ($is_nisko) {
-        return defined('NP_BOOKERO_API_KEY_NISKO') && NP_BOOKERO_API_KEY_NISKO
-            ? NP_BOOKERO_API_KEY_NISKO
-            : get_option('np_bookero_api_key_nisko', '');
-    }
-    return defined('NP_BOOKERO_API_KEY_PELNY') && NP_BOOKERO_API_KEY_PELNY
-        ? NP_BOOKERO_API_KEY_PELNY
-        : get_option('np_bookero_api_key_pelny', '');
+    return np_bookero_config_for(
+        $typ,
+        'NP_BOOKERO_API_KEY_NISKO',
+        'NP_BOOKERO_API_KEY_PELNY',
+        'np_bookero_api_key_nisko',
+        'np_bookero_api_key_pelny',
+    );
 }
 
 /**
@@ -38,15 +56,13 @@ function np_bookero_api_key_for(string $typ): string
  */
 function np_bookero_cal_id_for(string $typ): string
 {
-    $is_nisko = in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
-    if ($is_nisko) {
-        return defined('NP_BOOKERO_CAL_ID_NISKO') && NP_BOOKERO_CAL_ID_NISKO
-            ? NP_BOOKERO_CAL_ID_NISKO
-            : get_option('np_bookero_cal_nisko', '');
-    }
-    return defined('NP_BOOKERO_CAL_ID_PELNY') && NP_BOOKERO_CAL_ID_PELNY
-        ? NP_BOOKERO_CAL_ID_PELNY
-        : get_option('np_bookero_cal_pelny', '');
+    return np_bookero_config_for(
+        $typ,
+        'NP_BOOKERO_CAL_ID_NISKO',
+        'NP_BOOKERO_CAL_ID_PELNY',
+        'np_bookero_cal_nisko',
+        'np_bookero_cal_pelny',
+    );
 }
 
 /**
