@@ -366,16 +366,26 @@ function np_cf_taxonomy_options(string $taxonomy): array
 // CF ma swoje multiselekty dla obszar-pomocy, nurt, jezyk, specjalizacja.
 // Natywne checkbox/tag-cloud metaboksy WP byłyby drugi input do tych samych danych.
 
-add_action('add_meta_boxes', 'np_cf_remove_native_taxonomy_metaboxes');
+// Wyłącz edytor blokowy (Gutenberg) dla psychologa — CF v3 używa klasycznych metaboksów.
+// show_in_rest pozostaje true (REST API potrzebne dla front-end listingów i matchmakera).
+add_filter('use_block_editor_for_post_type', 'np_cf_disable_block_editor_for_psycholog', 10, 2);
+
+function np_cf_disable_block_editor_for_psycholog(bool $use, string $post_type): bool
+{
+    return $post_type === 'psycholog' ? false : $use;
+}
+
+// Klasyczny edytor: usuń natywne metaboksy taksonomii zarządzanych przez CF multiselect.
+// Priorytet 999 — po tym jak WP i inne pluginy zdążą zarejestrować swoje metaboksy.
+add_action('add_meta_boxes', 'np_cf_remove_native_taxonomy_metaboxes', 999);
 
 function np_cf_remove_native_taxonomy_metaboxes(): void
 {
     $taxonomies = ['obszar-pomocy', 'nurt', 'jezyk', 'specjalizacja'];
 
     foreach ($taxonomies as $taxonomy) {
-        // Taksonomie hierarchiczne: {taxonomy}div; niehierarchiczne: tagsdiv-{taxonomy}
-        remove_meta_box($taxonomy . 'div',    'psycholog', 'side');
         remove_meta_box('tagsdiv-' . $taxonomy, 'psycholog', 'side');
+        remove_meta_box($taxonomy . 'div',       'psycholog', 'side');
     }
 }
 
