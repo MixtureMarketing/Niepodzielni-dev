@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Matchmaker Shortcode — dopasowanie psychologa do potrzeb użytkownika
  * Shortcode: [np_matchmaker]
@@ -22,7 +23,7 @@ function np_shortcode_matchmaker(array $atts): string
         <div class="np-matchmaker__step" data-step="1">
             <h3>Czego potrzebujesz?</h3>
             <?php
-            $obszary = get_terms([ 'taxonomy' => 'obszar-pomocy', 'hide_empty' => false ]);
+            $obszary = get_terms(['taxonomy' => 'obszar-pomocy', 'hide_empty' => false]);
     if (! is_wp_error($obszary) && $obszary) :
         ?>
             <div class="np-matchmaker__options">
@@ -32,7 +33,8 @@ function np_shortcode_matchmaker(array $atts): string
                 </button>
                 <?php endforeach; ?>
             </div>
-            <?php endif; ?>
+            <?php
+    endif; ?>
         </div>
         <div class="np-matchmaker__results" style="display:none;"></div>
     </div>

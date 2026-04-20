@@ -257,6 +257,106 @@ class PsychologistRepository
     // ─── Batch load — eliminacja N+1 ─────────────────────────────────────────────
 
     /**
+     * Pobiera aktywnych psychologów dla danej daty (SQL-level filtering).
+     *
+     * Bolt Optimization: Uses MySQL 8.0 JSON_CONTAINS to fetch only relevant workers.
+     * This avoids loading and filtering all workers in PHP memory.
+     *
+     * @return array<int, WorkerRecord>
+     */
+    public function findByAvailableDate(string $typ, string $date): array
+    {
+        global $wpdb;
+
+        $isNisko   = $this->isNisko($typ);
+        $metaBkKey = $isNisko ? 'bookero_id_niski' : 'bookero_id_pelny';
+        $metaSlots = $isNisko ? 'bookero_slots_nisko' : 'bookero_slots_pelno';
+
+        // 1. Fetch IDs of psychologists available on $date using JSON_CONTAINS
+        // We use $wpdb->prepare for safety, though $date is validated as YYYY-MM-DD.
+        $jsonDate = '"' . $date . '"';
+        $pids     = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT post_id FROM {$wpdb->postmeta}
+                 WHERE meta_key = %s AND JSON_CONTAINS(meta_value, %s)",
+                $metaSlots,
+                $jsonDate,
+            ),
+        );
+
+        if (empty($pids)) {
+            return [];
+        }
+
+        // 2. Fetch full objects using getAllWorkersWithMeta but limited to these IDs.
+        // We modify the query to include only these IDs.
+        return $this->getWorkersByIds($typ, array_map('intval', $pids));
+    }
+
+    /**
+     * @param int[] $pids
+     * @return array<int, WorkerRecord>
+     */
+    public function getWorkersByIds(string $typ, array $pids): array
+    {
+        if (empty($pids)) {
+            return [];
+        }
+
+        $isNisko     = $this->isNisko($typ);
+        $metaBkKey   = $isNisko ? 'bookero_id_niski' : 'bookero_id_pelny';
+        $metaSlots   = $isNisko ? 'bookero_slots_nisko' : 'bookero_slots_pelno';
+        $metaTerm    = $isNisko ? 'najblizszy_termin_niskoplatny' : 'najblizszy_termin_pelnoplatny';
+        $metaStawka  = $isNisko ? 'stawka_niskoplatna' : 'stawka_wysokoplatna';
+        $metaHours   = $isNisko ? 'bookero_hours_nisko' : 'bookero_hours_pelno';
+
+        $query = new \WP_Query([
+            'post_type'              => 'psycholog',
+            'post__in'               => $pids,
+            'posts_per_page'         => -1,
+            'post_status'            => 'publish',
+            'orderby'                => 'post__in',
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+        ]);
+
+        // Bolt Optimization: Batch pre-fetch attachment meta to avoid N+1 queries.
+        np_warm_attachment_meta_cache(wp_list_pluck($query->posts, 'ID'));
+
+        $records = [];
+        foreach ($query->posts as $post) {
+            $pid      = (int) $post->ID;
+            $workerId = (string) get_post_meta($pid, $metaBkKey, true);
+
+            if ($workerId === '') {
+                continue;
+            }
+
+            $slotsJson = get_post_meta($pid, $metaSlots, true);
+            $slots     = $slotsJson ? (array) json_decode($slotsJson, true) : [];
+
+            $hoursJson  = get_post_meta($pid, $metaHours, true);
+            $hoursCache = $hoursJson ? (array) json_decode($hoursJson, true) : [];
+
+            $records[ $pid ] = new WorkerRecord(
+                postId: $pid,
+                name: $post->post_title,
+                workerId: $workerId,
+                slots: $slots,
+                nearestTerm: (string) get_post_meta($pid, $metaTerm, true),
+                price: (string) get_post_meta($pid, $metaStawka, true)
+                                ?: ($isNisko ? '55 zł' : '145 zł'),
+                rodzaj: (string) get_post_meta($pid, 'rodzaj_wizyty', true),
+                avatar: np_get_post_image_url($pid, [ '_thumbnail_id', 'zdjecie_profilowe', 'zdjecie' ], 'medium'),
+                profileUrl: (string) get_the_permalink($pid),
+                hoursCache: $hoursCache,
+            );
+        }
+
+        return $records;
+    }
+
+    /**
      * Pobiera wszystkich aktywnych psychologów z pełnymi metadanymi w 2 zapytaniach SQL.
      *
      * Wyniki są cache'owane w WP Object Cache (Redis) przez WORKERS_CACHE_TTL (7 min),
@@ -315,6 +415,9 @@ class PsychologistRepository
                 [ 'key' => $metaBkKey, 'value'   => '', 'compare' => '!=' ],
             ],
         ]);
+
+        // Bolt Optimization: Batch pre-fetch attachment meta to avoid N+1 queries.
+        np_warm_attachment_meta_cache(wp_list_pluck($query->posts, 'ID'));
 
         $records = [];
 

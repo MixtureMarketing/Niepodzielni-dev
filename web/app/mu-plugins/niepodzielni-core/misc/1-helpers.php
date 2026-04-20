@@ -371,3 +371,33 @@ function np_get_flag_map(): array
         'it'         => 'it',
     ];
 }
+
+/**
+ * Bolt Optimization: Batch pre-fetch attachment meta to avoid N+1 queries.
+ *
+ * Scans provided post IDs for common attachment meta keys and warms up
+ * the meta cache for all found attachment IDs in a single SQL query.
+ *
+ * @param int[] $post_ids Array of post IDs to check for attachment fields.
+ */
+function np_warm_attachment_meta_cache(array $post_ids): void
+{
+    if (empty($post_ids)) {
+        return;
+    }
+
+    $attachment_ids = [];
+    foreach ($post_ids as $pid) {
+        // These keys are used in np_get_post_image_url and np_get_post_image_tag
+        foreach (['_thumbnail_id', 'zdjecie_profilowe', 'zdjecie', 'zdjecie_glowne', 'zdjecie_tla'] as $key) {
+            $val = get_post_meta($pid, $key, true);
+            if (is_numeric($val) && (int) $val > 0) {
+                $attachment_ids[] = (int) $val;
+            }
+        }
+    }
+
+    if (! empty($attachment_ids)) {
+        update_postmeta_cache(array_unique($attachment_ids));
+    }
+}
