@@ -301,6 +301,12 @@ class PsychologistRepository
         // posts_per_page=500 zamiast -1 — zabezpieczenie przed memory bomb przy dużej bazie.
         // Przy 500 psychologach (każdy ~5 meta klucze × ~500B) = ~2,5MB w RAM — akceptowalne.
         // Jeśli baza przekroczy 500 wpisów, wdrożyć chunking: kilka WP_Query z offset.
+        //
+        // Brak meta_query celowy: Carbon_Fields\Service\Meta_Query_Service przechwytuje WP_Query
+        // i zamienia klucze CF (np. bookero_id_niski) na format _klucz (z podkreślnikiem),
+        // co powoduje 0 wyników ponieważ BookeroSyncService zapisuje bez podkreślnika.
+        // Filtrowanie po $workerId === '' w pętli jest równoważne i nie dodaje zapytań SQL
+        // (update_post_meta_cache ładuje ALL meta w jednym IN() dla wszystkich postów).
         $query = new \WP_Query([
             'post_type'              => 'psycholog',
             'posts_per_page'         => 500,
@@ -309,11 +315,6 @@ class PsychologistRepository
             'order'                  => 'ASC',
             'update_post_meta_cache' => true,   // SQL 2 — ładuje ALL meta w jednym IN()
             'update_post_term_cache' => false,  // taksonomie niepotrzebne tutaj
-            'meta_query'             => [
-                'relation' => 'AND',
-                [ 'key' => $metaBkKey, 'compare' => 'EXISTS' ],
-                [ 'key' => $metaBkKey, 'value'   => '', 'compare' => '!=' ],
-            ],
         ]);
 
         $records = [];
