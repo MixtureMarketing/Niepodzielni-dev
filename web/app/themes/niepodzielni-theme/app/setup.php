@@ -87,9 +87,12 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script('sage/bk-shared-calendar.js', Vite::asset('resources/js/bk-shared-calendar.js'), [], null, true);
     }
 
-    // Matchmaker — na stronach z shortcodem [matchmaker]
+    // Matchmaker — na stronach z shortcodem [matchmaker] lub [np_matchmaker]
     $post = get_post();
-    $has_matchmaker = $post && has_shortcode($post->post_content, 'matchmaker');
+    $has_matchmaker = $post && (
+        has_shortcode($post->post_content, 'matchmaker') ||
+        has_shortcode($post->post_content, 'np_matchmaker')
+    );
     if ($has_matchmaker) {
         wp_enqueue_script('sage/matchmaker.js', Vite::asset('resources/js/matchmaker.js'), [], null, true);
     }
