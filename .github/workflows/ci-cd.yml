@@ -348,17 +348,33 @@ jobs:
 
       # ── Przygotowanie struktury dla lh.pl (open_basedir = web/) ─────────────
       # lh.pl blokuje dostęp PHP do katalogów powyżej web/. Przenosimy vendor/
-      # i config/ do web/ i łatamy wp-config.php tak żeby używał __DIR__.
+      # i config/ do web/ i łatamy trzy rzeczy:
+      #   1. wp-config.php — dirname(__DIR__) → __DIR__
+      #   2. Composer autoloader — ścieżki PSR-4 vendor/../web/app/ → vendor/../app/
+      #      (autoloader generowany z projektu root ma prefix /web/ który staje się
+      #       nadmiarowy gdy vendor/ jest już wewnątrz web/)
       - name: Restructure for lh.pl (vendor+config inside web/)
         run: |
           cp -r vendor/ web/vendor/
           cp -r config/ web/config/
+
+          # 1. wp-config.php
           sed -i \
             "s|require_once dirname(__DIR__) . '/vendor/autoload.php'|require_once __DIR__ . '/vendor/autoload.php'|" \
             web/wp-config.php
           sed -i \
             "s|require_once dirname(__DIR__) . '/config/application.php'|require_once __DIR__ . '/config/application.php'|" \
             web/wp-config.php
+
+          # 2. Composer autoloader path fix (project-root paths → web-root paths)
+          for f in web/vendor/composer/autoload_psr4.php \
+                   web/vendor/composer/autoload_classmap.php; do
+            sed -i "s|\\\$baseDir . '/web/app/|\$baseDir . '/app/|g" "$f"
+          done
+          sed -i "s|'/../..' . '/web/app/|'/../..' . '/app/|g" \
+            web/vendor/composer/autoload_static.php
+          sed -i "s|'\/..\/..\/web\/app\/|'/../../app/|g" \
+            web/vendor/composer/installed.php
 
       - name: Write .env
         run: echo "${{ secrets.PROD_ENV }}" > web/.env
