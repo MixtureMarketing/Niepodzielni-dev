@@ -284,80 +284,123 @@ jobs:
           retention-days: 7
 
   # ┌──────────────────────────────────────────────────────────────────────────┐
-  # │  JOB 6 — Deploy (placeholder)                                           │
-  # │  Uruchamia się PO wszystkich testach i TYLKO przy push do main.          │
-  # │  Pobiera artefakt frontendu — nie buduje drugi raz.                      │
+  # │  JOB 6 — Deploy do lh.pl (rsync + SSH)                                 │
+  # │                                                                          │
+  # │  Secrets (GitHub → Settings → Secrets → Actions):                       │
+  # │    PROD_SSH_PRIVATE_KEY  — klucz ed25519 (deploy_key)                  │
+  # │    PROD_ENV              — zawartość pliku .env (cały plik, nie base64) │
+  # │                                                                          │
+  # │  Specyfika lh.pl (open_basedir = web/ only):                            │
+  # │    vendor/ i config/ muszą być WEWNĄTRZ web/ — przed rsync przenosimy  │
+  # │    je tam i łatamy web/wp-config.php (dirname→__DIR__).                 │
   # └──────────────────────────────────────────────────────────────────────────┘
   deploy:
-    name: "Deploy — Production"
+    name: "Deploy — Production (lh.pl)"
     runs-on: ubuntu-24.04
     needs: [static-analysis, backend-tests, frontend-build, frontend-unit]
 
-    # Nie wdrażaj na PR ani na develop — tylko bezpośredni push do main.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     environment:
       name: production
-      # url: https://niepodzielni.pl
+      url: https://niepodzielni-dev-01.mixturemarketing.pl
+
+    env:
+      COMPOSER_CACHE_DIR: ~/.cache/composer
+      DEPLOY_HOST: serwer322648.lh.pl
+      DEPLOY_PORT: "40022"
+      DEPLOY_USER: serwer322648
+      DEPLOY_PATH: public_html/niepodzielni-dev-01.mixturemarketing.pl/web
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Pobierz gotowy artefakt frontendu (zbudowany w frontend-build).
-      # Eliminuje potrzebę ponownego npm ci + Vite build w tym jobie.
+      # ── Pobierz artefakt frontendu (zbudowany w frontend-build) ─────────────
       - name: Download artefaktu public/build
         uses: actions/download-artifact@v4
         with:
           name: frontend-build-${{ github.sha }}
           path: web/app/themes/niepodzielni-theme/public/build
 
-      # ────────────────────────────────────────────────────────────────────────
-      # INSTRUKCJA PODPIĘCIA DEPLOYMENTU — wybierz jedną metodę
-      # ────────────────────────────────────────────────────────────────────────
+      # ── PHP + Composer (prod deps only) ─────────────────────────────────────
+      - name: PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, xml, ctype, fileinfo, curl, intl, json, zip
+          coverage: none
+          tools: composer:v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── METODA A: rsync + SSH ─────────────────────────────────────────────
-      # Secrets wymagane: PROD_SSH_KEY, PROD_SSH_HOST, PROD_SSH_USER, PROD_SSH_PATH
-      #
-      # - name: Setup SSH
-      #   uses: webfactory/ssh-agent@v0.9.0
-      #   with:
-      #     ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
-      #
-      # - name: Add host to known_hosts
-      #   run: ssh-keyscan -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
-      #
-      # - name: Deploy via rsync
-      #   run: |
-      #     rsync -azP --delete \
-      #       --exclude='.git/' --exclude='.github/' \
-      #       --exclude='node_modules/' \
-      #       --exclude='web/app/themes/niepodzielni-theme/node_modules/' \
-      #       --exclude='.env' --exclude='web/wp/' \
-      #       ./ ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_SSH_PATH }}
-      #
-      # - name: Post-deploy (composer install + cache flush)
-      #   run: |
-      #     ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} \
-      #       "cd ${{ secrets.PROD_SSH_PATH }} && \
-      #        composer install --no-dev --optimize-autoloader --no-interaction && \
-      #        wp cache flush --allow-root"
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.COMPOSER_CACHE_DIR }}
+          key: composer-deploy-8.4-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-deploy-8.4-
+            composer-8.4-
 
-      # ── METODA B: PHP Deployer ───────────────────────────────────────────
-      # composer require --dev deployer/deployer + deploy.php w projekcie
-      #
-      # - name: Deploy via Deployer
-      #   run: |
-      #     vendor/bin/dep deploy production --branch=${{ github.ref_name }}
-      #   env:
-      #     SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
+      - name: Composer install (--no-dev)
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
 
-      - name: "Placeholder — deployment niezskonfigurowany"
+      # ── Przygotowanie struktury dla lh.pl (open_basedir = web/) ─────────────
+      # lh.pl blokuje dostęp PHP do katalogów powyżej web/. Przenosimy vendor/
+      # i config/ do web/ i łatamy wp-config.php tak żeby używał __DIR__.
+      - name: Restructure for lh.pl (vendor+config inside web/)
         run: |
-          echo "✓ Static Analysis  — OK"
-          echo "✓ Backend Tests    — OK"
-          echo "✓ Frontend Build   — OK"
-          echo "✓ Frontend Unit    — OK"
-          echo ""
-          echo "Frontend build artifact pobrany z: frontend-build-${{ github.sha }}"
-          echo "Odkomentuj Metodę A (rsync) lub B (Deployer) powyżej."
+          cp -r vendor/ web/vendor/
+          cp -r config/ web/config/
+          sed -i \
+            "s|require_once dirname(__DIR__) . '/vendor/autoload.php'|require_once __DIR__ . '/vendor/autoload.php'|" \
+            web/wp-config.php
+          sed -i \
+            "s|require_once dirname(__DIR__) . '/config/application.php'|require_once __DIR__ . '/config/application.php'|" \
+            web/wp-config.php
+
+      - name: Write .env
+        run: echo "${{ secrets.PROD_ENV }}" > web/.env
+
+      # ── SSH known_hosts ──────────────────────────────────────────────────────
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "[serwer322648.lh.pl]:40022 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKyBEKAMS05prsIbz7kaH2tYwFZ8SPNYUfRphHD0S4hd" \
+            >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Setup SSH private key
+        run: |
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      # ── rsync ────────────────────────────────────────────────────────────────
+      # --delete usuwa pliki na serwerze których nie ma lokalnie (poza exclusions).
+      # wp/ — WordPress core zarządzany ręcznie (duży, rzadko się zmienia).
+      # app/uploads/ — pliki użytkowników, nigdy nie nadpisujemy.
+      # app/cache/ — cache runtime, nie deploy.
+      # .env — piszemy osobno z secrets (nie z git).
+      # np-*.php — diagnostyczne/jednorazowe, czyścimy ręcznie.
+      - name: Deploy via rsync
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ env.DEPLOY_PORT }} -o StrictHostKeyChecking=yes" \
+            --exclude='.env' \
+            --exclude='wp/' \
+            --exclude='app/uploads/' \
+            --exclude='app/cache/' \
+            --exclude='np-*.php' \
+            web/ \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:~/${{ env.DEPLOY_PATH }}/
+
+      # ── Post-deploy: przepłucz permalink cache ───────────────────────────────
+      - name: Post-deploy (flush rewrite + opcache)
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ env.DEPLOY_PORT }} \
+            -o StrictHostKeyChecking=yes \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "/usr/bin/php84 /usr/bin/wp \
+              --path=\$HOME/${{ env.DEPLOY_PATH }}/wp \
+              rewrite flush --hard 2>&1 || true"

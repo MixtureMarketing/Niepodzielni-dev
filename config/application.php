@@ -33,7 +33,9 @@ $root_dir = dirname(__DIR__);
  *
  * @var non-falsy-string
  */
-$webroot_dir = $root_dir . '/web';
+// When config/ is relocated inside web/ (e.g. lh.pl open_basedir constraint),
+// $root_dir is already the webroot — no /web suffix needed.
+$webroot_dir = is_dir($root_dir . '/web') ? $root_dir . '/web' : $root_dir;
 
 /**
  * Use Dotenv to set required environment variables and load .env file in root
