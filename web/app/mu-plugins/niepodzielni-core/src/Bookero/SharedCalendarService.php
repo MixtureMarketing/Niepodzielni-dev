@@ -306,6 +306,13 @@ class SharedCalendarService
 
         $this->repo->persistHoursMap($worker->postId, $typ, $updatedMap);
 
+        // API potwierdziło brak terminów — usuń datę ze slotów i inwaliduj cache
+        // żeby przy ponownym wejściu data nie pojawiała się jako dostępna.
+        if (empty($hours)) {
+            $this->repo->removeDateFromSlots($worker->postId, $typ, $date);
+            $this->repo->invalidateSharedMonthTransients($typ);
+        }
+
         return $hours;
     }
 

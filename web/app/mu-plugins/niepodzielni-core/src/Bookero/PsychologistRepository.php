@@ -50,6 +50,28 @@ class PsychologistRepository
     }
 
     /**
+     * Usuwa pojedynczą datę z bookero_slots_* gdy API potwierdzi brak dostępności.
+     * Zapobiega ponownemu pokazywaniu daty po odświeżeniu strony.
+     *
+     * @return bool  true gdy data była w liście i została usunięta
+     */
+    public function removeDateFromSlots(int $postId, string $typ, string $date): bool
+    {
+        $metaKey = $this->isNisko($typ) ? 'bookero_slots_nisko' : 'bookero_slots_pelno';
+        $json    = get_post_meta($postId, $metaKey, true);
+        $slots   = $json ? (array) json_decode($json, true) : [];
+
+        $filtered = array_values(array_filter($slots, static fn($d) => $d !== $date));
+
+        if (count($filtered) === count($slots)) {
+            return false; // data nie była w liście
+        }
+
+        update_post_meta($postId, $metaKey, wp_json_encode($filtered));
+        return true;
+    }
+
+    /**
      * Zapisuje sformatowaną datę najbliższego terminu (np. "15 maja 2026").
      */
     public function saveNearestDate(int $postId, string $typ, string $nearestLabel): void

@@ -427,6 +427,13 @@ function np_ajax_bk_verify_hour(): void
                 $post_id = $worker_to_post[ $worker_id ] ?? 0;
                 if ($post_id) {
                     $repo->saveHours($post_id, $typ, $date, $hours);
+
+                    // Brak godzin = data nieaktualna → usuń ze slotów + inwaliduj cache
+                    // Bez tego odświeżenie strony znów pokazuje tę datę i ponownie pyta API.
+                    if (empty($hours)) {
+                        $repo->removeDateFromSlots($post_id, $typ, $date);
+                        $repo->invalidateSharedMonthTransients($typ);
+                    }
                 }
             } catch (\Niepodzielni\Bookero\BookeroRateLimitException $e) {
                 np_bookero_log_error('bk_verify_hour/rate-limit', [ 'worker' => $worker_id, 'msg' => $e->getMessage() ]);
