@@ -93,57 +93,36 @@ function np_cf_psycholog(): void
         ->add_fields([
 
             // ── Wizyty pełnopłatne ────────────────────────────────────────────
+            // Obecność Bookero ID = psycholog świadczy dany rodzaj usług.
+            // Nie ma potrzeby osobnego checkboxa "Świadczy wizyty X".
 
             Field::make('html', 'cf_sep_pelno')
                 ->set_html('<h3 style="margin:4px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Wizyty pełnopłatne</h3>'),
 
-            Field::make('checkbox', 'swiadczy_pelnoplatne', 'Świadczy wizyty pełnopłatne')
-                ->set_option_value('yes'),
-
             Field::make('text', 'bookero_id_pelny', 'Bookero ID (pełnopłatne)')
                 ->set_attribute('placeholder', 'np. 12345')
                 ->set_width(50)
-                ->set_help_text('ID pracownika w systemie Bookero — konto pełnopłatne.'),
+                ->set_help_text('ID pracownika w Bookero. Puste = nie świadczy wizyt pełnopłatnych.'),
 
             Field::make('text', 'stawka_wysokoplatna', 'Stawka (pełnopłatna)')
                 ->set_attribute('placeholder', 'np. 145 zł')
                 ->set_width(50)
                 ->set_help_text('Puste = domyślna stawka z Ustawień → Bookero.'),
 
-            // ── Wizyty niskopłatne — pola warunkowe (Conditional Logic) ──────
-            // Pola Bookero ID (nisko) i Stawka (nisko) pojawiają się TYLKO gdy
-            // checkbox "Świadczy wizyty niskopłatne" jest zaznaczony.
-            // CF Conditional Logic działa client-side (JS), bez przeładowania strony.
+            // ── Wizyty niskopłatne ────────────────────────────────────────────
 
             Field::make('html', 'cf_sep_nisko')
                 ->set_html('<h3 style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Wizyty niskopłatne</h3>'),
 
-            Field::make('checkbox', 'swiadczy_niskoplatne', 'Świadczy wizyty niskopłatne')
-                ->set_option_value('yes'),
-
             Field::make('text', 'bookero_id_niski', 'Bookero ID (niskopłatne)')
                 ->set_attribute('placeholder', 'np. 12346')
                 ->set_width(50)
-                ->set_help_text('ID pracownika w systemie Bookero — konto niskopłatne.')
-                ->set_conditional_logic([
-                    [
-                        'field'   => 'swiadczy_niskoplatne',
-                        'value'   => 'yes',
-                        'compare' => '=',
-                    ],
-                ]),
+                ->set_help_text('ID pracownika w Bookero. Puste = nie świadczy wizyt niskopłatnych.'),
 
             Field::make('text', 'stawka_niskoplatna', 'Stawka (niskopłatna)')
                 ->set_attribute('placeholder', 'np. 55 zł')
                 ->set_width(50)
-                ->set_help_text('Puste = domyślna stawka z Ustawień → Bookero.')
-                ->set_conditional_logic([
-                    [
-                        'field'   => 'swiadczy_niskoplatne',
-                        'value'   => 'yes',
-                        'compare' => '=',
-                    ],
-                ]),
+                ->set_help_text('Puste = domyślna stawka z Ustawień → Bookero.'),
 
             // ── Ogólne ────────────────────────────────────────────────────────
 
