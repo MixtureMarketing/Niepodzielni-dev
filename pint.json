@@ -10,6 +10,7 @@
     "web/app/plugins",
     "web/app/themes/twentytwentyfive",
     "web/carbon-fields",
+    "web/app/object-cache.php",
     "example"
   ]
 }

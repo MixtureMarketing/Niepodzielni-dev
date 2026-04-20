@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Matchmaker Shortcode — dopasowanie psychologa do potrzeb użytkownika
  * Shortcode: [np_matchmaker] | [matchmaker]
@@ -133,17 +134,17 @@ function np_matchmaker_build_data(): array
 
     $obszaryList = is_wp_error($obszaryAll) ? [] : array_map(
         fn($t) => ['slug' => $t->slug, 'name' => $t->name],
-        (array) $obszaryAll
+        (array) $obszaryAll,
     );
 
     $nurtyList = is_wp_error($nurtyAll) ? [] : array_map(
         fn($t) => ['slug' => $t->slug, 'name' => $t->name],
-        (array) $nurtyAll
+        (array) $nurtyAll,
     );
 
     $jezykiList = is_wp_error($jezykiAll) ? [] : array_map(
         fn($t) => ['slug' => $t->slug, 'name' => $t->name],
-        (array) $jezykiAll
+        (array) $jezykiAll,
     );
 
     // Curated: top 12 obszarów wg liczby psychologów → główna siatka w kroku 2

@@ -364,7 +364,7 @@ function np_cf_remove_native_taxonomy_metaboxes(): void
 
     foreach ($taxonomies as $taxonomy) {
         remove_meta_box('tagsdiv-' . $taxonomy, 'psycholog', 'side');
-        remove_meta_box($taxonomy . 'div',       'psycholog', 'side');
+        remove_meta_box($taxonomy . 'div', 'psycholog', 'side');
     }
 }
 

@@ -90,8 +90,8 @@ add_action('wp_enqueue_scripts', function () {
     // Matchmaker — na stronach z shortcodem [matchmaker] lub [np_matchmaker]
     $post = get_post();
     $has_matchmaker = $post && (
-        has_shortcode($post->post_content, 'matchmaker') ||
-        has_shortcode($post->post_content, 'np_matchmaker')
+        has_shortcode($post->post_content, 'matchmaker')
+        || has_shortcode($post->post_content, 'np_matchmaker')
     );
     if ($has_matchmaker) {
         wp_enqueue_script('sage/matchmaker.js', Vite::asset('resources/js/matchmaker.js'), [], null, true);
