@@ -346,6 +346,10 @@ jobs:
       - name: Composer install (--no-dev)
         run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
 
+      - name: Composer install theme (--no-dev)
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+        working-directory: web/app/themes/niepodzielni-theme
+
       # ── Przygotowanie struktury dla lh.pl (open_basedir = web/) ─────────────
       # lh.pl blokuje dostęp PHP do katalogów powyżej web/. Przenosimy vendor/
       # i config/ do web/ i łatamy trzy rzeczy:
