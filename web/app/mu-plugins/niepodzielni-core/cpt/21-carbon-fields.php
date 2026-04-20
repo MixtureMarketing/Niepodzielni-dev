@@ -362,6 +362,23 @@ function np_cf_taxonomy_options(string $taxonomy): array
     return array_column((array) $terms, 'name', 'slug');
 }
 
+// ─── Ukryj natywne metaboksy taksonomii (zastąpione przez CF multiselect) ────
+// CF ma swoje multiselekty dla obszar-pomocy, nurt, jezyk, specjalizacja.
+// Natywne checkbox/tag-cloud metaboksy WP byłyby drugi input do tych samych danych.
+
+add_action('add_meta_boxes', 'np_cf_remove_native_taxonomy_metaboxes');
+
+function np_cf_remove_native_taxonomy_metaboxes(): void
+{
+    $taxonomies = ['obszar-pomocy', 'nurt', 'jezyk', 'specjalizacja'];
+
+    foreach ($taxonomies as $taxonomy) {
+        // Taksonomie hierarchiczne: {taxonomy}div; niehierarchiczne: tagsdiv-{taxonomy}
+        remove_meta_box($taxonomy . 'div',    'psycholog', 'side');
+        remove_meta_box('tagsdiv-' . $taxonomy, 'psycholog', 'side');
+    }
+}
+
 // ─── Synchronizacja taksonomii WP ────────────────────────────────────────────
 
 /**
@@ -396,12 +413,14 @@ function np_cf_sync_psycholog_taxonomies(int $post_id): void
     ];
 
     foreach ($sync_map as $meta_key => $taxonomy) {
-        // Pomiń jeśli CF meta nigdy nie był zapisany (chroni istniejące dane)
+        // CF zapisuje dane zarówno w cf_* (PHP serialized) jak i w _cf_*|||n|value.
+        // carbon_get_post_meta czyta z _cf_*|||n|value — poprawny format po CF v3.
+        // Pomiń jeśli CF meta nie istnieje (chroni psychologów nigdy nie edytowanych przez CF).
         if (! metadata_exists('post', $post_id, $meta_key)) {
             continue;
         }
 
-        $slugs = (array) get_post_meta($post_id, $meta_key, true);
+        $slugs = (array) carbon_get_post_meta($post_id, $meta_key);
         $slugs = array_values(array_filter(array_map('sanitize_key', $slugs)));
 
         // wp_set_object_terms([]) czyści przypisane termy — intencjonalne zachowanie
