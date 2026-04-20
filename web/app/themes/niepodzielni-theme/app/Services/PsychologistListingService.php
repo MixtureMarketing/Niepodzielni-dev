@@ -54,6 +54,11 @@ class PsychologistListingService
         //   SQL 2: SELECT meta_key,meta_value FROM postmeta WHERE post_id IN (...)
         //   SQL 3: SELECT t.*,tt.* FROM terms JOIN term_taxonomy JOIN term_relationships WHERE object_id IN (...)
         // Bez tych flag każde get_post_meta() i get_the_terms() generowałoby osobne zapytanie SQL.
+        //
+        // Brak meta_query celowy: Carbon_Fields\Service\Meta_Query_Service przechwytuje WP_Query
+        // i zamienia klucze CF (bookero_id_niski / bookero_id_pelny) na format _klucz,
+        // co powoduje 0 wyników. Filtrowanie po pustym workerId wykonywane jest w pętli PHP
+        // (update_post_meta_cache ładuje ALL meta w jednym IN() — zero dodatkowych SQL).
         $query = new \WP_Query([
             'post_type'              => 'psycholog',
             'posts_per_page'         => -1,
@@ -61,22 +66,15 @@ class PsychologistListingService
             'no_found_rows'          => true,
             'update_post_meta_cache' => true,
             'update_post_term_cache' => true,
-            'meta_query'             => [
-                'relation' => 'AND',
-                [
-                    'key'     => $meta_id_key,
-                    'compare' => 'EXISTS',
-                ],
-                [
-                    'key'     => $meta_id_key,
-                    'value'   => '',
-                    'compare' => '!=',
-                ],
-            ],
         ]);
 
         foreach ($query->posts as $post) {
-            $pid    = $post->ID;
+            $pid = $post->ID;
+
+            if (empty(get_post_meta($pid, $meta_id_key, true))) {
+                continue;
+            }
+
             $termin = get_post_meta($pid, $meta_termin, true);
 
             $clean_date = bookero_sanitize_date($termin);
