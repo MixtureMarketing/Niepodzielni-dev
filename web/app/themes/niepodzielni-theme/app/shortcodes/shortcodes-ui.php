@@ -137,8 +137,8 @@ function niepodzielni_specialists_slider_shortcode($atts)
             }
 
             $slides[] = [
-                'title'              => get_the_title(),
-                'link'               => get_permalink(),
+                'title'              => get_the_title($pid),
+                'link'               => get_permalink($pid),
                 'thumb'              => get_the_post_thumbnail($pid, 'large', [ 'class' => 'specialist-image' ]),
                 'termin'             => $termin,
                 'rodzaj_wizyty_html' => niepodzielni_rodzaj_wizyty_shortcode([]),
