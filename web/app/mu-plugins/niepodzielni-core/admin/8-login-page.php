@@ -90,7 +90,7 @@ function np_login_styles(): void
             font-size: 15px !important;
             padding: 12px 28px !important;
             height: auto !important;
-            width: 100%;
+            width: auto !important;
             transition: background .2s, transform .2s;
             text-shadow: none !important;
         }
