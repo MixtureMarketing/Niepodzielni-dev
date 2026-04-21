@@ -380,6 +380,11 @@ jobs:
           sed -i "s|'\/..\/..\/web\/app\/|'/../../app/|g" \
             web/vendor/composer/installed.php
 
+          # 3. Carbon Fields assets — vendor/ jest zablokowany przez .htaccess,
+          #    więc kopiujemy build/ CF do web/carbon-fields/ (katalog publiczny).
+          #    URL jest skonfigurowany w 21-carbon-fields.php jako home_url('/carbon-fields').
+          cp -r web/vendor/htmlburger/carbon-fields/build web/carbon-fields
+
       - name: Write .env
         run: echo "${{ secrets.PROD_ENV }}" > web/.env
 
