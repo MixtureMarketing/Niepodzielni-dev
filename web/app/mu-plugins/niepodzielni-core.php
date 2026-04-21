@@ -52,6 +52,7 @@ require_once NIEPODZIELNI_CORE_PATH . 'api/15-matchmaker-shortcode.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/5-admin-dashboard.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/6-admin-product-columns.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/7-admin-settings.php';
+require_once NIEPODZIELNI_CORE_PATH . 'admin/8-login-page.php';
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';
