@@ -143,13 +143,20 @@ Config::define('NONCE_SALT', env('NONCE_SALT'));
  * Redis Object Cache
  */
 if (env('REDIS_HOST')) {
-    Config::define('WP_REDIS_HOST', env('REDIS_HOST'));
-    Config::define('WP_REDIS_PORT', env('REDIS_PORT') ?: 6379);
     Config::define('WP_REDIS_DATABASE', 0);
     Config::define('WP_REDIS_TIMEOUT', 1);
     Config::define('WP_REDIS_READ_TIMEOUT', 1);
     Config::define('WP_REDIS_CLIENT', 'phpredis');
     Config::define('WP_REDIS_PREFIX', env('WP_REDIS_PREFIX') ?: 'np_');
+
+    if (env('REDIS_SCHEME') === 'unix') {
+        Config::define('WP_REDIS_SCHEME', 'unix');
+        Config::define('WP_REDIS_PATH', env('REDIS_HOST'));
+    } else {
+        Config::define('WP_REDIS_SCHEME', 'tcp');
+        Config::define('WP_REDIS_HOST', env('REDIS_HOST'));
+        Config::define('WP_REDIS_PORT', env('REDIS_PORT') ?: 6379);
+    }
 }
 
 /**
