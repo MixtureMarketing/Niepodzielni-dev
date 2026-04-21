@@ -42,7 +42,7 @@ if ($posts_items === false) {
         {{-- LOGO --}}
         <div class="header-logo">
             <a href="{{ home_url('/') }}">
-                <img src="/wp-content/uploads/2025/06/Clip-path-group.svg" alt="Niepodzielni Logo" width="180" height="auto">
+                <img src="https://media.niepodzielni.com/wp-content/uploads/20260330165908/Clip-path-group.svg" alt="Niepodzielni Logo" width="180" height="59" loading="eager">
             </a>
         </div>
 
