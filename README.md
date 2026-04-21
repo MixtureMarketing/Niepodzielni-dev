@@ -1,52 +1,124 @@
-<p align="center">
-  <a href="https://roots.io/bedrock/">
-    <img alt="Bedrock" src="https://cdn.roots.io/app/uploads/logo-bedrock.svg" height="100">
-  </a>
-</p>
+# Niepodzielni — WordPress
 
-<p align="center">
-  <a href="https://packagist.org/packages/roots/bedrock"><img alt="Packagist Installs" src="https://img.shields.io/packagist/dt/roots/bedrock?label=projects%20created&colorB=2b3072&colorA=525ddc&style=flat-square"></a>
-  <a href="https://packagist.org/packages/roots/wordpress"><img alt="roots/wordpress Packagist Downloads" src="https://img.shields.io/packagist/dt/roots/wordpress?label=roots%2Fwordpress%20downloads&logo=roots&logoColor=white&colorB=2b3072&colorA=525ddc&style=flat-square"></a>
-  <img src="https://img.shields.io/badge/dynamic/json.svg?url=https://raw.githubusercontent.com/roots/bedrock/master/composer.json&label=wordpress&logo=roots&logoColor=white&query=$.require[%22roots/wordpress%22]&colorB=2b3072&colorA=525ddc&style=flat-square">
-  <a href="https://github.com/roots/bedrock/actions/workflows/ci.yml"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/roots/bedrock/ci.yml?branch=master&logo=github&label=CI&style=flat-square"></a>
-  <a href="https://twitter.com/rootswp"><img alt="Follow Roots" src="https://img.shields.io/badge/follow%20@rootswp-1da1f2?logo=twitter&logoColor=ffffff&message=&style=flat-square"></a>
-  <a href="https://github.com/sponsors/roots"><img src="https://img.shields.io/badge/sponsor%20roots-525ddc?logo=github&style=flat-square&logoColor=ffffff&message=" alt="Sponsor Roots"></a>
-</p>
+Strona internetowa [Fundacji Niepodzielni](https://niepodzielni.com) oparta na Bedrock + Sage.
 
-<p align="center">WordPress boilerplate with Composer, easier configuration, and an improved folder structure</p>
+## Stack
 
-<p align="center">
-  <a href="https://roots.io/bedrock/">Website</a> &nbsp;&nbsp; <a href="https://roots.io/bedrock/docs/installation/">Documentation</a> &nbsp;&nbsp; <a href="https://github.com/roots/bedrock/releases">Releases</a> &nbsp;&nbsp; <a href="https://discourse.roots.io/">Community</a>
-</p>
+| Warstwa | Technologia |
+|---|---|
+| CMS | WordPress (Bedrock) |
+| Motyw | Sage (Acorn / Laravel Blade) |
+| Frontend | Vite + Tailwind CSS |
+| Booking | Bookero API v2 |
+| Pola meta | Carbon Fields |
+| Testy | Pest · PHPStan · Pint · Vitest |
+| Deploy | GitHub Actions → rsync → lh.pl |
+| Hosting | lh.pl (PHP 8.4, open_basedir = `web/`) |
 
-## Support us
+## Wymagania lokalne
 
-We're dedicated to pushing modern WordPress development forward through our open source projects, and we need your support to keep building. You can support our work by purchasing [Radicle](https://roots.io/radicle/), our recommended WordPress stack, or by [sponsoring us on GitHub](https://github.com/sponsors/roots). Every contribution directly helps us create better tools for the WordPress ecosystem.
+- PHP 8.3+
+- Composer 2
+- Node.js 20+
+- Docker (opcjonalnie, do bazy danych)
 
-### Sponsors
+## Szybki start
 
-<a href="https://carrot.com/"><img src="https://cdn.roots.io/app/uploads/carrot.svg" alt="Carrot" width="120" height="90"></a> <a href="https://wordpress.com/"><img src="https://cdn.roots.io/app/uploads/wordpress.svg" alt="WordPress.com" width="120" height="90"></a> <a href="https://www.itineris.co.uk/"><img src="https://cdn.roots.io/app/uploads/itineris.svg" alt="Itineris" width="120" height="90"></a> <a href="https://kinsta.com/?kaid=OFDHAJIXUDIV"><img src="https://cdn.roots.io/app/uploads/kinsta.svg" alt="Kinsta" width="120" height="90"></a>
+```bash
+git clone https://github.com/MixtureMarketing/Niepodzielni-dev.git
+cd Niepodzielni-dev
 
-## Overview
+# Zależności PHP
+composer install
 
-Bedrock is a WordPress boilerplate for developers that want to manage their projects with Git and Composer. Much of the philosophy behind Bedrock is inspired by the [Twelve-Factor App](http://12factor.net/) methodology, including the [WordPress specific version](https://roots.io/twelve-factor-wordpress/).
+# Zależności JS + build
+cd web/app/themes/niepodzielni-theme
+npm ci && npm run dev
 
-- Better folder structure
-- Dependency management with [Composer](https://getcomposer.org)
-- Easy WordPress configuration with environment specific files
-- Environment variables with [Dotenv](https://github.com/vlucas/phpdotenv)
-- Autoloader for mu-plugins (use regular plugins as mu-plugins)
+# Konfiguracja środowiska
+cp .env.example .env   # uzupełnij DB_*, WP_HOME, klucze Bookero
+```
 
-## Getting Started
+Serwer deweloperski: uruchom lokalny stos (np. Herd / Laravel Sail / Docker) z DocumentRoot w `web/`.
 
-See the [Bedrock installation documentation](https://roots.io/bedrock/docs/installation/).
+## Zmienne środowiskowe
 
-## Community
+Plik `.env` w katalogu `web/` (lub root przy lokalnym dev). Wymagane klucze:
 
-Keep track of development and community news.
+```
+WP_ENV=development
+WP_HOME=https://twoja-domena.local
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
 
-- Join us on Discord by [sponsoring us on GitHub](https://github.com/sponsors/roots)
-- Join us on [Roots Discourse](https://discourse.roots.io/)
-- Follow [@rootswp on Twitter](https://twitter.com/rootswp)
-- Follow the [Roots Blog](https://roots.io/blog/)
-- Subscribe to the [Roots Newsletter](https://roots.io/subscribe/)
+NP_BOOKERO_CAL_ID_PELNY=
+NP_BOOKERO_CAL_ID_NISKO=
+NP_BOOKERO_API_KEY_PELNY=
+NP_BOOKERO_API_KEY_NISKO=
+```
+
+## Struktura katalogów
+
+```
+├── config/               # Konfiguracja WordPress (application.php)
+├── vendor/               # Composer (nie w git)
+└── web/                  # DocumentRoot
+    ├── app/
+    │   ├── mu-plugins/niepodzielni-core/   # Logika biznesowa, Bookero, CF
+    │   ├── plugins/                         # Wtyczki WP (nie w git)
+    │   ├── themes/niepodzielni-theme/       # Motyw Sage
+    │   │   ├── app/                         # PHP (Composers, shortcodes, setup)
+    │   │   ├── resources/css|js|views/      # Frontend sources
+    │   │   └── public/build/                # Vite output (nie w git)
+    │   └── uploads/                         # Media (S3 via media.niepodzielni.com)
+    ├── wp/                                  # WordPress core (nie w git)
+    └── wp-config.php
+```
+
+## CI/CD
+
+Pipeline uruchamia się automatycznie przy push do `main`:
+
+1. **static-analysis** — Pint + PHPStan (level 8)
+2. **backend-tests** — Pest (PHP 8.3 + 8.4)
+3. **frontend-build** — Vite build → artefakt GitHub
+4. **frontend-unit** — Vitest
+5. **deploy** — rsync do lh.pl (tylko `main`)
+
+### Sekrety GitHub Actions
+
+| Sekret | Opis |
+|---|---|
+| `PROD_SSH_PRIVATE_KEY` | Klucz ed25519 do serwera lh.pl |
+| `PROD_ENV` | Zawartość pliku `.env` dla produkcji |
+
+### Specyfika lh.pl
+
+Hosting lh.pl blokuje dostęp PHP poza `web/` (`open_basedir`). Workflow automatycznie:
+- kopiuje `vendor/` → `web/vendor/`
+- kopiuje `config/` → `web/config/`
+- łata ścieżki w autoloaderze Composera
+- kopiuje assety Carbon Fields → `web/carbon-fields/`
+
+## Testy lokalne
+
+```bash
+# PHP
+vendor/bin/pest
+vendor/bin/phpstan analyse
+vendor/bin/pint --test
+
+# JS (w katalogu motywu)
+npm run test
+npm run build
+```
+
+## Cron
+
+WP-Cron jest wyłączony (`DISABLE_WP_CRON=true`). Na serwerze lh.pl skonfiguruj cron:
+
+```
+* * * * *  curl -s https://twoja-domena.pl/wp-cron.php?doing_wp_cron
+```
