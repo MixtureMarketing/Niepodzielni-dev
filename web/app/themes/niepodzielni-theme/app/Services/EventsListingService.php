@@ -76,6 +76,14 @@ class EventsListingService
                 'update_post_term_cache' => false,
             ]);
 
+            // Prefetch meta prowadzących (psycholog CPT) — eliminuje N+1 w np_get_event_leader_name()
+            $fac_ids = array_values(array_unique(array_filter(
+                array_map(fn($p) => (int) get_post_meta($p->ID, 'prowadzacy_id', true), $query->posts),
+            )));
+            if ($fac_ids) {
+                update_postmeta_cache($fac_ids);
+            }
+
             $data = [];
             foreach ($query->posts as $post) {
                 $pid   = $post->ID;
