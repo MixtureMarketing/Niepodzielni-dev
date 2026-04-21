@@ -285,7 +285,7 @@ if (calendarWrapper) {
                     config = {
                         id: isPelno ? (bkr.pelnoId || '') : (bkr.niskoId || ''),
                         container: 'bookero_render_target', type: 'calendar', position: '',
-                        plugin_css: true, lang,
+                        plugin_css: false, lang,
                         custom_config: { use_worker_id: isPelno ? id_pel : id_nis, hide_worker_info: 1 }
                     };
                     if (whatCalendarEl) whatCalendarEl.innerHTML = 'Umów wizytę';
@@ -307,7 +307,7 @@ if (calendarWrapper) {
                         container: 'bookero_render_target',
                         type:      widok,
                         position:  '',
-                        plugin_css: true,
+                        plugin_css: false,
                         lang,
                         custom_config: { use_worker_ids: workerIds, hide_worker_info: 1 },
                     };
@@ -324,7 +324,7 @@ if (calendarWrapper) {
                         container: 'bookero_render_target',
                         type: 'calendar',
                         position: '',
-                        plugin_css: true,
+                        plugin_css: false,
                         lang: lang,
                         custom_config: { use_worker_id: serviceId, hide_worker_info: 1 }
                     };
