@@ -381,11 +381,10 @@ jobs:
             web/vendor/composer/installed.php
 
           # 3. Carbon Fields assets — vendor/ jest zablokowany przez .htaccess,
-          #    więc kopiujemy build/ CF do web/carbon-fields/build/ (katalog publiczny).
-          #    URL jest skonfigurowany w 21-carbon-fields.php jako home_url('/carbon-fields'),
-          #    CF konstruuje ścieżki jako {URL}/build/classic/core.min.js etc.
-          mkdir -p web/carbon-fields
-          cp -r web/vendor/htmlburger/carbon-fields/build web/carbon-fields/
+          #    więc kopiujemy cały pakiet CF do web/carbon-fields/ (katalog publiczny).
+          #    URL jest skonfigurowany w 21-carbon-fields.php jako home_url('/carbon-fields').
+          #    CF konstruuje ścieżki do build/ i core/ względem tego URL.
+          cp -r web/vendor/htmlburger/carbon-fields/. web/carbon-fields/
 
       - name: Write .env
         run: echo "${{ secrets.PROD_ENV }}" > web/.env
