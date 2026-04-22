@@ -28,3 +28,14 @@ add_filter('script_loader_tag', function (string $tag, string $handle, string $s
     }
     return $tag;
 }, 10, 3);
+
+/**
+ * Dodaje fetchpriority="high" do głównego CSS — informuje przeglądarkę że
+ * to zasób krytyczny (blokuje render), więc ma priorytet nad innymi fetchami.
+ */
+add_filter('style_loader_tag', function (string $tag, string $handle): string {
+    if ($handle === 'sage/app.css') {
+        return str_replace('<link ', '<link fetchpriority="high" ', $tag);
+    }
+    return $tag;
+}, 10, 2);

@@ -63,8 +63,10 @@ RUN composer install \
     --prefer-dist \
     --optimize-autoloader
 
-# ── Stage 4: Runtime (PHP/Apache) ─────────────────────────────────────────────
-FROM php:8.4-apache AS runtime
+# ── Stage 4: Runtime (PHP-FPM) ────────────────────────────────────────────────
+# php:8.4-fpm = identyczny stack jak Trellis na VPS (nginx + PHP-FPM).
+# Poprzednio: php:8.4-apache — zmienione, żeby lokalne środowisko = produkcja.
+FROM php:8.4-fpm AS runtime
 
 # WP-CLI z oficjalnego obrazu
 COPY --from=wordpress:cli /usr/local/bin/wp /usr/local/bin/wp
@@ -113,9 +115,8 @@ RUN docker-php-ext-configure gd \
 RUN pecl install imagick redis \
     && docker-php-ext-enable imagick redis
 
-# Apache i konfiguracja
-RUN a2enmod rewrite headers expires
-COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+# PHP-FPM pool config (zastępuje apache VirtualHost)
+COPY docker/php-fpm/www.conf /usr/local/etc/php-fpm.d/www.conf
 
 # Ustawienia PHP
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/wordpress.ini
@@ -136,6 +137,6 @@ COPY --from=node-builder   /theme/public/build \
 # Kod źródłowy (ostatni — najczęściej zmienia się, musi być na końcu)
 COPY . .
 
-EXPOSE 80
+EXPOSE 9000
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -33,20 +33,27 @@ document.addEventListener('DOMContentLoaded', function () {
             .observe(sliderContainer);
     }
 
-    // Slider Partnerów
+    // Slider Partnerów — lazy init przez IntersectionObserver (jest na dole strony).
+    // Bezpośredni init na DOMContentLoaded powodował forced reflow (~150ms TBT).
     const partnersSlider = document.querySelector('.partners-slider');
     if (partnersSlider) {
-        new Swiper(partnersSlider, {
-            modules: [Autoplay],
-            loop: true,
-            slidesPerView: 2,
-            spaceBetween: 20,
-            autoplay: { delay: 3000, disableOnInteraction: false },
-            breakpoints: {
-                640:  { slidesPerView: 3, spaceBetween: 30 },
-                768:  { slidesPerView: 4, spaceBetween: 40 },
-                1024: { slidesPerView: 6, spaceBetween: 50 },
-            },
-        });
+        new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                new Swiper(partnersSlider, {
+                    modules: [Autoplay],
+                    loop: true,
+                    slidesPerView: 2,
+                    spaceBetween: 20,
+                    autoplay: { delay: 3000, disableOnInteraction: false },
+                    breakpoints: {
+                        640:  { slidesPerView: 3, spaceBetween: 30 },
+                        768:  { slidesPerView: 4, spaceBetween: 40 },
+                        1024: { slidesPerView: 6, spaceBetween: 50 },
+                    },
+                });
+                obs.unobserve(partnersSlider);
+            });
+        }, { rootMargin: '0px 0px 300px 0px' }).observe(partnersSlider);
     }
 });

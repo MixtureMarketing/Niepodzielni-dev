@@ -157,9 +157,13 @@
     };
 } )();
 
-// ─── GTM TRACKING ────────────────────────────────────────────────────────────
-// Registered at module-eval time, before DOMContentLoaded.
-// Ensures we never miss a Bookero event even if the widget fires early.
+// ─── TRACKING (Cloudflare Zaraz + GTM fallback) ──────────────────────────────
+// Primary:  zaraz.track() — server-side, zero JS w przeglądarce
+// Fallback: window.dataLayer.push() — działa podczas migracji gdy Zaraz
+//           jeszcze nie jest skonfigurowany w dashboardzie Cloudflare.
+//
+// Migracja GTM → Zaraz: gdy Zaraz jest aktywny zaraz.track() wygrywa;
+// GTM można dezaktywować w WP Admin bez ryzyka utraty danych.
 
 const trackingEvents = [
     'bookero-plugin:tracking:form-loaded',
@@ -182,48 +186,64 @@ function getPageContext() {
     };
 }
 
+/**
+ * Wysyła event do Cloudflare Zaraz (primary) lub GTM dataLayer (fallback).
+ * @param {string} name  Nazwa eventu, np. 'purchase', 'bookero_add_to_cart'
+ * @param {Object} props Właściwości eventu
+ */
+function npTrack(name, props) {
+    if (window.zaraz && typeof window.zaraz.track === 'function') {
+        window.zaraz.track(name, props);
+    } else if (window.dataLayer) {
+        window.dataLayer.push(Object.assign({ event: name }, props));
+    }
+}
+
 trackingEvents.forEach(function (eventName) {
     document.body.addEventListener(eventName, function (e) {
-        if (!window.dataLayer) return;
-
         const data    = (e.detail && e.detail.data) || {};
         const eventGA = eventName.replace('bookero-plugin:tracking:', 'bookero_');
 
         if (eventName === 'bookero-plugin:tracking:purchase') {
-            // Debug: log full payload once so future devs can refine field names
-            console.log('[Bookero GTM] purchase payload:', JSON.parse(JSON.stringify(e.detail || {})));
+            const ctx      = getPageContext();
+            const price    = parseFloat(data.value || data.price || data.total || data.amount || 0);
+            const currency = data.currency || 'PLN';
+            const txId     = data.transaction_id || data.order_id || data.booking_id
+                          || (data.id ? String(data.id) : null)
+                          || ('BKR-' + Date.now());
 
-            const ctx   = getPageContext();
-            const price = parseFloat(data.price || data.total || data.amount || data.value || 0);
-            const txId  = data.transaction_id || data.order_id || data.booking_id
-                       || (data.id ? String(data.id) : null)
-                       || ('BKR-' + Date.now());
+            // Mapuj cartItems Bookero → GA4 items.
+            // Fallback na dane z kontekstu strony gdy cartItems brak.
+            const items = Array.isArray(data.cartItems) && data.cartItems.length
+                ? data.cartItems.map((item) => ({
+                    item_id:       item.id || item.sku || String(ctx.postId || 'unknown'),
+                    item_name:     item.itemName || ctx.psychName || 'Psycholog',
+                    item_category: ctx.consultType === 'nisko' ? 'Konsultacja niskopłatna' : 'Konsultacja pełnopłatna',
+                    price:         parseFloat(item.price || 0),
+                    discount:      parseFloat(item.discount) || undefined,
+                    quantity:      1,
+                }))
+                : [{
+                    item_id:       ctx.postId ? String(ctx.postId) : 'unknown',
+                    item_name:     ctx.psychName || 'Psycholog',
+                    item_category: ctx.consultType === 'nisko' ? 'Konsultacja niskopłatna' : 'Konsultacja pełnopłatna',
+                    price:         price,
+                    quantity:      1,
+                }];
 
-            // GA4 ecommerce — clear then push (GA4 best practice)
-            window.dataLayer.push({ ecommerce: null });
-            window.dataLayer.push({
-                event:     'purchase',
-                ecommerce: {
-                    transaction_id: txId,
-                    value:          price,
-                    currency:       'PLN',
-                    items: [{
-                        item_id:       ctx.postId ? String(ctx.postId) : (data.service_id ? String(data.service_id) : 'unknown'),
-                        item_name:     ctx.psychName || data.worker_name || data.name || 'Psycholog',
-                        item_category: ctx.consultType === 'nisko' ? 'Konsultacja niskopłatna' : 'Konsultacja pełnopłatna',
-                        price:         price,
-                        quantity:      1,
-                    }],
-                },
-                bookero_consult_type:  ctx.consultType,
-                bookero_psychologist:  ctx.psychName,
-                bookeroInstanceId:     e.detail && e.detail.instanceID,
+            npTrack('purchase', {
+                transaction_id:       txId,
+                value:                price,
+                currency:             currency,
+                items,
+                bookero_consult_type: ctx.consultType,
+                bookero_psychologist: ctx.psychName,
             });
         } else {
-            window.dataLayer.push(Object.assign({
-                event:            eventGA,
-                bookeroInstanceId: e.detail && e.detail.instanceID,
-            }, data));
+            npTrack(eventGA, Object.assign(
+                { bookeroInstanceId: e.detail && e.detail.instanceID },
+                data,
+            ));
         }
     });
 });

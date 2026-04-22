@@ -62,5 +62,5 @@ php -r '
 service cron start
 echo "System cron started."
 
-# Uruchom Apache (proces główny kontenera)
-exec apache2-foreground
+# Uruchom PHP-FPM (proces główny kontenera; nasłuchuje na :9000)
+exec php-fpm

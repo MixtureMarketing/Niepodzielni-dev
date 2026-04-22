@@ -6,7 +6,7 @@
                 <div class="karta-wewnetrzna">
                     <div class="karta-przod">
                         <h3 class="goals__card-title">PSYCHO<br>WSPARCIE</h3>
-                        <img src="/wp-content/uploads/2025/08/image-18.svg" alt="Psycho wsparcie">
+                        <img src="/wp-content/uploads/2025/08/image-18.svg" alt="Psycho wsparcie" width="294" height="414" loading="lazy">
                     </div>
                     <div class="karta-tyl">
                         <h3 class="goals__card-title">PSYCHOWSPARCIE</h3>
@@ -20,7 +20,7 @@
                 <div class="karta-wewnetrzna">
                     <div class="karta-przod">
                         <h3 class="goals__card-title">BEZPIECZNA<br>PRZESTRZEŃ</h3>
-                        <img src="/wp-content/uploads/2025/08/bezpieczna-przestrzen-1.svg" alt="Bezpieczna przestrzeń">
+                        <img src="/wp-content/uploads/2025/08/bezpieczna-przestrzen-1.svg" alt="Bezpieczna przestrzeń" width="294" height="414" loading="lazy">
                     </div>
                     <div class="karta-tyl">
                         <h3 class="goals__card-title">BEZPIECZNA PRZESTRZEŃ</h3>
@@ -34,7 +34,7 @@
                 <div class="karta-wewnetrzna">
                     <div class="karta-przod">
                         <h3 class="goals__card-title">PSYCHO<br>EDUKACJA</h3>
-                        <img src="/wp-content/uploads/2025/08/psychoedukacja-1.svg" alt="Psychoedukacja">
+                        <img src="/wp-content/uploads/2025/08/psychoedukacja-1.svg" alt="Psychoedukacja" width="294" height="414" loading="lazy">
                     </div>
                     <div class="karta-tyl">
                         <h3 class="goals__card-title">PSYCHOEDUKACJA</h3>
@@ -48,7 +48,7 @@
                 <div class="karta-wewnetrzna">
                     <div class="karta-przod">
                         <h3 class="goals__card-title">WALKA Z<br>DEPRESJĄ</h3>
-                        <img src="/wp-content/uploads/2025/08/walka-z-depresja-1.svg" alt="Walka z depresją">
+                        <img src="/wp-content/uploads/2025/08/walka-z-depresja-1.svg" alt="Walka z depresją" width="294" height="414" loading="lazy">
                     </div>
                     <div class="karta-tyl">
                         <h3 class="goals__card-title">WALKA Z DEPRESJĄ</h3>

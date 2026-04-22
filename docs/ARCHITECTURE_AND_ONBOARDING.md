@@ -14,7 +14,8 @@
 5. [Architektura integracji Bookero](#5-architektura-integracji-bookero)
 6. [Frontend — Matchmaker i SharedCalendar](#6-frontend--matchmaker-i-sharedcalendar)
 7. [Jakość kodu — testy i analiza statyczna](#7-jakość-kodu--testy-i-analiza-statyczna)
-8. [Proponowany Backlog Techniczny](#8-proponowany-backlog-techniczny)
+8. [Analytics — Cloudflare Zaraz](#8-analytics--cloudflare-zaraz)
+9. [Proponowany Backlog Techniczny](#9-proponowany-backlog-techniczny)
 
 ---
 
@@ -24,10 +25,11 @@
 |-----------------|------------------------------------------------|
 | CMS             | WordPress 6.x w wersji Bedrock (nie standardowy wp/)  |
 | Motyw           | Sage 11 (Laravel Blade + Vite build)           |
-| PHP             | 8.4 (obraz `php:8.4-apache`)                   |
+| PHP             | 8.4 (obraz `php:8.4-fpm`)                      |
 | Baza danych     | MySQL 8.0                                      |
 | Cache obiektów  | Redis 7-alpine (allkeys-lru, 128 MB)           |
-| Serwer WWW      | Apache 2 z mod_rewrite, mod_headers, mod_expires |
+| Serwer WWW      | nginx 1.26 (reverse proxy) + PHP-FPM 8.4       |
+| FastCGI cache   | nginx fastcgi_cache — BYPASS dla admin/POST, MISS→HIT dla gości |
 | Zarządzanie WP  | WP-CLI (binarka kopiowana z `wordpress:cli`)   |
 | Cron            | Systemowy demon `cron` wewnątrz kontenera (NIE WP-Cron) |
 | Build front     | Vite (w katalogu motywu)                       |
@@ -59,7 +61,7 @@ cp .env.example .env
 docker compose up --build -d
 
 # 4. Poczekaj na healthcheck bazy (~30s), potem sprawdź logi
-docker compose logs -f app
+docker compose logs -f nginx php
 
 # 5. (opcjonalnie) Zbuduj frontend w trybie watch
 cd web/app/themes/niepodzielni-theme
@@ -90,9 +92,34 @@ docker compose up --build -d
 
 ## 3. Architektura kontenera Docker
 
+### Serwisy Docker Compose
+
+Projekt używa **dwóch oddzielnych serwisów** zamiast jednego monolitycznego kontenera:
+
+| Serwis  | Obraz                  | Port          | Rola                                                  |
+|---------|------------------------|---------------|-------------------------------------------------------|
+| `nginx` | nginx:1.26-alpine      | 8000:80       | Serwer HTTP: statyczne pliki, FastCGI cache, rewrite  |
+| `php`   | (budowany z Dockerfile)| 9000 (wewnętrz)| PHP-FPM: wykonywanie PHP, cron Bookero                |
+
+nginx przekazuje żądania `.php` do `php:9000` przez FastCGI. Serwis `php` nie jest
+dostępny bezpośrednio z hosta.
+
+**FastCGI cache** (`nginx_cache` volume): nginx buforuje odpowiedzi PHP dla anonimowych
+użytkowników. Cache jest pomijany (`$skip_cache=1`) dla POST, query string, wp-admin,
+wp-login oraz zalogowanych użytkowników (cookie `wordpress_logged_in`).
+Header `X-FastCGI-Cache: HIT/MISS/BYPASS` widoczny w DevTools.
+
+**Lazy DNS** (`resolver 127.0.0.11`): nginx używa zmiennej `$php_upstream` (nie literału
+`php:9000`) — resolwuje nazwę przy każdym requeście, nie przy starcie. Zapobiega błędowi
+"host not found" gdy kontener `php` jeszcze się nie uruchomił.
+
+**Ścieżka Bedrock vs. wp-content**: Vite bake'uje absolutne ścieżki `/wp-content/themes/…`
+w CSS (fonty, obrazki). Bedrock używa `/app/` zamiast `/wp-content/`. nginx przepisuje
+lokalnie: `^/wp-content/(.*)$ /app/$1 last` — identycznie z Trellis na produkcji.
+
 ### Proces startowy (`docker/entrypoint.sh`)
 
-Kontener uruchamia **dwa procesy równolegle** i nie zatrzymuje się dopóki Apache żyje:
+Kontener `php` uruchamia **dwa procesy równolegle** i nie zatrzymuje się dopóki PHP-FPM żyje:
 
 ```
 entrypoint.sh
@@ -101,7 +128,7 @@ entrypoint.sh
 ├── cp object-cache.php           ← Redis drop-in
 ├── php wp-load → flush_rules()   ← permalink rewrite
 ├── service cron start            ← demon systemowy (Bookero)
-└── exec apache2-foreground       ← proces główny kontenera
+└── exec php-fpm                  ← proces główny kontenera
 ```
 
 ### Wolumeny Dockera — strategia
@@ -142,8 +169,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           >> /proc/1/fd/1 2>/proc/1/fd/2
 ```
 
-Logi (`/proc/1/fd/1`) trafiają do standardowego wyjścia procesu głównego (Apache),
-dzięki czemu `docker compose logs app` pokazuje logi obu procesów jednocześnie.
+Logi (`/proc/1/fd/1`) trafiają do standardowego wyjścia procesu głównego (PHP-FPM),
+dzięki czemu `docker compose logs php` pokazuje logi obu procesów jednocześnie.
 
 ### Redis — cache obiektów
 
@@ -200,7 +227,8 @@ Niepodzielni-dev/
 │   └── application.php              # Stałe WP, w tym NP_BOOKERO_CAL_ID_*
 ├── docker/
 │   ├── cron/bookero                 # Crontab dla Bookero
-│   ├── apache/000-default.conf
+│   ├── nginx/default.conf           # nginx: vhost, FastCGI cache, rewrite wp-content→app
+│   ├── php-fpm/www.conf             # PHP-FPM pool (pm=dynamic, max_children=10)
 │   ├── php/php.ini
 │   └── entrypoint.sh
 ├── docker-compose.yml
@@ -614,7 +642,100 @@ dyskretne (kliknięcia), nie ciągłe strumienie wejścia.
 
 ---
 
-## 8. Proponowany Backlog Techniczny
+## 8. Analytics — Cloudflare Zaraz
+
+### Architektura śledzenia
+
+Projekt używa **Cloudflare Zaraz** jako serwer-side analytics runner (zastępuje GTM w przeglądarce).
+
+```
+Przeglądarka (bookero-init.js)
+    ↓  zaraz.track('purchase', { ... })
+Cloudflare Zaraz (edge worker na Cloudflare)
+    ├── GA4 → https://www.google-analytics.com/mp/collect
+    └── Meta Pixel → https://graph.facebook.com/v18.0/.../events
+```
+
+**Zalety vs. GTM**: zero JS w przeglądarce (Zaraz wykonuje się po stronie Cloudflare),
+wyższy consent rate, zdarzenia nie blokują głównego wątku.
+
+**Fallback**: gdy `window.zaraz` jest niedostępny (np. Cloudflare nie skonfigurowany),
+`npTrack()` automatycznie przekierowuje do `window.dataLayer.push()` (GTM).
+
+### Konfiguracja Zaraz — dane
+
+| Parametr           | Wartość                              |
+|--------------------|--------------------------------------|
+| GA4 Measurement ID | `G-4RNZ5C9SRJ`                      |
+| GA4 API Secret     | Ustawiony w Cloudflare Dashboard     |
+| Meta Pixel ID      | Ustawiony w Cloudflare Dashboard     |
+| Trigger            | Zaraz Custom Event (każde `zaraz.track()`) |
+
+### Zdarzenia śledzenia Bookero
+
+Zdarzenia są emitowane przez [bookero-init.js](../web/app/themes/niepodzielni-theme/resources/js/bookero-init.js).
+
+> **WAŻNE**: Nazwy zdarzeń używają **myślników**, nie podkreśleń.
+> W dashboardzie Zaraz i w GA4 konfiguruj dokładnie te wartości.
+
+| Zdarzenie JS (Bookero)                        | Nazwa w Zaraz / GA4               | Kiedy odpala                        |
+|-----------------------------------------------|-----------------------------------|-------------------------------------|
+| `bookero-plugin:tracking:form-loaded`         | `bookero_form-loaded`             | Widget kalendarza załadowany        |
+| `bookero-plugin:tracking:add-to-cart`         | `bookero_add-to-cart`             | Wybór godziny i przejście do koszyka|
+| `bookero-plugin:tracking:start-checkout`      | `bookero_start-checkout`          | Wypełnienie formularza rezerwacji   |
+| `bookero-plugin:tracking:purchase`            | `purchase`                        | Zakończona rezerwacja (płatność)    |
+| `bookero-plugin:tracking:failed-purchase`     | `bookero_failed-purchase`         | Nieudana płatność                   |
+| `bookero-plugin:tracking:waiting-purchase`    | `bookero_waiting-purchase`        | Oczekująca rezerwacja (nisko free)  |
+
+### Payload zdarzenia `purchase`
+
+```javascript
+zaraz.track('purchase', {
+    transaction_id:       'BKR-1234567890',   // data.transaction_id || 'BKR-'+Date.now()
+    value:                135,                 // data.value (PLN)
+    currency:             'PLN',               // data.currency
+    items: [{
+        item_id:           'service-50604',   // cartItem.id || cartItem.sku
+        item_name:         'Jan Kowalski',    // cartItem.itemName || psychName z DOM
+        item_category:     'Konsultacja pełnopłatna', // lub 'Konsultacja niskopłatna'
+        price:             135,
+        discount:          0,                 // cartItem.discount (jeśli istnieje)
+        quantity:          1,
+    }],
+    bookero_consult_type: 'pelno',            // 'pelno' | 'nisko'
+    bookero_psychologist: 'Jan Kowalski',     // z .psy-name-h1 w DOM
+});
+```
+
+Struktura `cartItems[]` pochodzi bezpośrednio z payloadu Bookero:
+`{ id, sku, itemName, price, discount }`.
+
+### Jak skonfigurować nowe zdarzenie w Zaraz
+
+1. Zaloguj do **Cloudflare Dashboard** → Twoja domena → **Zaraz**
+2. Przejdź do **Tools** → GA4 → **Edit** → **Events**
+3. Dodaj **Custom Event**: name = `purchase` (lub `bookero_add-to-cart` itp.)
+4. Mapuj pola: `value`, `currency`, `transaction_id`, `items` → odpowiednie parametry GA4
+5. Analogicznie dla Meta Pixel: Zaraz → Tools → Meta Pixel → Events
+
+### Lokalne testowanie (dev mock)
+
+`web/app/mu-plugins/zaraz-dev-mock.php` (plik w `.gitignore` — **nie trafia na produkcję**)
+wstrzykuje `window.zaraz` mock gdy `WP_DEBUG=true`. Mock loguje wszystkie `zaraz.track()`
+wywołania do konsoli przeglądarki ze stylizowanym formatowaniem.
+
+```php
+// Automatycznie aktywny lokalnie gdy WP_DEBUG=true w .env
+// Sprawdź konsolę przeglądarki — szukaj pomarańczowych logów "[Zaraz mock aktywny]"
+```
+
+Jeśli mock **nie jest aktywny lokalnie**, sprawdź że `zaraz-dev-mock.php` istnieje w
+`web/app/mu-plugins/` — plik jest w `.gitignore` i nie zostanie sklonowany z repo.
+Skopiuj go z `docs/` lub utwórz ręcznie.
+
+---
+
+## 9. Proponowany Backlog Techniczny
 
 ---
 
