@@ -1,0 +1,180 @@
+<?php
+
+/**
+ * AI Sync — wysyła dane psychologów i FAQ do Cloudflare Worker (Vectorize).
+ *
+ * Używa wp_remote_post z blocking=false (fire-and-forget przez shutdown),
+ * aby nie blokować zapisu posta w panelu admina.
+ */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+// ─── Konfiguracja ─────────────────────────────────────────────────────────────
+
+function np_ai_worker_url(): string
+{
+    return defined('NP_AI_WORKER_URL') && NP_AI_WORKER_URL
+        ? (string) NP_AI_WORKER_URL
+        : (string) get_option('np_ai_worker_url', '');
+}
+
+function np_ai_worker_secret(): string
+{
+    return defined('NP_AI_WORKER_SECRET') && NP_AI_WORKER_SECRET
+        ? (string) NP_AI_WORKER_SECRET
+        : (string) get_option('np_ai_worker_secret', '');
+}
+
+// ─── Ekstrakcja tekstu posta ──────────────────────────────────────────────────
+
+function np_ai_build_psycholog_payload(int $post_id): ?array
+{
+    $post = get_post($post_id);
+    if (! $post || $post->post_status !== 'publish') {
+        return null;
+    }
+
+    $meta = [
+        'specjalizacje' => (array) get_post_meta($post_id, 'specjalizacje', true),
+        'nurty'         => (array) get_post_meta($post_id, 'nurty_terapeutyczne', true),
+        'obszary'       => (array) get_post_meta($post_id, 'obszary_pracy', true),
+        'jezyki'        => (array) get_post_meta($post_id, 'jezyki', true),
+    ];
+
+    // Usuń puste tablice z meta
+    $meta = array_filter($meta, fn($v) => ! empty($v));
+
+    return [
+        'id'      => $post_id,
+        'type'    => 'psycholog',
+        'title'   => $post->post_title,
+        'content' => wp_strip_all_tags($post->post_content),
+        'url'     => get_permalink($post_id),
+        'meta'    => $meta,
+    ];
+}
+
+function np_ai_build_faq_payload(int $post_id): ?array
+{
+    $post = get_post($post_id);
+    if (! $post || $post->post_status !== 'publish') {
+        return null;
+    }
+
+    return [
+        'id'      => $post_id,
+        'type'    => 'faq',
+        'title'   => $post->post_title,
+        'content' => wp_strip_all_tags($post->post_content),
+        'url'     => get_permalink($post_id),
+    ];
+}
+
+// ─── Wysyłka do Workera (fire-and-forget) ────────────────────────────────────
+
+function np_ai_sync_dispatch(array $payload): void
+{
+    $worker_url = np_ai_worker_url();
+    $secret     = np_ai_worker_secret();
+
+    if (! $worker_url || ! $secret) {
+        return;
+    }
+
+    $url    = rtrim($worker_url, '/') . '/sync';
+    $body   = wp_json_encode($payload);
+    $secret = $secret;
+
+    // Uruchom po zakończeniu bieżącego żądania HTTP — nie blokuje zapisu posta
+    add_action('shutdown', static function () use ($url, $body, $secret): void {
+        wp_remote_post($url, [
+            'blocking' => false,
+            'timeout'  => 5,
+            'headers'  => [
+                'Content-Type'    => 'application/json',
+                'X-Worker-Secret' => $secret,
+            ],
+            'body' => $body,
+        ]);
+    });
+}
+
+// ─── Hooki ────────────────────────────────────────────────────────────────────
+
+add_action('save_post_psycholog', function (int $post_id, \WP_Post $post): void {
+    if ($post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
+        return;
+    }
+
+    $payload = np_ai_build_psycholog_payload($post_id);
+    if ($payload) {
+        np_ai_sync_dispatch($payload);
+    }
+}, 10, 2);
+
+add_action('save_post_faq', function (int $post_id, \WP_Post $post): void {
+    if ($post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
+        return;
+    }
+
+    $payload = np_ai_build_faq_payload($post_id);
+    if ($payload) {
+        np_ai_sync_dispatch($payload);
+    }
+}, 10, 2);
+
+// ─── WP-CLI: jednorazowy bulk-sync wszystkich psychologów ────────────────────
+// Użycie: wp eval-file ... lub własna komenda CLI
+// Funkcja dostępna globalnie dla skryptów administracyjnych
+
+function np_ai_bulk_sync(string $post_type = 'psycholog'): void
+{
+    $ids = get_posts([
+        'post_type'      => $post_type,
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+    ]);
+
+    $builder = $post_type === 'faq'
+        ? 'np_ai_build_faq_payload'
+        : 'np_ai_build_psycholog_payload';
+
+    $worker_url = np_ai_worker_url();
+    $secret     = np_ai_worker_secret();
+
+    if (! $worker_url || ! $secret) {
+        error_log('[NP AI] Brak NP_AI_WORKER_URL lub NP_AI_WORKER_SECRET — bulk sync pominięty.');
+        return;
+    }
+
+    $url = rtrim($worker_url, '/') . '/sync';
+    $ok  = 0;
+
+    foreach ($ids as $id) {
+        $payload = $builder((int) $id);
+        if (! $payload) {
+            continue;
+        }
+
+        $res = wp_remote_post($url, [
+            'blocking' => true,
+            'timeout'  => 15,
+            'headers'  => [
+                'Content-Type'    => 'application/json',
+                'X-Worker-Secret' => $secret,
+            ],
+            'body' => wp_json_encode($payload),
+        ]);
+
+        if (! is_wp_error($res) && wp_remote_retrieve_response_code($res) === 200) {
+            $ok++;
+        }
+
+        usleep(100000); // 100ms między requestami
+    }
+
+    error_log(sprintf('[NP AI] Bulk sync %s: %d/%d', $post_type, $ok, count($ids)));
+}

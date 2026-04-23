@@ -30,6 +30,7 @@
 @import './organisms/bookero-calendar.css';
 @import './organisms/bk-shared-calendar.css';
 @import './organisms/matchmaker.css';
+@import './organisms/ai-chatbot.css';
 
 /* Molecules — listing cards */
 @import './molecules/listing-cards.css';

@@ -65,6 +65,13 @@ add_action('wp_enqueue_scripts', function () {
         'niskoId' => np_bookero_cal_id_for('nisko'),
     ]);
 
+    $ai_worker_url = defined('NP_AI_WORKER_URL') && NP_AI_WORKER_URL ? NP_AI_WORKER_URL : '';
+    if ($ai_worker_url) {
+        wp_localize_script('sage/app.js', 'npAiChat', [
+            'workerUrl' => esc_url_raw($ai_worker_url),
+        ]);
+    }
+
     // Flag icons — tylko na stronach specjalistów i listingów (flagi języków)
     if (is_singular('psycholog') || is_page_template(['template-psy-listing-pelno.blade.php', 'template-psy-listing-nisko.blade.php'])) {
         wp_enqueue_style('flag-icons', 'https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css', [], null);

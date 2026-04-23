@@ -11,3 +11,4 @@ import './custom-accordion.js';
 import './mega-menu.js';
 import './bookero-form-listener.js';
 import './tabs.js';
+import './components/ai-chat.js';

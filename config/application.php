@@ -167,6 +167,10 @@ Config::define('NP_BOOKERO_API_KEY_NISKO', env('BOOKERO_API_KEY_NISKO') ?: '');
 Config::define('NP_BOOKERO_CAL_ID_PELNY', env('BOOKERO_CAL_ID_PELNY') ?: '');
 Config::define('NP_BOOKERO_CAL_ID_NISKO', env('BOOKERO_CAL_ID_NISKO') ?: '');
 
+Config::define('NP_AI_WORKER_URL', env('NP_AI_WORKER_URL') ?: '');
+Config::define('NP_AI_WORKER_SECRET', env('NP_AI_WORKER_SECRET') ?: '');
+Config::define('NP_AI_BOT_TOKEN', env('NP_AI_BOT_TOKEN') ?: '');
+
 /**
  * Custom Settings
  */

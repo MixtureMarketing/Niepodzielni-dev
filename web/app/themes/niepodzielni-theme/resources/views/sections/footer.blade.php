@@ -126,3 +126,5 @@
     </div>
 
 </footer>
+
+<div id="np-ai-chat"></div>
