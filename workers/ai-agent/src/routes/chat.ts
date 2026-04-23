@@ -1,6 +1,7 @@
-import OpenAI from 'openai';
 import type { Env, ChatRequest, VectorMetadata } from '../types';
 import { embed } from '../embed';
+
+const CHAT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 const SYSTEM_PROMPT = `Jesteś pomocnym asystentem Fundacji Niepodzielni — organizacji łączącej ludzi z psychologami i specjalistami zdrowia psychicznego w Polsce. Pomagasz użytkownikom znaleźć odpowiedniego specjalistę, odpowiadasz na pytania dotyczące oferty i pomagasz umówić wizytę.
 
@@ -11,8 +12,8 @@ Zasady:
 - Jeśli nie znasz odpowiedzi, powiedz szczerze i zaproponuj kontakt bezpośredni.
 - Konsultacje pełnopłatne to standardowa oferta; niskopłatne są dostępne dla osób w trudnej sytuacji finansowej.`;
 
-const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [{
-    type: 'function',
+const TOOLS = [{
+    type: 'function' as const,
     function: {
         name:        'check_availability',
         description: 'Sprawdza dostępne terminy psychologów w najbliższych 14 dniach.',
@@ -29,6 +30,13 @@ const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [{
         },
     },
 }];
+
+type AiMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string };
+
+type AiChatResponse = {
+    response?: string;
+    tool_calls?: Array<{ name: string; arguments: Record<string, string> }>;
+};
 
 async function fetchAvailability(env: Env, consultType: string): Promise<string> {
     try {
@@ -89,53 +97,40 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
     const lastUser = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
     const context  = await buildContext(env, lastUser);
 
-    const systemMessage: OpenAI.Chat.ChatCompletionMessageParam = {
-        role:    'system',
-        content: SYSTEM_PROMPT + context,
-    };
+    const history: AiMessage[] = messages.slice(-20).map(m => ({
+        role:    m.role as AiMessage['role'],
+        content: m.content,
+    }));
 
-    // Ogranicz historię do ostatnich 10 par
-    const history = messages.slice(-20) as OpenAI.Chat.ChatCompletionMessageParam[];
+    const allMessages: AiMessage[] = [
+        { role: 'system', content: SYSTEM_PROMPT + context },
+        ...history,
+    ];
 
-    const client = new OpenAI({
-        apiKey:  env.CF_AIG_TOKEN,
-        baseURL: env.GATEWAY_BASE_URL,
-    });
-
-    let response = await client.chat.completions.create({
-        model:    env.CHAT_MODEL,
-        messages: [systemMessage, ...history],
+    const result = await env.AI.run(CHAT_MODEL, {
+        messages: allMessages,
         tools:    TOOLS,
-    });
+    }) as AiChatResponse;
 
-    let choice = response.choices[0];
+    // Obsługa tool calling (Workers AI zwraca tool_calls jako obiekt, nie string)
+    if (result.tool_calls?.length) {
+        const call         = result.tool_calls[0];
+        const availability = await fetchAvailability(env, call.arguments.consult_type ?? 'pelno');
 
-    // Obsługa function calling
-    if (choice.finish_reason === 'tool_calls' && choice.message.tool_calls) {
-        const toolCall    = choice.message.tool_calls[0] as { id: string; function: { arguments: string } };
-        const args        = JSON.parse(toolCall.function.arguments) as { consult_type: string };
-        const availability = await fetchAvailability(env, args.consult_type);
-
-        const followUp = await client.chat.completions.create({
-            model:    env.CHAT_MODEL,
+        const followUp = await env.AI.run(CHAT_MODEL, {
             messages: [
-                systemMessage,
-                ...history,
-                choice.message,
-                {
-                    role:         'tool',
-                    content:      availability,
-                    tool_call_id: toolCall.id,
-                },
+                ...allMessages,
+                { role: 'assistant', content: `Wywołuję ${call.name}` },
+                { role: 'tool',      content: availability },
             ],
-        });
+        }) as AiChatResponse;
 
-        choice = followUp.choices[0];
+        return new Response(JSON.stringify({
+            reply: followUp.response ?? '',
+        }), { headers: { 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({
-        reply: choice.message.content ?? '',
-    }), {
-        headers: { 'Content-Type': 'application/json' },
-    });
+        reply: result.response ?? '',
+    }), { headers: { 'Content-Type': 'application/json' } });
 }
