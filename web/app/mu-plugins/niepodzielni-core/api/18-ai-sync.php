@@ -47,11 +47,12 @@ function np_ai_build_psycholog_payload(int $post_id): ?array
     $meta = array_filter($meta, fn($v) => ! empty($v));
 
     return [
-        'id'      => $post_id,
-        'type'    => 'psycholog',
-        'title'   => $post->post_title,
-        'content' => wp_strip_all_tags($post->post_content),
-        'url'     => get_permalink($post_id),
+        'id'       => $post_id,
+        'type'     => 'psycholog',
+        'title'    => $post->post_title,
+        'content'  => wp_strip_all_tags($post->post_content),
+        'url'      => get_permalink($post_id),
+        'photo_url' => get_the_post_thumbnail_url($post_id, 'medium') ?: '',
         'meta'    => $meta,
     ];
 }

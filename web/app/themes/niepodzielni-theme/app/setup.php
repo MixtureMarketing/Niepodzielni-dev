@@ -69,6 +69,11 @@ add_action('wp_enqueue_scripts', function () {
     if ($ai_worker_url) {
         wp_localize_script('sage/app.js', 'npAiChat', [
             'workerUrl' => esc_url_raw($ai_worker_url),
+            'contact'   => [
+                'phone'    => '+48 732 081 111',
+                'email'    => 'kontakt@niepodzielni.pl',
+                'formUrl'  => 'https://niepodzielni.pl/kontakt/',
+            ],
         ]);
     }
 

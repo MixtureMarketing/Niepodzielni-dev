@@ -37,6 +37,30 @@
   outline-offset: 3px;
 }
 
+/* Unread badge */
+.np-chat__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: #e63946;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  pointer-events: none;
+  animation: np-chat-badge-pop 0.25s ease;
+}
+
+@keyframes np-chat-badge-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
 /* ── Chat window ───────────────────────────────────────────────────────────── */
 
 .np-chat__window {
@@ -271,4 +295,199 @@
 
 .np-chat__send:not(:disabled):hover {
   transform: scale(1.08);
+}
+
+/* ── Quick reply buttons ───────────────────────────────────────────────────── */
+
+.np-chat__quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.np-chat__quick-reply {
+  background: #fff;
+  border: 1.5px solid var(--mix-color-brand-primary);
+  color: var(--mix-color-brand-primary);
+  border-radius: var(--mix-radius-pill);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--mix-font-family-primary);
+  font-weight: var(--mix-font-weight-bold);
+  cursor: pointer;
+  transition: background var(--mix-transition-fast), color var(--mix-transition-fast);
+  white-space: nowrap;
+}
+
+.np-chat__quick-reply:hover {
+  background: var(--mix-color-brand-primary);
+  color: #fff;
+}
+
+/* Onboarding — przyciski w kolumnie, pełna szerokość */
+.np-chat__onboarding {
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.np-chat__onboarding .np-chat__quick-reply {
+  text-align: left;
+  white-space: normal;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+/* ── Psychologist suggestion cards ────────────────────────────────────────── */
+
+.np-chat__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+  width: 100%;
+}
+
+.np-chat__psy-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--mix-color-border-light);
+  border-radius: var(--mix-radius-large);
+  text-decoration: none;
+  color: var(--mix-color-text-base);
+  transition: border-color var(--mix-transition-fast), box-shadow var(--mix-transition-fast);
+}
+
+.np-chat__psy-card:hover {
+  border-color: var(--mix-color-brand-primary);
+  box-shadow: 0 2px 10px rgba(1, 190, 74, 0.15);
+}
+
+.np-chat__psy-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.np-chat__psy-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--mix-color-background-grey-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.np-chat__psy-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.np-chat__psy-name {
+  font-size: 13px;
+  font-weight: var(--mix-font-weight-bold);
+  line-height: 1.3;
+  color: var(--mix-color-text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-chat__psy-date {
+  font-size: 11px;
+  color: var(--mix-color-brand-primary);
+  font-weight: var(--mix-font-weight-bold);
+}
+
+.np-chat__psy-btn {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: var(--mix-font-weight-bold);
+  color: var(--mix-color-brand-primary);
+  white-space: nowrap;
+}
+
+/* ── Streaming bubble (migający kursor podczas pisania) ────────────────────── */
+
+.np-chat__bubble--streaming::after {
+  content: '▋';
+  display: inline-block;
+  animation: np-chat-cursor 0.8s steps(1) infinite;
+  color: var(--mix-color-brand-primary);
+  margin-left: 1px;
+}
+
+@keyframes np-chat-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Contact fallback cards ────────────────────────────────────────────────── */
+
+.np-chat__contact-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: stretch;
+  width: 100%;
+}
+
+.np-chat__contact-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff8f0;
+  border: 1px solid #ffe0b2;
+  border-radius: var(--mix-radius-large);
+  text-decoration: none;
+  color: var(--mix-color-text-base);
+  transition: border-color var(--mix-transition-fast), background var(--mix-transition-fast);
+}
+
+.np-chat__contact-card:hover {
+  background: #fff3e0;
+  border-color: #ffb74d;
+}
+
+.np-chat__contact-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.np-chat__contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.np-chat__contact-label {
+  font-size: 11px;
+  color: var(--mix-color-text-muted, #666);
+}
+
+.np-chat__contact-value {
+  font-size: 13px;
+  font-weight: var(--mix-font-weight-bold);
+  color: var(--mix-color-text-base);
+}
+
+/* ── Onboarding problem chips (zawijają się) ───────────────────────────────── */
+
+.np-chat__onboarding--problems .np-chat__quick-reply {
+  white-space: normal;
+  text-align: left;
 }

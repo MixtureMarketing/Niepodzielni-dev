@@ -9,6 +9,7 @@ export async function handleSync(request: Request, env: Env): Promise<Response> 
 
     const payload = await request.json<SyncPayload>();
     const { id, type, title, url, meta } = payload;
+    const photo_url = payload.photo_url ?? '';
 
     const text   = buildText({ title, content: payload.content, meta });
     const vector = await embed(env, text);
@@ -17,7 +18,7 @@ export async function handleSync(request: Request, env: Env): Promise<Response> 
     await index.upsert([{
         id:       String(id),
         values:   vector,
-        metadata: { id, type, title, url } as Record<string, VectorizeVectorMetadataValue>,
+        metadata: { id, type, title, url, photo_url } as Record<string, VectorizeVectorMetadataValue>,
     }]);
 
     return new Response(JSON.stringify({ ok: true, id, type }), {
