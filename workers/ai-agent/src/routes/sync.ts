@@ -15,10 +15,17 @@ export async function handleSync(request: Request, env: Env): Promise<Response> 
     const vector = await embed(env, text);
     const index  = type === 'faq' ? env.VECTORIZE_FAQ : env.VECTORIZE_PSY;
 
+    const flatMeta = payload.meta
+        ? Object.values(payload.meta).flat().filter(Boolean).join(', ')
+        : '';
+
     await index.upsert([{
         id:       String(id),
         values:   vector,
-        metadata: { id, type, title, url, photo_url } as Record<string, VectorizeVectorMetadataValue>,
+        metadata: {
+            id, type, title, url, photo_url,
+            ...(flatMeta ? { specializations: flatMeta } : {}),
+        } as Record<string, VectorizeVectorMetadataValue>,
     }]);
 
     return new Response(JSON.stringify({ ok: true, id, type }), {

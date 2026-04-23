@@ -34,20 +34,22 @@ export interface ChatRequest {
 }
 
 export interface VectorMetadata {
-    id:        number;
-    type:      string;
-    title:     string;
-    url:       string;
-    photo_url?: string;
+    id:               number;
+    type:             string;
+    title:            string;
+    url:              string;
+    photo_url?:       string;
+    specializations?: string; // comma-separated flattened meta fields (specjalizacje, nurty, obszary)
 }
 
 export interface PsychologistSuggestion {
-    id:           number;
-    name:         string;
-    url:          string;
-    photo_url:    string;
-    score:        number;
-    nearest_date?: string;
+    id:               number;
+    name:             string;
+    url:              string;
+    photo_url:        string;
+    score:            number;
+    nearest_date?:    string;
+    specializations?: string;
 }
 
 export interface QuickReply {

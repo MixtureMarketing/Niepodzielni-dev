@@ -14,7 +14,7 @@ Proces prowadzenia rozmowy:
 
 Zasady:
 - Odpowiadaj po polsku, ciepło i empatycznie. Krótko — max 3 zdania na odpowiedź.
-- NIGDY nie wymieniaj nazwisk psychologów ani ich URL-i w tekście — karty pojawią się automatycznie.
+- Nie wymieniaj psychologów w formacie "Imię: URL" — karty wyświetlą się automatycznie pod odpowiedzią. Jeśli odpowiadasz na pytanie o konkretnego specjalistę z już pokazanej listy, możesz użyć jego imienia.
 - Gdy użytkownik chce sprawdzić terminy lub umówić wizytę — użyj funkcji check_availability.
 - Nie wymyślaj informacji — opieraj się wyłącznie na dostarczonym kontekście.
 - Konsultacje pełnopłatne to standardowa oferta; niskopłatne dla osób w trudnej sytuacji finansowej.
@@ -146,17 +146,23 @@ async function buildDateFilteredContext(env: Env, filterDate: string): Promise<C
             .map(v => {
                 const meta = v.metadata as unknown as VectorMetadata;
                 return {
-                    id:          Number(meta.id),
-                    name:        String(meta.title),
-                    url:         String(meta.url),
-                    photo_url:   String(meta.photo_url ?? ''),
-                    score:       1.0,
-                    nearest_date: filterDate,
+                    id:              Number(meta.id),
+                    name:            String(meta.title),
+                    url:             String(meta.url),
+                    photo_url:       String(meta.photo_url ?? ''),
+                    score:           1.0,
+                    nearest_date:    filterDate,
+                    specializations: meta.specializations ? String(meta.specializations) : undefined,
                 };
             });
 
+        const psyLines = suggestions.map(s => {
+            const spec = s.specializations ? ` (${s.specializations})` : '';
+            return `${s.name}${spec}`;
+        }).join('; ');
+
         return {
-            contextText: `\n\nDostępni psycholodzy na ${formatDatePL(filterDate)}: ${suggestions.map(s => s.name).join(', ')}`,
+            contextText: `\n\nDostępni psycholodzy na ${formatDatePL(filterDate)}: ${psyLines}`,
             suggestions,
         };
     } catch {
@@ -185,13 +191,15 @@ async function buildContext(env: Env, userMessage: string): Promise<ContextResul
         for (const m of rPsy.matches) {
             if ((m.score ?? 0) > 0.48 && m.metadata) {
                 const meta = m.metadata as unknown as VectorMetadata;
-                chunks.push(`Psycholog: ${meta.title} — ${meta.url}`);
+                const spec = meta.specializations ? ` | specjalizacje: ${meta.specializations}` : '';
+                chunks.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
                 suggestions.push({
-                    id:        Number(meta.id),
-                    name:      String(meta.title),
-                    url:       String(meta.url),
-                    photo_url: String(meta.photo_url ?? ''),
-                    score:     m.score ?? 0,
+                    id:              Number(meta.id),
+                    name:            String(meta.title),
+                    url:             String(meta.url),
+                    photo_url:       String(meta.photo_url ?? ''),
+                    score:           m.score ?? 0,
+                    specializations: meta.specializations ? String(meta.specializations) : undefined,
                 });
             }
         }

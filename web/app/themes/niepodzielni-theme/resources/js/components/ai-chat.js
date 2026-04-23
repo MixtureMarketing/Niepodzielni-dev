@@ -236,11 +236,24 @@ class NpAiChat {
 
             await this._readStream(response.body, bubbleEl, (data) => {
                 // Callback na zdarzenie "done"
-                if (data.reply) {
-                    this.messages.push({ role: 'assistant', content: data.reply });
+                let historyContent = data.reply || '';
+
+                // Dołącz imiona + specjalizacje widocznych psychologów do historii,
+                // żeby LLM miał kontekst przy pytaniach follow-up ("który z nich zajmuje się ADHD?")
+                if (data.suggestions?.length) {
+                    const names = data.suggestions.map(s => {
+                        const spec = s.specializations ? ` (${s.specializations})` : '';
+                        return `${s.name}${spec}`;
+                    }).join('; ');
+                    historyContent += ` Pokazano specjalistów: ${names}.`;
+                }
+
+                if (historyContent) {
+                    this.messages.push({ role: 'assistant', content: historyContent });
                     this._saveHistory();
                     this._addUnread();
                 }
+
                 if (data.quick_replies?.length) {
                     this._appendQuickReplies(data.quick_replies);
                 }
