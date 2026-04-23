@@ -136,6 +136,10 @@ class NpAiChat {
         });
 
         this.clearBtn.addEventListener('click', () => this._clearHistory());
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen) this._toggle();
+        });
     }
 
     _toggle() {
@@ -191,7 +195,7 @@ class NpAiChat {
 
         this._appendQuickReplies(
             PROBLEM_CHIPS.map(label => ({ label })),
-            'np-chat__quick-replies np-chat__onboarding--problems',
+            'np-chat__onboarding--problems',
         );
         this._scrollToBottom();
     }
@@ -235,6 +239,7 @@ class NpAiChat {
             if (! response.ok) throw new Error(`HTTP ${response.status}`);
 
             await this._readStream(response.body, bubbleEl, (data) => {
+                // onDone callback
                 // Callback na zdarzenie "done"
                 let historyContent = data.reply || '';
 
@@ -267,7 +272,9 @@ class NpAiChat {
             });
 
         } catch {
-            bubbleEl.innerHTML = `<div class="np-chat__bubble np-chat__bubble--error">Przepraszam, nie mogę teraz odpowiedzieć. Spróbuj ponownie za chwilę.</div>`;
+            bubbleEl.classList.remove('np-chat__bubble--streaming');
+            bubbleEl.classList.add('np-chat__bubble--error');
+            bubbleEl.textContent = 'Przepraszam, nie mogę teraz odpowiedzieć. Spróbuj ponownie za chwilę.';
             this._appendContactFallback();
         } finally {
             this._setTyping(false);
@@ -290,6 +297,7 @@ class NpAiChat {
         const reader  = body.getReader();
         const dec     = new TextDecoder();
         let   buf     = '';
+        let   streaming = false; // czy przyszedł już pierwszy token
 
         while (true) {
             const { done, value } = await reader.read();
@@ -307,16 +315,24 @@ class NpAiChat {
                 try {
                     const event = JSON.parse(line);
                     if (event.type === 'token') {
-                        bubbleEl.classList.remove('np-chat__bubble--streaming');
+                        if (! streaming) {
+                            // Pierwszy token — ukryj typing dots, usuń kursor streamingu
+                            streaming = true;
+                            this.typingEl.hidden = true;
+                            bubbleEl.classList.remove('np-chat__bubble--streaming');
+                        }
                         bubbleEl.innerHTML += this._escapeHtml(event.token).replace(/\n/g, '<br>');
                         this._scrollToBottom();
                     } else if (event.type === 'done') {
-                        // Pełny tekst — podmień innerHTML żeby uniknąć podwójnego escape
+                        // Pełny tekst z markdown — podmień całe innerHTML
                         if (event.reply) {
-                            bubbleEl.innerHTML = this._escapeHtml(event.reply).replace(/\n/g, '<br>');
+                            bubbleEl.classList.remove('np-chat__bubble--streaming');
+                            bubbleEl.innerHTML = this._renderMarkdown(event.reply);
                         }
                         onDone(event);
                     } else if (event.type === 'error') {
+                        bubbleEl.classList.remove('np-chat__bubble--streaming');
+                        bubbleEl.classList.add('np-chat__bubble--error');
                         bubbleEl.textContent = 'Przepraszam, wystąpił błąd.';
                     }
                 } catch {}
@@ -334,11 +350,9 @@ class NpAiChat {
         this._scrollToBottom();
     }
 
-    _appendQuickReplies(replies, extraClass = 'np-chat__quick-replies') {
+    _appendQuickReplies(replies, extraClasses = '') {
         const wrap = document.createElement('div');
-        wrap.className = extraClass.startsWith('np-chat__onboarding')
-            ? `np-chat__quick-replies ${extraClass}`
-            : `np-chat__quick-replies ${extraClass}`.trim();
+        wrap.className = ['np-chat__quick-replies', extraClasses].filter(Boolean).join(' ');
 
         replies.forEach(item => {
             const btn = document.createElement('button');
@@ -463,9 +477,13 @@ class NpAiChat {
     }
 
     _setTyping(active) {
-        this.isTyping        = active;
-        this.typingEl.hidden = ! active;
+        this.isTyping         = active;
+        this.typingEl.hidden  = ! active;
         this.sendBtn.disabled = active;
+        // Blokuj / odblokuj quick reply buttons żeby nie wysyłać podwójnych requestów
+        this.messagesEl.querySelectorAll('.np-chat__quick-reply').forEach(btn => {
+            btn.disabled = active;
+        });
         if (active) this._scrollToBottom();
     }
 
@@ -488,6 +506,19 @@ class NpAiChat {
     _formatDate(iso) {
         const d = new Date(iso);
         return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+    }
+
+    _renderMarkdown(text) {
+        const html = this._escapeHtml(text);
+        return html
+            // Bold **text**
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Italic *text*
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Bullet lists: "- item" lub "• item" na początku linii
+            .replace(/(^|<br>)[-•] (.+)/g, '$1<span class="np-chat__li">$2</span>')
+            // Newlines
+            .replace(/\n/g, '<br>');
     }
 
     _escapeHtml(str) {

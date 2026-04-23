@@ -321,9 +321,14 @@
   white-space: nowrap;
 }
 
-.np-chat__quick-reply:hover {
+.np-chat__quick-reply:hover:not(:disabled) {
   background: var(--mix-color-brand-primary);
   color: #fff;
+}
+
+.np-chat__quick-reply:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* Onboarding — przyciski w kolumnie, pełna szerokość */
@@ -490,4 +495,19 @@
 .np-chat__onboarding--problems .np-chat__quick-reply {
   white-space: normal;
   text-align: left;
+}
+
+/* ── Markdown: element listy w bąbelku ─────────────────────────────────────── */
+
+.np-chat__li {
+  display: block;
+  padding-left: 14px;
+  position: relative;
+}
+
+.np-chat__li::before {
+  content: '•';
+  position: absolute;
+  left: 4px;
+  color: var(--mix-color-brand-primary);
 }
