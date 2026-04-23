@@ -18,7 +18,8 @@ Zasady:
 - Gdy użytkownik chce sprawdzić terminy lub umówić wizytę — użyj funkcji check_availability.
 - Nie wymyślaj informacji — opieraj się wyłącznie na dostarczonym kontekście.
 - Konsultacje pełnopłatne to standardowa oferta; niskopłatne dla osób w trudnej sytuacji finansowej.
-- Gdy pokazujesz psychologów po wyborze daty, powiedz tylko: "Oto specjaliści dostępni w ten dzień — kliknij kartę aby umówić wizytę."`;
+- Gdy pokazujesz psychologów po wyborze daty, powiedz tylko: "Oto specjaliści dostępni w ten dzień — kliknij kartę aby umówić wizytę."
+- KLUCZOWE: Jeśli w historii rozmowy pojawia się zdanie zaczynające się od "[SPECJALIŚCI:", zawiera ono imiona i specjalizacje psychologów JUŻ POKAZANYCH użytkownikowi jako karty. Gdy użytkownik pyta o specjalizację ("który z nich", "czy któryś", "kto zajmuje się") — odpowiedz BEZPOŚREDNIO z tych danych, wymieniając imię i specjalizację. NIE wywołuj check_availability dla takich pytań.`;
 
 const TOOLS = [{
     type: 'function' as const,
@@ -300,7 +301,12 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
     }
 
     // ── Sprawdzenie dostępności (tool call — nie można streamować) ────────────
-    const toolCheck = await env.AI.run(CHAT_MODEL, {
+    // Pomiń tool call gdy ostatnia wiadomość asystenta zawiera dane już pokazanych
+    // specjalistów — LLM powinien odpowiedzieć z historii, nie pobierać terminów ponownie.
+    const lastAssistantContent = [...messages].reverse().find(m => m.role === 'assistant')?.content ?? '';
+    const hasShownSpecialists  = lastAssistantContent.includes('[SPECJALIŚCI:');
+
+    const toolCheck = hasShownSpecialists ? { response: '', tool_calls: [] } : await env.AI.run(CHAT_MODEL, {
         messages: allMessages,
         tools:    TOOLS,
     }) as AiChatResponse;

@@ -238,14 +238,15 @@ class NpAiChat {
                 // Callback na zdarzenie "done"
                 let historyContent = data.reply || '';
 
-                // Dołącz imiona + specjalizacje widocznych psychologów do historii,
-                // żeby LLM miał kontekst przy pytaniach follow-up ("który z nich zajmuje się ADHD?")
+                // Dołącz imiona + specjalizacje widocznych psychologów do historii
+                // w formacie [SPECJALIŚCI: ...] — marker rozpoznawany przez Worker
+                // (skip tool call) i system prompt (odpowiedź z historii bez check_availability)
                 if (data.suggestions?.length) {
                     const names = data.suggestions.map(s => {
                         const spec = s.specializations ? ` (${s.specializations})` : '';
                         return `${s.name}${spec}`;
                     }).join('; ');
-                    historyContent += ` Pokazano specjalistów: ${names}.`;
+                    historyContent += ` [SPECJALIŚCI: ${names}]`;
                 }
 
                 if (historyContent) {
