@@ -70,6 +70,80 @@ function np_ai_build_faq_payload(int $post_id): ?array
         'title'   => $post->post_title,
         'content' => wp_strip_all_tags($post->post_content),
         'url'     => get_permalink($post_id),
+        'status'  => 'active',
+    ];
+}
+
+function np_ai_build_article_payload(int $post_id): ?array
+{
+    $post = get_post($post_id);
+    if (! $post || $post->post_status !== 'publish') {
+        return null;
+    }
+
+    $tags = wp_get_post_terms($post_id, 'temat-artykulu', ['fields' => 'names']);
+    if (is_wp_error($tags)) {
+        $tags = [];
+    }
+
+    return [
+        'id'      => $post_id,
+        'type'    => 'article',
+        'title'   => $post->post_title,
+        'content' => wp_strip_all_tags($post->post_content),
+        'url'     => get_permalink($post_id),
+        'tags'    => array_values(array_filter($tags)),
+        'status'  => 'active',
+    ];
+}
+
+function np_ai_build_workshop_payload(int $post_id): ?array
+{
+    $post = get_post($post_id);
+    if (! $post || $post->post_status !== 'publish') {
+        return null;
+    }
+
+    $tags       = wp_get_post_terms($post_id, 'temat', ['fields' => 'names']);
+    $event_date = get_post_meta($post_id, 'event_date', true) ?: '';
+
+    if (is_wp_error($tags)) {
+        $tags = [];
+    }
+
+    return [
+        'id'         => $post_id,
+        'type'       => 'workshop',
+        'title'      => $post->post_title,
+        'content'    => wp_strip_all_tags($post->post_content),
+        'url'        => get_permalink($post_id),
+        'photo_url'  => get_the_post_thumbnail_url($post_id, 'medium') ?: '',
+        'tags'       => array_values(array_filter($tags)),
+        'event_date' => $event_date ? (string) $event_date : null,
+        'status'     => 'active',
+    ];
+}
+
+function np_ai_build_group_payload(int $post_id): ?array
+{
+    $post = get_post($post_id);
+    if (! $post || $post->post_status !== 'publish') {
+        return null;
+    }
+
+    $tags = wp_get_post_terms($post_id, 'temat', ['fields' => 'names']);
+    if (is_wp_error($tags)) {
+        $tags = [];
+    }
+
+    return [
+        'id'      => $post_id,
+        'type'    => 'group',
+        'title'   => $post->post_title,
+        'content' => wp_strip_all_tags($post->post_content),
+        'url'     => get_permalink($post_id),
+        'tags'    => array_values(array_filter($tags)),
+        'status'  => 'active',
     ];
 }
 
@@ -119,29 +193,69 @@ add_action('save_post_faq', function (int $post_id, \WP_Post $post): void {
     if ($post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
         return;
     }
-
     $payload = np_ai_build_faq_payload($post_id);
     if ($payload) {
         np_ai_sync_dispatch($payload);
     }
 }, 10, 2);
 
-// ─── WP-CLI: jednorazowy bulk-sync wszystkich psychologów ────────────────────
-// Użycie: wp eval-file ... lub własna komenda CLI
-// Funkcja dostępna globalnie dla skryptów administracyjnych
+add_action('save_post_aktualnosci', function (int $post_id, \WP_Post $post): void {
+    if ($post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
+        return;
+    }
+    $payload = np_ai_build_article_payload($post_id);
+    if ($payload) {
+        np_ai_sync_dispatch($payload);
+    }
+}, 10, 2);
 
+add_action('save_post_warsztaty', function (int $post_id, \WP_Post $post): void {
+    if ($post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
+        return;
+    }
+    $payload = np_ai_build_workshop_payload($post_id);
+    if ($payload) {
+        np_ai_sync_dispatch($payload);
+    }
+}, 10, 2);
+
+add_action('save_post_grupy-wsparcia', function (int $post_id, \WP_Post $post): void {
+    if ($post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
+        return;
+    }
+    $payload = np_ai_build_group_payload($post_id);
+    if ($payload) {
+        np_ai_sync_dispatch($payload);
+    }
+}, 10, 2);
+
+// ─── Bulk sync — wszystkie typy do KNOWLEDGE_BASE ────────────────────────────
+
+/**
+ * Synckuje jeden typ CPT do Vectorize.
+ *
+ * Użycie z WP-CLI:
+ *   wp eval 'np_ai_bulk_sync("psycholog");'
+ *   wp eval 'np_ai_bulk_sync_all();'
+ */
 function np_ai_bulk_sync(string $post_type = 'psycholog'): void
 {
+    $builders = [
+        'psycholog'     => 'np_ai_build_psycholog_payload',
+        'faq'           => 'np_ai_build_faq_payload',
+        'aktualnosci'   => 'np_ai_build_article_payload',
+        'warsztaty'     => 'np_ai_build_workshop_payload',
+        'grupy-wsparcia' => 'np_ai_build_group_payload',
+    ];
+
+    $builder = $builders[$post_type] ?? 'np_ai_build_psycholog_payload';
+
     $ids = get_posts([
         'post_type'      => $post_type,
         'post_status'    => 'publish',
         'posts_per_page' => -1,
         'fields'         => 'ids',
     ]);
-
-    $builder = $post_type === 'faq'
-        ? 'np_ai_build_faq_payload'
-        : 'np_ai_build_psycholog_payload';
 
     $worker_url = np_ai_worker_url();
     $secret     = np_ai_worker_secret();
@@ -174,8 +288,15 @@ function np_ai_bulk_sync(string $post_type = 'psycholog'): void
             $ok++;
         }
 
-        usleep(100000); // 100ms między requestami
+        usleep(150000); // 150ms między requestami
     }
 
     error_log(sprintf('[NP AI] Bulk sync %s: %d/%d', $post_type, $ok, count($ids)));
+}
+
+function np_ai_bulk_sync_all(): void
+{
+    foreach (['psycholog', 'faq', 'aktualnosci', 'warsztaty', 'grupy-wsparcia'] as $type) {
+        np_ai_bulk_sync($type);
+    }
 }

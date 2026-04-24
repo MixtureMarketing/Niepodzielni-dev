@@ -1,24 +1,30 @@
 export interface Env {
-    AI:               Ai;
-    VECTORIZE_PSY:    VectorizeIndex;
-    VECTORIZE_FAQ:    VectorizeIndex;
-    GATEWAY_BASE_URL: string;
-    CHAT_MODEL:       string;
-    EMBED_MODEL:      string;
-    WP_API_URL:       string;
-    CF_AIG_TOKEN:     string;
-    WORKER_SECRET:    string;
-    WP_BOT_TOKEN:     string;
+    AI:                   Ai;
+    VECTORIZE_PSY:        VectorizeIndex; // legacy — fallback podczas migracji
+    VECTORIZE_FAQ:        VectorizeIndex; // legacy — fallback podczas migracji
+    VECTORIZE_KNOWLEDGE:  VectorizeIndex; // unified knowledge base
+    GATEWAY_BASE_URL:     string;
+    CHAT_MODEL:           string;
+    EMBED_MODEL:          string;
+    WP_API_URL:           string;
+    CF_AIG_TOKEN:         string;
+    WORKER_SECRET:        string;
+    WP_BOT_TOKEN:         string;
 }
 
+export type KnowledgeType = 'psycholog' | 'faq' | 'article' | 'workshop' | 'group';
+
 export interface SyncPayload {
-    id:        number;
-    type:      'psycholog' | 'faq';
-    title:     string;
-    content:   string;
-    url:       string;
-    photo_url?: string;
-    meta?:     Record<string, string[]>;
+    id:          number;
+    type:        KnowledgeType;
+    title:       string;
+    content:     string;
+    url:         string;
+    photo_url?:  string;
+    tags?:       string[];       // tematyczne tagi: depresja, lęki, adhd…
+    event_date?: string;         // ISO — dla warsztatów/wydarzeń
+    status?:     'active' | 'inactive';
+    meta?:       Record<string, string[]>;
 }
 
 export interface ChatMessage {
@@ -39,7 +45,11 @@ export interface VectorMetadata {
     title:            string;
     url:              string;
     photo_url?:       string;
-    specializations?: string; // comma-separated flattened meta fields (specjalizacje, nurty, obszary)
+    specializations?: string; // comma-separated: specjalizacje, nurty, obszary (psycholog)
+    tags?:            string; // comma-separated tematyczne tagi (artykuły, warsztaty, grupy)
+    event_date?:      string; // ISO date (warsztaty/wydarzenia)
+    content_snippet?: string; // pierwsze ~200 znaków treści
+    status?:          string; // 'active' | 'inactive'
 }
 
 export interface PsychologistSuggestion {

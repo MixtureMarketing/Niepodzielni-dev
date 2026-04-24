@@ -204,7 +204,8 @@ async function buildDateFilteredContext(env: Env, filterDate: string): Promise<C
         }
 
         const ids     = slot.psychologist_ids.slice(0, 6).map(String);
-        const vectors = await env.VECTORIZE_PSY.getByIds(ids);
+        // Preferuj unified index, fallback do legacy
+        const vectors = await (env.VECTORIZE_KNOWLEDGE ?? env.VECTORIZE_PSY).getByIds(ids);
 
         const suggestions: PsychologistSuggestion[] = vectors
             .filter(v => v.metadata)
@@ -235,26 +236,47 @@ async function buildDateFilteredContext(env: Env, filterDate: string): Promise<C
     }
 }
 
-// Kontekst semantyczny (normalny tryb)
+// Kontekst semantyczny (normalny tryb) — unified KNOWLEDGE_BASE z metadata filtering
 async function buildContext(env: Env, userMessage: string): Promise<ContextResult> {
     try {
         const vector = await embed(env, userMessage);
-        const [rPsy, rFaq] = await Promise.all([
-            env.VECTORIZE_PSY.query(vector, { topK: 4, returnMetadata: 'all' }),
-            env.VECTORIZE_FAQ.query(vector, { topK: 2, returnMetadata: 'all' }),
+
+        // Zapytania równoległe: psycholodzy (panel) + treści (kontekst tekstowy)
+        const useKB = !!env.VECTORIZE_KNOWLEDGE;
+        const [rPsy, rContent] = await Promise.all([
+            useKB
+                ? env.VECTORIZE_KNOWLEDGE.query(vector, {
+                    topK: 5, returnMetadata: 'all',
+                    filter: { type: { $eq: 'psycholog' } },
+                  })
+                : env.VECTORIZE_PSY.query(vector, { topK: 4, returnMetadata: 'all' }),
+            useKB
+                ? env.VECTORIZE_KNOWLEDGE.query(vector, { topK: 4, returnMetadata: 'all' })
+                : env.VECTORIZE_FAQ.query(vector, { topK: 2, returnMetadata: 'all' }),
         ]);
 
         const chunks:      string[]                 = [];
         const suggestions: PsychologistSuggestion[] = [];
 
-        for (const m of rFaq.matches) {
-            if ((m.score ?? 0) > 0.55 && m.metadata) {
-                const meta = m.metadata as unknown as VectorMetadata & { content?: string };
-                chunks.push(`FAQ: ${meta.title}\n${meta.content ?? ''}`);
+        // Treści (FAQ, artykuły, warsztaty, grupy) → context text
+        // Pomijamy psychologów — obsługiwani przez rPsy z filtrem type
+        for (const m of rContent.matches) {
+            if ((m.score ?? 0) > 0.52 && m.metadata) {
+                const meta = m.metadata as unknown as VectorMetadata;
+                if (meta.type === 'psycholog') continue;
+                const typeLabel = meta.type === 'faq' ? 'FAQ'
+                    : meta.type === 'article' ? 'Artykuł'
+                    : meta.type === 'workshop' ? 'Warsztat'
+                    : meta.type === 'group' ? 'Grupa wsparcia'
+                    : meta.type;
+                const extra = meta.content_snippet ? `\n${meta.content_snippet}` : '';
+                chunks.push(`${typeLabel}: ${meta.title}${extra} — ${meta.url}`);
             }
         }
+
+        // Psycholodzy → suggestions (panel boczny)
         for (const m of rPsy.matches) {
-            if ((m.score ?? 0) > 0.48 && m.metadata) {
+            if ((m.score ?? 0) > 0.46 && m.metadata) {
                 const meta = m.metadata as unknown as VectorMetadata;
                 const spec = meta.specializations ? ` | specjalizacje: ${meta.specializations}` : '';
                 chunks.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
@@ -266,6 +288,17 @@ async function buildContext(env: Env, userMessage: string): Promise<ContextResul
                     score:           m.score ?? 0,
                     specializations: meta.specializations ? String(meta.specializations) : undefined,
                 });
+            }
+        }
+
+        // Fallback do legacy gdy KB pusty
+        if (suggestions.length === 0 && !useKB) {
+            const rFaq = await env.VECTORIZE_FAQ.query(vector, { topK: 2, returnMetadata: 'all' });
+            for (const m of rFaq.matches) {
+                if ((m.score ?? 0) > 0.55 && m.metadata) {
+                    const meta = m.metadata as unknown as VectorMetadata;
+                    chunks.push(`FAQ: ${meta.title}`);
+                }
             }
         }
 
@@ -413,7 +446,11 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
         if (call.name === 'recommend_resources') {
             const query  = call.arguments.query ?? lastUser;
             const vector = await embed(env, query);
-            const rPsy   = await env.VECTORIZE_PSY.query(vector, { topK: 5, returnMetadata: 'all' });
+            const index  = env.VECTORIZE_KNOWLEDGE ?? env.VECTORIZE_PSY;
+            const rPsy   = await index.query(vector, {
+                topK: 5, returnMetadata: 'all',
+                filter: { type: { $eq: 'psycholog' } },
+            });
 
             const toolSuggestions: PsychologistSuggestion[] = [];
             const resLines: string[] = [];
