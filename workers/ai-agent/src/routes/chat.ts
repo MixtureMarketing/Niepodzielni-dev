@@ -1,15 +1,71 @@
-import type { Env, ChatRequest, ChatMessage, VectorMetadata, PsychologistSuggestion, QuickReply } from '../types';
+import type { Env, ChatRequest, ChatMessage, VectorMetadata, PanelItem, QuickReply } from '../types';
 import { embed } from '../embed';
 
 const CHAT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 // ── Filtr kryzysowy — przed LLM, zero opóźnienia ─────────────────────────────
 
-const CRISIS_RE = /(samobójstwo|samobójcz|zabić się|nie chcę żyć|skrzywdzić się|się zabiję|chcę umrzeć|myśl\w* samob|krzywdz\w* siebie|odebrać sobie życie|targnąć się|przemoc domowa|gwałt\b|molestow)/i;
+// Normalizuj polskie diakrytyki — użytkownicy często piszą bez nich
+function normPL(s: string): string {
+    return s.toLowerCase()
+        .replace(/ą/g, 'a').replace(/ć/g, 'c').replace(/ę/g, 'e')
+        .replace(/ł/g, 'l').replace(/ń/g, 'n').replace(/ó/g, 'o')
+        .replace(/ś/g, 's').replace(/ź/g, 'z').replace(/ż/g, 'z');
+}
+
+const CRISIS_PHRASES = [
+    'samobójstwo', 'samobójcz', 'samobójst',
+    'zabić się', 'się zabić', 'zabiję się', 'się zabiję',
+    'chcę umrzeć', 'umrzeć chcę', 'chce umrzec',
+    'nie chcę żyć', 'nie chce zyc',
+    'nie ma sensu żyć', 'nie ma sensu zyc',
+    'nie chcę już żyć', 'nie chce juz zyc',
+    'skrzywdzić siebie', 'krzywdzić siebie',
+    'odebrać sobie życie', 'targnąć się',
+    'przemoc domowa', 'molestow', 'gwałt',
+    'myśli samobójcze',
+];
+
+const CRISIS_PHRASES_NORM = CRISIS_PHRASES.map(normPL);
 
 function isCrisis(messages: ChatMessage[]): boolean {
-    const last = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
-    return CRISIS_RE.test(last);
+    const last = normPL([...messages].reverse().find(m => m.role === 'user')?.content ?? '');
+    return CRISIS_PHRASES_NORM.some(p => last.includes(p));
+}
+
+// ── Detekcja pożegnania ───────────────────────────────────────────────────────
+
+const FAREWELL_PHRASES_NORM = [
+    'dziekuje',
+    'dzieki za', 'dziek za',          // "dzięki za pomoc", "dziękuję za rozmowę" itp.
+    'bardzo dziek', 'wielkie dziek', 'ogromne dziek',
+    'do widzenia', 'dowidzenia', 'do zobaczenia',
+    'na razie', 'nara ',
+    'zegnaj', 'zegnam',
+    'to wszystko', 'to tyle',
+    'koniec rozmowy',
+    'wszystko jasne',
+    'pomogles mi', 'pomoglas mi',
+    'juz wiem', 'juz mam',
+].map(normPL);
+
+// Krótkie wiadomości traktowane jako pożegnanie gdy są jedyną treścią
+const FAREWELL_EXACT_NORM = [
+    'dziek', 'dzieki', 'dziekuje',
+    'pa', 'pa pa', 'papa',
+    'bye', 'ciao', 'thx',
+    'elo', 'hej pa', 'nara',
+    'ok dzieki', 'ok dziekuje',
+    'jasne dzieki', 'super dzieki',
+    'git dzieki', 'spoko dzieki',
+].map(normPL);
+
+function isFarewell(messages: ChatMessage[]): boolean {
+    const raw = ([...messages].reverse().find(m => m.role === 'user')?.content ?? '').trim();
+    if (raw.length > 80) return false;
+    const last = normPL(raw);
+    if (FAREWELL_EXACT_NORM.includes(last)) return true;
+    return FAREWELL_PHRASES_NORM.some(p => last.includes(p));
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -19,15 +75,17 @@ const SYSTEM_PROMPT = `ROLA: Jesteś ADMINISTRACYJNYM asystentem AI Fundacji Nie
 Proces nawigacji pacjenta:
 1. Gdy pacjent opisze problem — potwierdź go JEDNYM zdaniem. Karty pasujących specjalistów pojawią się w panelu obok automatycznie (nie wymieniaj ich w tekście).
 2. Opcjonalnie zadaj JEDNO krótkie pytanie (online/stacjonarnie, język konsultacji).
-3. Gdy pacjent pyta o terminy lub dostępność — wywołaj check_availability NATYCHMIAST, bez pytania o potwierdzenie.
+3. Gdy pacjent pyta o terminy lub dostępność — sprawdź dostępność NATYCHMIAST, bez pytania o potwierdzenie.
 
 Zasady:
 - Odpowiadaj ZAWSZE w języku pacjenta (polski domyślnie; angielski, ukraiński i inne).
 - Odpowiadaj krótko — max 2–3 zdania. Nie tłumacz instrukcji.
 - NIE wymieniaj psychologów po imieniu z URL-em — karty są w panelu po prawej.
-- NIE pytaj "Czy chcesz sprawdzić terminy?" — po prostu wywołaj check_availability.
+- NIE wspominaj o narzędziach, funkcjach ani procesach wewnętrznych — reaguj naturalnie.
+- NIE sprawdzaj dostępności gdy pacjent pyta o artykuły, warsztaty lub grupy wsparcia.
+- Jeśli pytasz o artykuły/treści: zajrzyj do kontekstu — jeśli brak artykułu, wskaż warsztaty lub grupy z panelu.
 - Konsultacje pełnopłatne: standardowa oferta; niskopłatne: dla osób w trudnej sytuacji finansowej.
-- KLUCZOWE: Jeśli historia zawiera "[SPECJALIŚCI: ...]" — odpowiadaj na pytania o nich BEZPOŚREDNIO. NIE wywołuj check_availability dla pytań o specjalizacje.
+- KLUCZOWE: Jeśli historia zawiera "[SPECJALIŚCI: ...]" — odpowiadaj na pytania o nich BEZPOŚREDNIO. NIE sprawdzaj dostępności dla pytań o specjalizacje.
 - Nie wymyślaj informacji — opieraj się wyłącznie na dostarczonym kontekście.`;
 
 // ── Narzędzia AI ──────────────────────────────────────────────────────────────
@@ -84,6 +142,14 @@ const TOOLS = [
             parameters:  { type: 'object', properties: {}, required: [] },
         },
     },
+    {
+        type: 'function' as const,
+        function: {
+            name:        'end_conversation',
+            description: 'Użyj gdy użytkownik żegna się, dziękuje za pomoc lub wyraźnie sygnalizuje że zakończył rozmowę i nie potrzebuje już pomocy.',
+            parameters:  { type: 'object', properties: {}, required: [] },
+        },
+    },
 ];
 
 const PRICING_INFO = `Konsultacje w Fundacji Niepodzielni:
@@ -109,60 +175,11 @@ function formatDatePL(iso: string): string {
     return `${PL_DAYS[d.getDay()]}, ${d.getDate()} ${PL_MONTHS[d.getMonth()]}`;
 }
 
-// ── Dostępność terminów ───────────────────────────────────────────────────────
-
-interface AvailabilityResult {
-    text:          string;
-    quick_replies: QuickReply[];
-}
-
-async function fetchAvailability(env: Env, consultType: string): Promise<AvailabilityResult> {
-    try {
-        console.log("-> Sprawdzam token. Długość:", env.WP_BOT_TOKEN?.length);
-        
-        const res = await fetch(
-            `${env.WP_API_URL}/bot-availability?consult_type=${consultType}&days=14`,
-            { 
-                headers: { 
-                    'X-API-Key': env.WP_BOT_TOKEN,
-                    'User-Agent': 'NiepodzielniBot/1.0' // Omijamy blokadę tunelu CF
-                } 
-            },
-        );
-        
-        if (!res.ok) {
-            // Wypluje dokładny błąd do Twojej konsoli!
-            console.error("-> BŁĄD API:", res.status, await res.text());
-            return { text: 'Brak danych o dostępności.', quick_replies: [] };
-        }
-
-        const data = await res.json<{ slots: Array<{ date: string; count: number }> }>();
-        if (!data.slots?.length) return { text: 'Brak dostępnych terminów w ciągu najbliższych 14 dni.', quick_replies: [] };
-
-        const slots = data.slots.slice(0, 14);
-        const lines = slots.map(s =>
-            `- ${formatDatePL(s.date)}: ${s.count} ${s.count === 1 ? 'specjalista' : 'specjalistów'}`,
-        );
-        const quick_replies: QuickReply[] = slots.slice(0, 4).map(s => ({
-            label:       `Pokaż psychologów na ${formatDatePL(s.date)}`,
-            filter_date: s.date,
-        }));
-
-        return {
-            text:         `Dostępne terminy (WYMIEŃ JE WSZYSTKIE w odpowiedzi):\n${lines.join('\n')}`,
-            quick_replies,
-        };
-    } catch (err) {
-        console.error("-> BŁĄD KRYTYCZNY:", err);
-        return { text: 'Nie udało się pobrać terminów.', quick_replies: [] };
-    }
-}
-
 // ── Context z Vectorize ───────────────────────────────────────────────────────
 
 interface ContextResult {
     contextText:   string;
-    suggestions:   PsychologistSuggestion[];
+    suggestions:   PanelItem[];
 }
 
 async function fetchNearestDates(env: Env, psychologistIds: number[]): Promise<Map<number, string>> {
@@ -170,9 +187,12 @@ async function fetchNearestDates(env: Env, psychologistIds: number[]): Promise<M
     try {
         const res = await fetch(
             `${env.WP_API_URL}/bot-availability?consult_type=pelno&days=30`,
-            { headers: { 'X-API-Key': env.WP_BOT_TOKEN } },
+            { headers: { 'X-API-Key': env.WP_BOT_TOKEN, 'User-Agent': 'NiepodzielniBot/1.0' } },
         );
-        if (!res.ok) return map;
+        if (!res.ok) {
+            console.error('[fetchNearestDates] HTTP', res.status, await res.text().catch(() => ''));
+            return map;
+        }
         const data = await res.json<{ slots: Array<{ date: string; psychologist_ids: number[] }> }>();
         for (const slot of (data.slots ?? [])) {
             for (const pid of slot.psychologist_ids) {
@@ -181,8 +201,118 @@ async function fetchNearestDates(env: Env, psychologistIds: number[]): Promise<M
                 }
             }
         }
-    } catch {}
+    } catch (e) {
+        console.error('[fetchNearestDates] error:', e);
+    }
     return map;
+}
+
+// Kontekst dostępności — pobiera psychologów z wolnymi terminami, sortuje po dacie
+async function buildAvailabilityContext(env: Env, consultType: string): Promise<{
+    contextText:   string;
+    suggestions:   PanelItem[];
+    quick_replies: QuickReply[];
+}> {
+    try {
+        const res = await fetch(
+            `${env.WP_API_URL}/bot-availability?consult_type=${consultType}&days=30`,
+            { headers: { 'X-API-Key': env.WP_BOT_TOKEN, 'User-Agent': 'NiepodzielniBot/1.0' } },
+        );
+        if (!res.ok) {
+            console.error('[buildAvailabilityContext] HTTP', res.status);
+            return { contextText: 'Brak dostępnych terminów.', suggestions: [], quick_replies: [] };
+        }
+
+        const data = await res.json<{ slots: Array<{ date: string; count: number; psychologist_ids: number[] }> }>();
+        if (!data.slots?.length) {
+            return { contextText: 'Brak dostępnych terminów w najbliższych 30 dniach.', suggestions: [], quick_replies: [] };
+        }
+
+        // Zbuduj mapę id → najwcześniejsza data (sloty są posortowane chronologicznie)
+        const idDate = new Map<number, string>();
+        for (const slot of data.slots) {
+            for (const pid of (slot.psychologist_ids ?? [])) {
+                if (!idDate.has(pid)) idDate.set(pid, slot.date);
+            }
+        }
+
+        // Posortuj po dacie rosnąco, weź pierwszych 8
+        const sortedIds = [...idDate.entries()]
+            .sort((a, b) => a[1].localeCompare(b[1]))
+            .slice(0, 8)
+            .map(([id]) => id);
+
+        // Pobierz metadane z obu indeksów — KB + PSY (uzupełniające)
+        const strIds    = sortedIds.map(String);
+        const kbVectors = await env.VECTORIZE_KNOWLEDGE.getByIds(strIds);
+        const kbHitIds  = new Set(kbVectors.filter(v => v.metadata).map(v => v.id));
+        const missingIds = strIds.filter(id => !kbHitIds.has(id));
+        const psyVectors = missingIds.length > 0
+            ? await env.VECTORIZE_PSY.getByIds(missingIds)
+            : [];
+        const vectors = [...kbVectors.filter(v => v.metadata), ...psyVectors.filter(v => v.metadata)];
+
+        const suggestions: PanelItem[] = vectors
+            .map(v => {
+                const meta  = v.metadata as unknown as VectorMetadata;
+                const idNum = Number(v.id);
+                return {
+                    type:            'psychologist' as const,
+                    id:              idNum,
+                    title:           String(meta.title),
+                    url:             String(meta.url),
+                    photo_url:       String(meta.photo_url ?? ''),
+                    score:           1.0,
+                    nearest_date:    idDate.get(idNum),
+                    specializations: meta.specializations ? String(meta.specializations) : undefined,
+                };
+            })
+            .sort((a, b) => (a.nearest_date ?? '').localeCompare(b.nearest_date ?? ''));
+
+        // Kontekst dla LLM — imiona z datami
+        const lines = suggestions.map(s =>
+            `- ${s.title}${s.specializations ? ` (${s.specializations})` : ''}: ${s.nearest_date ? formatDatePL(s.nearest_date) : 'brak'}`,
+        );
+
+        // Ostrzeżenie o ograniczonej dostępności niskopłatnej
+        let scarcityNote = '';
+        if (consultType === 'nisko') {
+            if (suggestions.length === 0) {
+                scarcityNote = '\n\nUWAGA: Brak dostępnych terminów niskopłatnych w najbliższych 30 dniach. Poinformuj pacjenta i zaproponuj sprawdzenie terminów pełnopłatnych.';
+            } else if (suggestions.length === 1) {
+                scarcityNote = '\n\nUWAGA: To JEDYNY dostępny termin niskopłatny w najbliższych 30 dniach. Powiedz to pacjentowi wprost i zaproponuj, że możesz też pokazać terminy pełnopłatne.';
+            } else if (suggestions.length <= 3) {
+                scarcityNote = `\n\nUWAGA: Dostępne są tylko ${suggestions.length} terminy niskopłatne w najbliższych 30 dniach. Poinformuj pacjenta, że oferta jest ograniczona.`;
+            }
+        }
+
+        const contextText = `Dostępni specjaliści z wolnymi terminami (od najwcześniejszego):\n${lines.join('\n')}\n\nWAŻNE: Przy odpowiedzi ZAWSZE wymieniaj psychologów z ich konkretną datą z powyższej listy. Polecaj tych z najwcześniejszym terminem.${scarcityNote}`;
+
+        // Quick replies — generuj tylko gdy są DODATKOWE terminy/wyniki których użytkownik jeszcze nie widzi
+        const quick_replies: QuickReply[] = [];
+        const allUniqueDates = [...new Set(data.slots.map(s => s.date))];
+        const shownDates     = new Set(suggestions.map(s => s.nearest_date).filter(Boolean) as string[]);
+
+        if (consultType === 'nisko' && suggestions.length <= 3) {
+            // Mało wyników nisko → zaproponuj pełnopłatne zamiast datowych filtrów
+            quick_replies.push({
+                label:        'Sprawdź dostępne terminy pełnopłatne',
+                consult_type: 'pelno',
+            });
+        } else {
+            // Daty z terminami których jeszcze nie pokazano
+            const extraDates = allUniqueDates.filter(d => !shownDates.has(d)).slice(0, 3);
+            quick_replies.push(...extraDates.map(d => ({
+                label:       `Psycholodzy na ${formatDatePL(d)}`,
+                filter_date: d,
+            })));
+        }
+
+        return { contextText, suggestions, quick_replies };
+    } catch (e) {
+        console.error('[buildAvailabilityContext] error:', e);
+        return { contextText: 'Nie udało się pobrać terminów.', suggestions: [], quick_replies: [] };
+    }
 }
 
 // Kontekst filtrowany po dacie — używa Vectorize.getByIds()
@@ -204,19 +334,20 @@ async function buildDateFilteredContext(env: Env, filterDate: string): Promise<C
         }
 
         const ids = slot.psychologist_ids.slice(0, 6).map(String);
-        // Pobierz wektory — preferuj KB, fallback do VECTORIZE_PSY jeśli KB zwróci puste
-        let vectors = await env.VECTORIZE_KNOWLEDGE.getByIds(ids);
-        if (vectors.filter(v => v.metadata).length === 0) {
-            vectors = await env.VECTORIZE_PSY.getByIds(ids);
-        }
+        // Pobierz wektory z obu indeksów — uzupełniające, nie alternatywne
+        const kbVec    = await env.VECTORIZE_KNOWLEDGE.getByIds(ids);
+        const kbHits   = new Set(kbVec.filter(v => v.metadata).map(v => v.id));
+        const missing  = ids.filter(id => !kbHits.has(id));
+        const psyVec   = missing.length > 0 ? await env.VECTORIZE_PSY.getByIds(missing) : [];
+        const vectors  = [...kbVec.filter(v => v.metadata), ...psyVec.filter(v => v.metadata)];
 
-        const suggestions: PsychologistSuggestion[] = vectors
-            .filter(v => v.metadata)
+        const suggestions: PanelItem[] = vectors
             .map(v => {
                 const meta = v.metadata as unknown as VectorMetadata;
                 return {
+                    type:            'psychologist' as const,
                     id:              Number(meta.id),
-                    name:            String(meta.title),
+                    title:           String(meta.title),
                     url:             String(meta.url),
                     photo_url:       String(meta.photo_url ?? ''),
                     score:           1.0,
@@ -227,7 +358,7 @@ async function buildDateFilteredContext(env: Env, filterDate: string): Promise<C
 
         const psyLines = suggestions.map(s => {
             const spec = s.specializations ? ` (${s.specializations})` : '';
-            return `${s.name}${spec}`;
+            return `${s.title}${spec}`;
         }).join('; ');
 
         return {
@@ -244,70 +375,77 @@ async function buildContext(env: Env, userMessage: string): Promise<ContextResul
     try {
         const vector = await embed(env, userMessage);
 
-        // Zapytania równoległe: psycholodzy (panel) + treści (kontekst tekstowy)
+        // Jednoznaczne zapytanie do KB — bez metadata filter (filter nie indeksuje starych danych).
+        // Rozdzielamy psychologów od treści w kodzie po polu type.
         const useKB = !!env.VECTORIZE_KNOWLEDGE;
-        const [rPsy, rContent] = await Promise.all([
-            useKB
-                ? env.VECTORIZE_KNOWLEDGE.query(vector, {
-                    topK: 5, returnMetadata: 'all',
-                    filter: { type: { $eq: 'psycholog' } },
-                  })
-                : env.VECTORIZE_PSY.query(vector, { topK: 4, returnMetadata: 'all' }),
-            useKB
-                ? env.VECTORIZE_KNOWLEDGE.query(vector, { topK: 4, returnMetadata: 'all' })
-                : env.VECTORIZE_FAQ.query(vector, { topK: 2, returnMetadata: 'all' }),
-        ]);
+        const rKB = useKB
+            ? await env.VECTORIZE_KNOWLEDGE.query(vector, { topK: 10, returnMetadata: 'all' })
+            : await env.VECTORIZE_PSY.query(vector, { topK: 5, returnMetadata: 'all' });
 
-        const chunks:      string[]                 = [];
-        const suggestions: PsychologistSuggestion[] = [];
+        const chunks:      string[]     = [];
+        const suggestions: PanelItem[]  = [];
 
-        // Treści (FAQ, artykuły, warsztaty, grupy) → context text
-        // Pomijamy psychologów — obsługiwani przez rPsy z filtrem type
-        for (const m of rContent.matches) {
-            if ((m.score ?? 0) > 0.52 && m.metadata) {
-                const meta = m.metadata as unknown as VectorMetadata;
-                if (meta.type === 'psycholog') continue;
-                const typeLabel = meta.type === 'faq' ? 'FAQ'
-                    : meta.type === 'article' ? 'Artykuł'
-                    : meta.type === 'workshop' ? 'Warsztat'
-                    : meta.type === 'group' ? 'Grupa wsparcia'
-                    : meta.type;
-                const extra = meta.content_snippet ? `\n${meta.content_snippet}` : '';
-                chunks.push(`${typeLabel}: ${meta.title}${extra} — ${meta.url}`);
+        for (const m of rKB.matches) {
+            if (!(m.score ?? 0) || !m.metadata) continue;
+            const meta  = m.metadata as unknown as VectorMetadata;
+            const score = m.score ?? 0;
+
+            if (meta.type === 'psycholog') {
+                // Psycholodzy → panel (próg niski — BGE-M3 asymmetric retrieval gap)
+                if (score > 0.30) {
+                    const spec = meta.specializations ? ` | specjalizacje: ${meta.specializations}` : '';
+                    chunks.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
+                    suggestions.push({
+                        type:            'psychologist',
+                        id:              Number(meta.id),
+                        title:           String(meta.title),
+                        url:             String(meta.url),
+                        photo_url:       String(meta.photo_url ?? ''),
+                        score,
+                        specializations: meta.specializations ? String(meta.specializations) : undefined,
+                    });
+                }
+            } else {
+                // Treści (FAQ, artykuły, warsztaty, grupy) → context + panel
+                if (score > 0.48) {
+                    const typeLabel = meta.type === 'faq' ? 'FAQ'
+                        : meta.type === 'article' ? 'Artykuł'
+                        : meta.type === 'workshop' ? 'Warsztat'
+                        : meta.type === 'group' ? 'Grupa wsparcia'
+                        : meta.type;
+                    const extra = meta.content_snippet ? `\n${meta.content_snippet}` : '';
+                    chunks.push(`${typeLabel}: ${meta.title}${extra} — ${meta.url}`);
+                    suggestions.push({
+                        type:      (meta.type === 'article' ? 'article'
+                                   : meta.type === 'workshop' ? 'workshop'
+                                   : meta.type === 'group' ? 'group'
+                                   : 'faq') as PanelItem['type'],
+                        id:        Number(meta.id),
+                        title:     String(meta.title),
+                        url:       String(meta.url),
+                        photo_url: meta.photo_url ? String(meta.photo_url) : undefined,
+                        tags:      meta.tags ? String(meta.tags) : undefined,
+                        nearest_date: meta.event_date ? String(meta.event_date) : undefined,
+                        score,
+                    });
+                }
             }
         }
 
-        // Psycholodzy → suggestions (panel boczny)
-        for (const m of rPsy.matches) {
-            if ((m.score ?? 0) > 0.46 && m.metadata) {
-                const meta = m.metadata as unknown as VectorMetadata;
-                const spec = meta.specializations ? ` | specjalizacje: ${meta.specializations}` : '';
-                chunks.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
-                suggestions.push({
-                    id:              Number(meta.id),
-                    name:            String(meta.title),
-                    url:             String(meta.url),
-                    photo_url:       String(meta.photo_url ?? ''),
-                    score:           m.score ?? 0,
-                    specializations: meta.specializations ? String(meta.specializations) : undefined,
-                });
-            }
-        }
-
-        // Fallback do legacy VECTORIZE_PSY gdy KB filtr nie zwrócił psychologów
-        // (metadata index może jeszcze nie być gotowy po migracji)
-        if (suggestions.length === 0) {
-            const rFallback = await env.VECTORIZE_PSY.query(vector, { topK: 4, returnMetadata: 'all' });
+        // Fallback do legacy VECTORIZE_PSY gdy KB zwróciło 0 psychologów
+        if (suggestions.filter(s => s.type === 'psychologist').length === 0) {
+            const rFallback = await env.VECTORIZE_PSY.query(vector, { topK: 5, returnMetadata: 'all' });
             for (const m of rFallback.matches) {
-                if ((m.score ?? 0) > 0.46 && m.metadata) {
+                if ((m.score ?? 0) > 0.30 && m.metadata) {
                     const meta = m.metadata as unknown as VectorMetadata;
                     const spec = meta.specializations ? ` | specjalizacje: ${meta.specializations}` : '';
                     if (!chunks.some(c => c.includes(String(meta.title)))) {
                         chunks.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
                     }
                     suggestions.push({
+                        type:            'psychologist',
                         id:              Number(meta.id),
-                        name:            String(meta.title),
+                        title:           String(meta.title),
                         url:             String(meta.url),
                         photo_url:       String(meta.photo_url ?? ''),
                         score:           m.score ?? 0,
@@ -317,10 +455,24 @@ async function buildContext(env: Env, userMessage: string): Promise<ContextResul
             }
         }
 
-        const nearestDates = await fetchNearestDates(env, suggestions.map(s => s.id));
+        const psychologistIds = suggestions.filter(s => s.type === 'psychologist').map(s => s.id);
+        const nearestDates = await fetchNearestDates(env, psychologistIds);
         for (const s of suggestions) {
-            const d = nearestDates.get(s.id);
-            if (d) s.nearest_date = d;
+            if (s.type === 'psychologist') {
+                const d = nearestDates.get(s.id);
+                if (d) s.nearest_date = d;
+            }
+        }
+
+        // Dodaj do kontekstu info o dostępności — LLM może odpowiedzieć o braku terminów
+        if (psychologistIds.length > 0) {
+            const withDate = suggestions.filter(s => s.type === 'psychologist' && s.nearest_date);
+            if (withDate.length > 0) {
+                const lines = withDate.map(s => `${s.title}: ${formatDatePL(s.nearest_date!)}`);
+                chunks.push(`DOSTĘPNOŚĆ TERMINÓW: ${lines.join(', ')}`);
+            } else {
+                chunks.push('DOSTĘPNOŚĆ TERMINÓW: Aktualnie żaden z dopasowanych specjalistów nie ma wolnych terminów w najbliższych 30 dniach. Poinformuj pacjenta, że warto sprawdzić ponownie za kilka dni lub skontaktować się z recepcją Fundacji.');
+            }
         }
 
         if (chunks.length === 0 && suggestions.length === 0) {
@@ -331,9 +483,38 @@ async function buildContext(env: Env, userMessage: string): Promise<ContextResul
             contextText: chunks.length ? '\n\nKontekst:\n' + chunks.join('\n\n') : '',
             suggestions,
         };
-    } catch {
+    } catch (e) {
+        console.error('[buildContext] error:', e);
         return { contextText: '', suggestions: [] };
     }
+}
+
+// ── Miks panelu: sortuj psychologów po dostępności, content gdy dominuje ──────
+
+function pickPanelItems(suggestions: PanelItem[], max = 8): PanelItem[] {
+    const psychologists = suggestions.filter(s => s.type === 'psychologist');
+    const content       = suggestions.filter(s => s.type !== 'psychologist');
+
+    // Sortuj psychologów: z nearest_date na górze
+    const psySorted = [...psychologists].sort((a, b) => {
+        if (a.nearest_date && !b.nearest_date) return -1;
+        if (!a.nearest_date && b.nearest_date) return  1;
+        return b.score - a.score;
+    });
+
+    // Jeśli treści dominują (avg score > psycholodzy + 0.15) → panel treści
+    if (content.length >= 2) {
+        const avgPsy = psychologists.reduce((s, x) => s + x.score, 0) / (psychologists.length || 1);
+        const avgCon = content.reduce((s, x) => s + x.score, 0) / content.length;
+        if (avgCon > avgPsy + 0.15) {
+            return [...content.slice(0, max)];
+        }
+    }
+
+    // Standardowy miks: do 5 psychologów (posortowanych) + do 3 treści
+    const psySlot = Math.min(5, psySorted.length);
+    const conSlot = Math.min(3, content.length);
+    return [...psySorted.slice(0, psySlot), ...content.slice(0, conSlot)].slice(0, max);
 }
 
 // ── Contact fallback detection ────────────────────────────────────────────────
@@ -383,11 +564,37 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
         }});
     }
 
+    // ── Detekcja pożegnania — przed LLM ──────────────────────────────────────
+    if (isFarewell(messages)) {
+        const reply = 'Cieszę się, że mogłem pomóc! Jeśli kiedyś znowu będziesz szukać specjalisty — chętnie pomogę. Powodzenia! 🤝';
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const enc    = new TextEncoder();
+        (async () => {
+            writer.write(enc.encode(sseEvent({ type: 'token', token: reply })));
+            writer.write(enc.encode(sseEvent({ type: 'done', farewell: true, reply, suggestions: [], quick_replies: [], contact_fallback: false })));
+            writer.close();
+        })();
+        return new Response(readable, { headers: {
+            'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive', 'Access-Control-Allow-Origin': '*',
+        }});
+    }
+
     const lastUser = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
+
+    // Krótkie wiadomości (preferencje: "online", "tak" itp.) nie mają wartości semantycznej
+    // — użyj najdłuższej wiadomości użytkownika (typowo: pierwsze opisanie problemu)
+    // żeby panel pokazywał spójne wyniki przez całą rozmowę
+    const semanticQuery = (() => {
+        if (lastUser.length >= 40) return lastUser;
+        const userMsgs = messages.filter(m => m.role === 'user').slice(-8).map(m => m.content);
+        return userMsgs.reduce((a, b) => (b.length > a.length ? b : a), lastUser);
+    })();
 
     const { contextText, suggestions } = filter_date
         ? await buildDateFilteredContext(env, filter_date)
-        : await buildContext(env, lastUser);
+        : await buildContext(env, semanticQuery);
 
     const history: AiMessage[] = messages.slice(-20).map(m => ({
         role:    m.role as AiMessage['role'],
@@ -442,8 +649,55 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
         tools:    TOOLS,
     }) as AiChatResponse;
 
+    // Llama czasem pisze nazwę narzędzia jako tekst zamiast tool_call — wykryj i obsłuż
+    const TOOL_NAME_RE = /\b(escalate_to_human|check_availability|recommend_resources|get_pricing_info|end_conversation)\b/;
+    const botchedCall  = !toolCheck.tool_calls?.length && TOOL_NAME_RE.exec(toolCheck.response ?? '');
+    if (botchedCall && !toolCheck.tool_calls?.length) {
+        const name = botchedCall[1];
+        if (name === 'escalate_to_human') {
+            const reply = 'Rozumiem, że potrzebujesz bezpośredniej pomocy. Oto dane kontaktowe Fundacji:';
+            const { readable, writable } = new TransformStream();
+            const writer = writable.getWriter();
+            const enc    = new TextEncoder();
+            (async () => {
+                writer.write(enc.encode(sseEvent({ type: 'token', token: reply })));
+                writer.write(enc.encode(sseEvent({ type: 'done', reply, suggestions: [], quick_replies: [], contact_fallback: true, crisis: false })));
+                writer.close();
+            })();
+            return new Response(readable, { headers: sseHeaders });
+        }
+        if (name === 'end_conversation') {
+            const reply = 'Cieszę się, że mogłem pomóc! Jeśli kiedyś znowu będziesz szukać specjalisty — chętnie pomogę. Powodzenia! 🤝';
+            const { readable, writable } = new TransformStream();
+            const writer = writable.getWriter();
+            const enc    = new TextEncoder();
+            (async () => {
+                writer.write(enc.encode(sseEvent({ type: 'token', token: reply })));
+                writer.write(enc.encode(sseEvent({ type: 'done', farewell: true, reply, suggestions: [], quick_replies: [], contact_fallback: false })));
+                writer.close();
+            })();
+            return new Response(readable, { headers: sseHeaders });
+        }
+        // Dla innych narzędzi: utwórz syntetyczny tool_call i kontynuuj
+        if (!toolCheck.tool_calls) (toolCheck as AiChatResponse).tool_calls = [];
+        toolCheck.tool_calls!.push({ name, arguments: {} });
+    }
+
     if (toolCheck.tool_calls?.length) {
         const call = toolCheck.tool_calls[0];
+
+        if (call.name === 'end_conversation') {
+            const reply = 'Cieszę się, że mogłem pomóc! Jeśli kiedyś znowu będziesz szukać specjalisty — chętnie pomogę. Powodzenia! 🤝';
+            const { readable, writable } = new TransformStream();
+            const writer = writable.getWriter();
+            const enc    = new TextEncoder();
+            (async () => {
+                writer.write(enc.encode(sseEvent({ type: 'token', token: reply })));
+                writer.write(enc.encode(sseEvent({ type: 'done', farewell: true, reply, suggestions: [], quick_replies: [], contact_fallback: false })));
+                writer.close();
+            })();
+            return new Response(readable, { headers: sseHeaders });
+        }
 
         if (call.name === 'escalate_to_human') {
             const reply = 'Rozumiem, że potrzebujesz bezpośredniej pomocy. Oto dane kontaktowe Fundacji:';
@@ -461,36 +715,57 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
         if (call.name === 'recommend_resources') {
             const query  = call.arguments.query ?? lastUser;
             const vector = await embed(env, query);
-            const index  = env.VECTORIZE_KNOWLEDGE ?? env.VECTORIZE_PSY;
-            const rPsy   = await index.query(vector, {
-                topK: 5, returnMetadata: 'all',
-                filter: { type: { $eq: 'psycholog' } },
+            // Bez metadata filter (nie działa na starych danych) — filtrujemy w kodzie
+            const rAll = await (env.VECTORIZE_KNOWLEDGE ?? env.VECTORIZE_PSY).query(vector, {
+                topK: 10, returnMetadata: 'all',
             });
 
-            const toolSuggestions: PsychologistSuggestion[] = [];
+            const toolSuggestions: PanelItem[] = [];
             const resLines: string[] = [];
 
-            for (const m of rPsy.matches) {
-                if ((m.score ?? 0) > 0.40 && m.metadata) {
-                    const meta = m.metadata as unknown as VectorMetadata;
+            for (const m of rAll.matches) {
+                if (!(m.score ?? 0) || !m.metadata) continue;
+                const meta  = m.metadata as unknown as VectorMetadata;
+                const score = m.score ?? 0;
+
+                if (meta.type === 'psycholog' && score > 0.30) {
                     const spec = meta.specializations ? ` (specjalizacje: ${meta.specializations})` : '';
                     resLines.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
                     toolSuggestions.push({
+                        type:            'psychologist',
                         id:              Number(meta.id),
-                        name:            String(meta.title),
+                        title:           String(meta.title),
                         url:             String(meta.url),
                         photo_url:       String(meta.photo_url ?? ''),
-                        score:           m.score ?? 0,
+                        score,
                         specializations: meta.specializations ? String(meta.specializations) : undefined,
+                    });
+                } else if (meta.type !== 'psycholog' && score > 0.48) {
+                    const typeLabel = meta.type === 'workshop' ? 'Warsztat'
+                        : meta.type === 'group' ? 'Grupa wsparcia'
+                        : meta.type === 'article' ? 'Artykuł' : 'FAQ';
+                    resLines.push(`${typeLabel}: ${meta.title} — ${meta.url}`);
+                    toolSuggestions.push({
+                        type: (meta.type === 'workshop' ? 'workshop'
+                            : meta.type === 'group' ? 'group'
+                            : meta.type === 'article' ? 'article' : 'faq') as PanelItem['type'],
+                        id:        Number(meta.id),
+                        title:     String(meta.title),
+                        url:       String(meta.url),
+                        photo_url: meta.photo_url ? String(meta.photo_url) : undefined,
+                        tags:      meta.tags ? String(meta.tags) : undefined,
+                        score,
                     });
                 }
             }
 
-            const toolContext = resLines.length
-                ? `Znalezieni specjaliści pasujący do problemu "${query}":\n${resLines.join('\n')}`
-                : `Nie znaleziono specjalistów pasujących do: "${query}".`;
+            const psyCount     = toolSuggestions.filter(s => s.type === 'psychologist').length;
+            const contentCount = toolSuggestions.filter(s => s.type !== 'psychologist').length;
+            const toolContext  = resLines.length
+                ? `Znaleziono ${psyCount} specjalistów i ${contentCount} zasobów pasujących do problemu "${query}". Karty są już w panelu bocznym — NIE wymieniaj ich z imienia w odpowiedzi.`
+                : `Nie znaleziono specjalistów pasujących do: "${query}". Odpowiedz, że możesz sprawdzić dostępne terminy.`;
 
-            const nearestDates = await fetchNearestDates(env, toolSuggestions.map(s => s.id));
+            const nearestDates = await fetchNearestDates(env, toolSuggestions.filter(s => s.type === 'psychologist').map(s => s.id));
             for (const s of toolSuggestions) {
                 const d = nearestDates.get(s.id);
                 if (d) s.nearest_date = d;
@@ -499,42 +774,39 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
             const followUp = await env.AI.run(CHAT_MODEL, {
                 messages: [
                     ...allMessages,
-                    { role: 'assistant', content: `Szukam specjalistów: ${query}` },
                     { role: 'tool',      content: toolContext },
                 ],
                 stream: true,
             }) as ReadableStream;
 
-            return streamResponse(followUp, toolSuggestions.slice(0, 3), [], sseHeaders);
+            return streamResponse(followUp, pickPanelItems(toolSuggestions), [], sseHeaders);
         }
 
         if (call.name === 'get_pricing_info') {
             const followUp = await env.AI.run(CHAT_MODEL, {
                 messages: [
                     ...allMessages,
-                    { role: 'assistant', content: 'Sprawdzam informacje o cenach.' },
                     { role: 'tool',      content: PRICING_INFO },
                 ],
                 stream: true,
             }) as ReadableStream;
 
-            return streamResponse(followUp, suggestions.slice(0, 3), [], sseHeaders);
+            return streamResponse(followUp, pickPanelItems(suggestions), [], sseHeaders);
         }
 
-        const typ   = call.arguments.consult_type ?? consult_type ?? 'pelno';
-        const avail = await fetchAvailability(env, typ);
+        const typ = call.arguments.consult_type ?? consult_type ?? 'pelno';
+        const { contextText: availCtx, suggestions: availSugg, quick_replies: availQR } =
+            await buildAvailabilityContext(env, typ);
 
         const followUp = await env.AI.run(CHAT_MODEL, {
             messages: [
                 ...allMessages,
-                { role: 'assistant', content: `Wywołuję ${call.name}` },
-                { role: 'tool',      content: avail.text },
-                { role: 'user',      content: 'Wymień wszystkie dostępne terminy z powyższej listy, każdy w osobnej linii.' },
+                { role: 'tool', content: availCtx },
             ],
             stream: true,
         }) as ReadableStream;
 
-        return streamResponse(followUp, suggestions.slice(0, 3), avail.quick_replies, sseHeaders);
+        return streamResponse(followUp, pickPanelItems(availSugg), availQR, sseHeaders);
     }
 
     // ── Normalny tryb: streaming ──────────────────────────────────────────────
@@ -543,14 +815,14 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
         stream:   true,
     }) as ReadableStream;
 
-    return streamResponse(stream, suggestions.slice(0, 3), [], sseHeaders);
+    return streamResponse(stream, pickPanelItems(suggestions), [], sseHeaders);
 }
 
 // ── Stream → SSE response ─────────────────────────────────────────────────────
 
 function streamResponse(
     aiStream:     ReadableStream,
-    suggestions:  PsychologistSuggestion[],
+    suggestions:  PanelItem[],
     quick_replies: QuickReply[],
     headers:      Record<string, string>,
 ): Response {
@@ -586,13 +858,26 @@ function streamResponse(
         } catch (e) {
             writer.write(enc.encode(sseEvent({ type: 'error', message: 'Błąd streamingu' })));
         } finally {
-            writer.write(enc.encode(sseEvent({
-                type:             'done',
-                reply:            fullReply,
-                suggestions,
-                quick_replies,
-                contact_fallback: needsContactFallback(fullReply),
-            })));
+            // Jeśli LLM wpisał nazwę narzędzia jako tekst zamiast tool_call — nadpisz odpowiedź
+            const STREAM_TOOL_RE = /\b(escalate_to_human|end_conversation)\b/;
+            const streamBotched  = STREAM_TOOL_RE.exec(fullReply);
+            if (streamBotched) {
+                if (streamBotched[1] === 'escalate_to_human') {
+                    const r = 'Rozumiem, że potrzebujesz bezpośredniej pomocy. Oto dane kontaktowe Fundacji:';
+                    writer.write(enc.encode(sseEvent({ type: 'done', reply: r, suggestions: [], quick_replies: [], contact_fallback: true, crisis: false })));
+                } else {
+                    const r = 'Cieszę się, że mogłem pomóc! Jeśli kiedyś znowu będziesz szukać specjalisty — chętnie pomogę. Powodzenia! 🤝';
+                    writer.write(enc.encode(sseEvent({ type: 'done', farewell: true, reply: r, suggestions: [], quick_replies: [], contact_fallback: false })));
+                }
+            } else {
+                writer.write(enc.encode(sseEvent({
+                    type:             'done',
+                    reply:            fullReply,
+                    suggestions,
+                    quick_replies,
+                    contact_fallback: needsContactFallback(fullReply),
+                })));
+            }
             writer.close();
         }
     })();

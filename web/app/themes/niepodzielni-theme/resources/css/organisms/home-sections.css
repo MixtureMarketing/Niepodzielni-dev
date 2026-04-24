@@ -24,7 +24,9 @@
 
 /* --- Hero Tax --- */
 .home-hero-tax {
-    background-image: url('/wp-content/uploads/2026/01/vfxvfxd.png');
+    --hero-tax-bg-desktop: url('/wp-content/uploads/2026/01/vfxvfxd.png');
+    --hero-tax-bg-mobile:  url('/wp-content/uploads/2026/01/fgfgdgfdfgtdtfgd-1.jpg');
+    background-image: var(--hero-tax-bg-desktop);
     background-size: cover;
     background-position: center;
     min-height: 75vh;
@@ -36,7 +38,7 @@
 
 @media (max-width: 768px) {
     .home-hero-tax {
-        background-image: url('/wp-content/uploads/2026/01/fgfgdgfdfgtdtfgd-1.jpg');
+        background-image: var(--hero-tax-bg-mobile);
         background-position: top center;
         align-items: flex-start;
         padding-top: 40px;

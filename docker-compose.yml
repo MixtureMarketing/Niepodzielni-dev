@@ -100,6 +100,15 @@ services:
       PMA_PASSWORD: niepodzielni_pass
     depends_on:
       - db
+      
+# ── Cloudflare Tunnel (Zero Trust) DODAJ TO: ─────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: niepodzielni-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token eyJhIjoiZjI2Y2EzZGIzODBkMzZkYjg2MTYwZDdmMzVlMzk2OGUiLCJ0IjoiNjZjYjhiOWMtZWM2OC00NTY3LThlNWUtMDdkNDYwMTljOTg1IiwicyI6Ik16RTBabVV3WW1FdE1EQTROaTAwWXpabUxXSTRZMkV0TnpCbVkyRXlNRFU0T0dWaSJ9
+    depends_on:
+      - nginx
 
 volumes:
   db_data:

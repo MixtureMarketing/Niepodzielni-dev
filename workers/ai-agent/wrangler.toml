@@ -24,4 +24,6 @@ index_name = "niepodzielni-knowledge"
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
 CHAT_MODEL       = "openai/gpt-4o-mini"
 EMBED_MODEL      = "@cf/baai/bge-m3"
-WP_API_URL       = "https://local-confidential-standard-carrying.trycloudflare.com/wp-json/niepodzielni/v1"
+WP_API_URL       = "https://dev.niepodzielni.com/wp-json/niepodzielni/v1"
+# Stary tymczasowy tunel (trycloudflare): wygasł — zastąpiony stałym dev.niepodzielni.com
+# Produkcja: https://niepodzielni-dev-01.mixturemarketing.pl/wp-json/niepodzielni/v1

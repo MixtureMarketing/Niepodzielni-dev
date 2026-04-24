@@ -110,11 +110,14 @@ function np_bookero_worker_sync_oop(): void
     $service = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo);
 
     // ── Pętla synchronizacji z circuit breaker ────────────────────────────────
+    $synced_count = 0;
+
     foreach ($to_sync as $postId) {
         usleep(BOOKERO_SYNC_DELAY_US); // 0.3s — ochrona przed throttlingiem Bookero
 
         try {
             $service->syncSingleWorker((int) $postId);
+            $synced_count++;
         } catch (\Niepodzielni\Bookero\BookeroRateLimitException $e) {
             // HTTP 429 lub Timeout — Bookero prosi o backoff.
             // Zatrzymaj pętlę i zablokuj cron na BOOKERO_LOCKOUT_TTL minut.
@@ -124,7 +127,12 @@ function np_bookero_worker_sync_oop(): void
             );
             error_log('[Bookero] RateLimit cron postId=' . $postId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             set_transient(BOOKERO_LOCKOUT_KEY, 1, BOOKERO_LOCKOUT_TTL);
-            return; // Natychmiastowe wyjście — nie przetwarzaj kolejnych psychologów
+
+            // Zainwaliduj listing cache nawet przy przerwaniu — część batcha mogła zmienić daty
+            if ($synced_count > 0) {
+                do_action('niepodzielni_bookero_batch_synced');
+            }
+            return;
         } catch (\Exception $e) {
             // Nieoczekiwany błąd — izoluj do pojedynczego psychologa.
             // Loguj z pełnym stack trace i kontynuuj z kolejnym.
@@ -135,5 +143,12 @@ function np_bookero_worker_sync_oop(): void
             error_log('[Bookero] Exception cron postId=' . $postId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             continue;
         }
+    }
+
+    // Inwalidacja cache listingu — wywołuje PsychologistListingService::clearCache()
+    // oraz np_bookero_invalidate_workers_cache() i np_clear_slider_cache().
+    // Bez tego listing serwuje stare dane przez pełne 15 minut niezależnie od synchrnoizacji.
+    if ($synced_count > 0) {
+        do_action('niepodzielni_bookero_batch_synced');
     }
 }

@@ -63,8 +63,9 @@ export interface PsychologistSuggestion {
 }
 
 export interface QuickReply {
-    label:        string;
-    filter_date?: string; // jeśli ustawione, frontend wysyła je z filter_date
+    label:         string;
+    filter_date?:  string;           // filtruje wyniki po dacie
+    consult_type?: 'pelno' | 'nisko'; // przełącza typ konsultacji i odpytuje dostępność
 }
 
 export interface PanelItem {

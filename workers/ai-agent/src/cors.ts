@@ -1,6 +1,7 @@
 const ALLOWED_ORIGINS = [
     'https://niepodzielni.pl',
     'https://www.niepodzielni.pl',
+    'https://dev.niepodzielni.com',
     'http://localhost:8000',
 ];
 

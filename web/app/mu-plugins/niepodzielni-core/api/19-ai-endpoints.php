@@ -80,6 +80,7 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
 
     // Zagreguj dostępność per data
     $availability = [];
+    $psy_meta     = [];
 
     foreach ($psycholodzy as $post_id) {
         $slots_json = get_post_meta((int) $post_id, $slots_key, true);
@@ -102,16 +103,34 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
             $availability[$date]['count']++;
             $availability[$date]['psychologist_ids'][] = $post_id;
         }
+
+        // Zbierz metadane — raz per psycholog (użyte przy budowaniu psychologists[])
+        if (! isset($psy_meta[$post_id])) {
+            $spec_terms = get_the_terms($post_id, 'specjalizacja') ?: [];
+            $area_terms = get_the_terms($post_id, 'obszar-pomocy') ?: [];
+            $all_terms  = array_merge($spec_terms, $area_terms);
+            $psy_meta[$post_id] = [
+                'id'              => $post_id,
+                'title'           => get_the_title($post_id),
+                'url'             => get_permalink($post_id),
+                'photo_url'       => get_the_post_thumbnail_url($post_id, 'medium_large') ?: '',
+                'specializations' => implode(', ', array_map(fn($t) => $t->name, $all_terms)),
+            ];
+        }
     }
 
-    // Posortuj po dacie i zbuduj response
+    // Posortuj po dacie i zbuduj response z metadanymi psychologów
     ksort($availability);
     $result = [];
     foreach ($availability as $date => $data) {
         $result[] = [
-            'date'              => $date,
-            'count'             => $data['count'],
-            'psychologist_ids'  => $data['psychologist_ids'],
+            'date'             => $date,
+            'count'            => $data['count'],
+            'psychologist_ids' => $data['psychologist_ids'],
+            'psychologists'    => array_values(array_map(
+                fn($id) => $psy_meta[$id],
+                $data['psychologist_ids'],
+            )),
         ];
     }
 

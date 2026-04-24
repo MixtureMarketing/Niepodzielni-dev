@@ -1,9 +1,9 @@
 import type { Env } from './types';
-import { handleSync }   from './routes/sync';
-import { handleSearch } from './routes/search';
-import { handleChat }   from './routes/chat';
+import { handleSync }     from './routes/sync';
+import { handleSearch }   from './routes/search';
+import { handleChat }     from './routes/chat';
+import { handleFeedback } from './routes/feedback';
 import { handleOptions, withCors } from './cors';
-
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         if (request.method === 'OPTIONS') {
@@ -21,6 +21,8 @@ export default {
             response = await handleSearch(request, env);
         } else if (pathname === '/chat' && request.method === 'POST') {
             response = await handleChat(request, env);
+        } else if (pathname === '/feedback' && request.method === 'POST') {
+            response = await handleFeedback(request, env);
         } else {
             response = new Response(JSON.stringify({ ok: true, service: 'niepodzielni-ai-agent' }), {
                 headers: { 'Content-Type': 'application/json' },

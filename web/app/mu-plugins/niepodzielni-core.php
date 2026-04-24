@@ -49,6 +49,8 @@ require_once NIEPODZIELNI_CORE_PATH . 'api/14-bk-shared-calendar.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/15-matchmaker-shortcode.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/18-ai-sync.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/19-ai-endpoints.php';
+require_once NIEPODZIELNI_CORE_PATH . 'api/20-ai-feedback.php';
+require_once NIEPODZIELNI_CORE_PATH . 'api/22-media-helpers.php';
 
 // 3. MODYFIKACJE PANELU ADMINA
 require_once NIEPODZIELNI_CORE_PATH . 'admin/5-admin-dashboard.php';

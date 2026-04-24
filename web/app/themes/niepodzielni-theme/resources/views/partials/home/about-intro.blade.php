@@ -16,7 +16,7 @@
                 </a>
             </div>
             <div class="about-intro-image">
-                <img src="/wp-content/uploads/2026/01/SERCE-Z-REKA-1.png" alt="Serce z ręką" width="557" height="557" fetchpriority="high">
+                <img src="{!! wp_get_attachment_url(25864) !!}" alt="Serce z ręką" width="557" height="557" fetchpriority="high">
             </div>
         </div>
     </div>

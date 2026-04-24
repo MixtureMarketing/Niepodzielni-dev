@@ -79,6 +79,65 @@ function np_cf_register_all_fields(): void
     np_cf_warsztaty_grupy();
     np_cf_wydarzenia();
     np_cf_aktualnosci();
+    np_cf_theme_options();
+}
+
+// ─── Theme Options ────────────────────────────────────────────────────────────
+
+function np_cf_theme_options(): void
+{
+    Container::make('theme_options', 'np_theme_options', 'Ustawienia motywu')
+        ->set_page_menu_position(61)
+        ->set_icon('dashicons-admin-customizer')
+        ->add_tab('Strona główna', [
+
+            Field::make('html', 'cf_sep_hero_tax')
+                ->set_html('<h3 style="margin:4px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Sekcja Hero (1,5%)</h3>'),
+
+            Field::make('image', 'hero_tax_bg_desktop', 'Zdjęcie tła — desktop')
+                ->set_value_type('id')
+                ->set_width(50)
+                ->set_help_text('Wyświetlane na ekranach > 768 px.'),
+
+            Field::make('image', 'hero_tax_bg_mobile', 'Zdjęcie tła — mobile')
+                ->set_value_type('id')
+                ->set_width(50)
+                ->set_help_text('Wyświetlane na ekranach ≤ 768 px. Jeśli puste, używane jest zdjęcie desktop.'),
+        ])
+        ->add_tab('Partnerzy', [
+
+            Field::make('html', 'cf_sep_partners')
+                ->set_html('<h3 style="margin:4px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Slider partnerów (stopka)</h3><p style="color:#555;margin-bottom:16px">Dodaj logo każdego partnera. Link i jego rodzaj są opcjonalne.</p>'),
+
+            Field::make('complex', 'partners', 'Partnerzy')
+                ->set_layout('tabbed-vertical')
+                ->setup_labels([
+                    'plural_name'   => 'Partnerzy',
+                    'singular_name' => 'Partner',
+                ])
+                ->add_fields([
+                    Field::make('image', 'logo', 'Logo')
+                        ->set_value_type('id')
+                        ->set_help_text('Preferowany format: SVG lub PNG z przezroczystością.'),
+
+                    Field::make('text', 'name', 'Nazwa partnera')
+                        ->set_help_text('Używana jako atrybut alt obrazka.')
+                        ->set_width(50),
+
+                    Field::make('text', 'url', 'Adres URL (opcjonalnie)')
+                        ->set_attribute('placeholder', 'https://')
+                        ->set_width(50),
+
+                    Field::make('select', 'link_rel', 'Rodzaj linku')
+                        ->set_options([
+                            'follow'    => 'Follow (domyślny)',
+                            'nofollow'  => 'Nofollow',
+                            'sponsored' => 'Sponsored',
+                        ])
+                        ->set_default_value('follow')
+                        ->set_width(50),
+                ]),
+        ]);
 }
 
 // ─── CPT: Psycholog ───────────────────────────────────────────────────────────

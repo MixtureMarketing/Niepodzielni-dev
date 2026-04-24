@@ -97,6 +97,30 @@ function np_ai_build_article_payload(int $post_id): ?array
     ];
 }
 
+function np_ai_build_blog_payload(int $post_id): ?array
+{
+    $post = get_post($post_id);
+    if (! $post || $post->post_status !== 'publish') {
+        return null;
+    }
+
+    $cats = wp_get_post_terms($post_id, 'category', ['fields' => 'names']);
+    $tags = wp_get_post_terms($post_id, 'post_tag',  ['fields' => 'names']);
+    if (is_wp_error($cats)) $cats = [];
+    if (is_wp_error($tags)) $tags = [];
+    $all_tags = array_values(array_unique(array_merge($cats, $tags)));
+
+    return [
+        'id'      => $post_id,
+        'type'    => 'article',
+        'title'   => $post->post_title,
+        'content' => wp_strip_all_tags($post->post_content),
+        'url'     => get_permalink($post_id),
+        'tags'    => $all_tags,
+        'status'  => 'active',
+    ];
+}
+
 function np_ai_build_workshop_payload(int $post_id): ?array
 {
     $post = get_post($post_id);
@@ -199,6 +223,16 @@ add_action('save_post_faq', function (int $post_id, \WP_Post $post): void {
     }
 }, 10, 2);
 
+add_action('save_post', function (int $post_id, \WP_Post $post): void {
+    if ($post->post_type !== 'post' || $post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
+        return;
+    }
+    $payload = np_ai_build_blog_payload($post_id);
+    if ($payload) {
+        np_ai_sync_dispatch($payload);
+    }
+}, 10, 2);
+
 add_action('save_post_aktualnosci', function (int $post_id, \WP_Post $post): void {
     if ($post->post_status !== 'publish' || wp_is_post_revision($post_id)) {
         return;
@@ -241,10 +275,11 @@ add_action('save_post_grupy-wsparcia', function (int $post_id, \WP_Post $post): 
 function np_ai_bulk_sync(string $post_type = 'psycholog'): void
 {
     $builders = [
-        'psycholog'     => 'np_ai_build_psycholog_payload',
-        'faq'           => 'np_ai_build_faq_payload',
-        'aktualnosci'   => 'np_ai_build_article_payload',
-        'warsztaty'     => 'np_ai_build_workshop_payload',
+        'psycholog'      => 'np_ai_build_psycholog_payload',
+        'faq'            => 'np_ai_build_faq_payload',
+        'aktualnosci'    => 'np_ai_build_article_payload',
+        'post'           => 'np_ai_build_blog_payload',
+        'warsztaty'      => 'np_ai_build_workshop_payload',
         'grupy-wsparcia' => 'np_ai_build_group_payload',
     ];
 
@@ -296,7 +331,7 @@ function np_ai_bulk_sync(string $post_type = 'psycholog'): void
 
 function np_ai_bulk_sync_all(): void
 {
-    foreach (['psycholog', 'faq', 'aktualnosci', 'warsztaty', 'grupy-wsparcia'] as $type) {
+    foreach (['psycholog', 'faq', 'aktualnosci', 'post', 'warsztaty', 'grupy-wsparcia'] as $type) {
         np_ai_bulk_sync($type);
     }
 }

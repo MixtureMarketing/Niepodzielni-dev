@@ -268,11 +268,15 @@ class NpAiChat {
                 // w formacie [SPECJALIŚCI: ...] — marker rozpoznawany przez Worker
                 // (skip tool call) i system prompt (odpowiedź z historii bez check_availability)
                 if (data.suggestions?.length) {
-                    const names = data.suggestions.map(s => {
-                        const spec = s.specializations ? ` (${s.specializations})` : '';
-                        return `${s.name}${spec}`;
-                    }).join('; ');
-                    historyContent += ` [SPECJALIŚCI: ${names}]`;
+                    const psychologists = data.suggestions.filter(s => !s.type || s.type === 'psychologist');
+                    if (psychologists.length) {
+                        const names = psychologists.map(s => {
+                            const title = s.title ?? s.name ?? '';
+                            const spec  = s.specializations ? ` (${s.specializations})` : '';
+                            return `${title}${spec}`;
+                        }).join('; ');
+                        historyContent += ` [SPECJALIŚCI: ${names}]`;
+                    }
                 }
 
                 if (historyContent) {
@@ -352,10 +356,20 @@ class NpAiChat {
                             onDone({ ...event, reply: '', suggestions: [], quick_replies: [] });
                             return;
                         }
-                        // Pełny tekst z markdown — podmień całe innerHTML
-                        if (event.reply) {
+                        if (event.farewell) {
+                            // Zachowaj bąbelek z pożegnaniem i pokaż widget oceny
                             bubbleEl.classList.remove('np-chat__bubble--streaming');
+                            if (event.reply) bubbleEl.innerHTML = this._renderMarkdown(event.reply);
+                            this._renderRatingWidget();
+                            onDone({ ...event, suggestions: [], quick_replies: [] });
+                            return;
+                        }
+                        // Pełny tekst z markdown — zawsze podmień innerHTML (nadpisuje błędnie zaStreamowane nazwy narzędzi)
+                        bubbleEl.classList.remove('np-chat__bubble--streaming');
+                        if (event.reply) {
                             bubbleEl.innerHTML = this._renderMarkdown(event.reply);
+                        } else {
+                            bubbleEl.closest('.np-chat__message')?.remove();
                         }
                         onDone(event);
                     } else if (event.type === 'error') {
@@ -419,15 +433,16 @@ class NpAiChat {
             const dateStr = s.nearest_date
                 ? `<span class="np-chat__psy-date">${this._formatDate(s.nearest_date)}</span>`
                 : '';
+            const t = s.title ?? s.name ?? '';
             return `
             <a href="${this._escapeHtml(s.url)}" class="np-chat__psy-card" target="_blank" rel="noopener"
-               data-psy-id="${s.id}" data-psy-name="${this._escapeHtml(s.name)}">
+               data-psy-id="${s.id}" data-psy-name="${this._escapeHtml(t)}">
                 ${s.photo_url
-                    ? `<img src="${this._escapeHtml(s.photo_url)}" alt="${this._escapeHtml(s.name)}" class="np-chat__psy-photo" loading="lazy" width="48" height="48">`
+                    ? `<img src="${this._escapeHtml(s.photo_url)}" alt="${this._escapeHtml(t)}" class="np-chat__psy-photo" loading="lazy" width="48" height="48">`
                     : `<span class="np-chat__psy-avatar" aria-hidden="true">👤</span>`
                 }
                 <div class="np-chat__psy-info">
-                    <span class="np-chat__psy-name">${this._escapeHtml(s.name)}</span>
+                    <span class="np-chat__psy-name">${this._escapeHtml(t)}</span>
                     ${dateStr}
                 </div>
                 <span class="np-chat__psy-btn">Umów →</span>
@@ -476,6 +491,59 @@ class NpAiChat {
             </a>`;
         this.messagesEl.appendChild(div);
         this._scrollToBottom();
+    }
+
+    _renderRatingWidget() {
+        const div = document.createElement('div');
+        div.className = 'np-chat__farewell';
+        div.innerHTML = `
+            <p class="np-chat__farewell-ask">Jak oceniasz tę rozmowę?</p>
+            <div class="np-chat__stars" role="group" aria-label="Ocena rozmowy">
+                ${[1, 2, 3, 4, 5].map(n =>
+                    `<button class="np-chat__star" data-value="${n}" aria-label="${n} ${n === 1 ? 'gwiazdka' : n < 5 ? 'gwiazdki' : 'gwiazdek'}">★</button>`
+                ).join('')}
+            </div>`;
+
+        const stars = div.querySelectorAll('.np-chat__star');
+        stars.forEach(btn => {
+            btn.addEventListener('mouseover', () => this._highlightStars(div, +btn.dataset.value));
+            btn.addEventListener('mouseout',  () => this._highlightStars(div, 0));
+            btn.addEventListener('click',     () => this._submitRating(div, +btn.dataset.value));
+        });
+
+        this.messagesEl.appendChild(div);
+        this._scrollToBottom();
+    }
+
+    _highlightStars(container, upTo) {
+        container.querySelectorAll('.np-chat__star').forEach((btn, i) => {
+            btn.classList.toggle('np-chat__star--active', i < upTo);
+        });
+    }
+
+    async _submitRating(container, value) {
+        this._highlightStars(container, value);
+        container.querySelectorAll('.np-chat__star').forEach(btn => {
+            btn.disabled = true;
+        });
+
+        const thanks = document.createElement('p');
+        thanks.className = 'np-chat__farewell-thanks';
+        thanks.textContent = value >= 4
+            ? 'Dziękujemy za ocenę! Miło nam, że mogliśmy pomóc 💚'
+            : 'Dziękujemy za opinię. Staramy się być coraz lepsi!';
+        container.appendChild(thanks);
+        this._scrollToBottom();
+
+        try {
+            await fetch(`${this.workerUrl}/feedback`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ value, type: 'conversation_rating' }),
+            });
+        } catch {}
+
+        this._track('conversation_rated', { value });
     }
 
     _appendContactFallback() {
@@ -531,41 +599,112 @@ class NpAiChat {
             return;
         }
 
-        suggestions.forEach(s => {
-            const dateStr = s.nearest_date
-                ? `<span class="np-chat__psy-date">${this._formatDate(s.nearest_date)}</span>`
-                : '';
-            const card = document.createElement('a');
-            card.href      = s.url;
-            card.className = 'np-chat__psy-card';
-            card.target    = '_blank';
-            card.rel       = 'noopener';
-            card.dataset.psyId   = s.id;
-            card.dataset.psyName = s.name;
-            card.innerHTML = `
-                ${s.photo_url
-                    ? `<img src="${this._escapeHtml(s.photo_url)}" alt="${this._escapeHtml(s.name)}" class="np-chat__psy-photo" loading="lazy" width="48" height="48">`
-                    : `<span class="np-chat__psy-avatar" aria-hidden="true">👤</span>`
-                }
-                <div class="np-chat__psy-info">
-                    <span class="np-chat__psy-name">${this._escapeHtml(s.name)}</span>
-                    ${dateStr}
-                </div>
-                <span class="np-chat__psy-btn">Umów →</span>`;
+        const psyAvail   = suggestions.filter(s => (!s.type || s.type === 'psychologist') && s.nearest_date);
+        const psyUnavail = suggestions.filter(s => (!s.type || s.type === 'psychologist') && !s.nearest_date);
+        const content    = suggestions.filter(s => s.type && s.type !== 'psychologist');
 
-            card.addEventListener('click', () => {
-                this._track('psychologist_card_clicked', {
-                    psychologist_id:   card.dataset.psyId,
-                    psychologist_name: card.dataset.psyName,
-                });
-            });
+        // Update panel header title dynamically
+        const hasPsy     = psyAvail.length + psyUnavail.length > 0;
+        const hasContent = content.length > 0;
+        const panelTitle = this.panelEl.querySelector('.np-chat__panel-header span');
+        if (panelTitle) {
+            if (hasPsy && !hasContent) panelTitle.textContent = 'Specjaliści';
+            else if (!hasPsy && hasContent) panelTitle.textContent = 'Materiały i zasoby';
+            else panelTitle.textContent = 'Dopasowane zasoby';
+        }
 
-            this.panelContent.appendChild(card);
-        });
+        // 1. Psycholodzy z wolnymi terminami — na górze
+        psyAvail.forEach(s => this.panelContent.appendChild(this._createPsyCard(s, true)));
+
+        // 2. Treści (artykuły, warsztaty, grupy)
+        if (content.length) {
+            if (psyAvail.length) {
+                const div = document.createElement('div');
+                div.className = 'np-chat__panel-divider';
+                this.panelContent.appendChild(div);
+            }
+            content.forEach(s => this.panelContent.appendChild(this._createContentCard(s)));
+        }
+
+        // 3. Psycholodzy bez terminów — tylko gdy brak dostępnych, na dole
+        if (psyUnavail.length && psyAvail.length === 0) {
+            if (content.length) {
+                const div = document.createElement('div');
+                div.className = 'np-chat__panel-divider';
+                this.panelContent.appendChild(div);
+            }
+            const notice = document.createElement('p');
+            notice.className = 'np-chat__panel-unavail-notice';
+            notice.textContent = 'Brak wolnych terminów w najbliższym czasie';
+            this.panelContent.appendChild(notice);
+            psyUnavail.forEach(s => this.panelContent.appendChild(this._createPsyCard(s, false)));
+        }
 
         this.panelCountEl.textContent = suggestions.length;
         this.panelToggleBtn.hidden    = false;
         this._savePanelState(suggestions);
+    }
+
+    _createPsyCard(s, available) {
+        const title = s.title ?? s.name ?? '';
+        const card  = document.createElement('a');
+        card.href   = s.url;
+        card.target = '_blank';
+        card.rel    = 'noopener';
+        card.className       = 'np-chat__psy-card' + (available ? '' : ' np-chat__psy-card--unavailable');
+        card.dataset.psyId   = s.id;
+        card.dataset.psyName = title;
+
+        const dateStr = available && s.nearest_date
+            ? `<span class="np-chat__psy-date">${this._formatDate(s.nearest_date)}</span>`
+            : !available ? `<span class="np-chat__psy-no-date">Brak wolnych terminów</span>` : '';
+
+        card.innerHTML = `
+            ${s.photo_url
+                ? `<img src="${this._escapeHtml(s.photo_url)}" alt="${this._escapeHtml(title)}" class="np-chat__psy-photo" loading="lazy" width="38" height="38">`
+                : `<span class="np-chat__psy-avatar" aria-hidden="true">👤</span>`
+            }
+            <div class="np-chat__psy-info">
+                <span class="np-chat__psy-name">${this._escapeHtml(title)}</span>
+                ${dateStr}
+            </div>
+            <span class="np-chat__psy-btn">${available ? 'Umów →' : 'Profil →'}</span>`;
+
+        card.addEventListener('click', () => {
+            this._track('psychologist_card_clicked', {
+                psychologist_id:   card.dataset.psyId,
+                psychologist_name: card.dataset.psyName,
+            });
+        });
+        return card;
+    }
+
+    _createContentCard(s) {
+        const title     = s.title ?? s.name ?? '';
+        const typeLabel = s.type === 'workshop' ? 'Warsztat'
+            : s.type === 'group' ? 'Grupa wsparcia'
+            : s.type === 'article' ? 'Artykuł'
+            : 'FAQ';
+        const dateStr = s.nearest_date
+            ? `<span class="np-chat__psy-date">${this._formatDate(s.nearest_date)}</span>`
+            : '';
+        const tagsStr = s.tags
+            ? `<span class="np-chat__content-tags">${this._escapeHtml(s.tags)}</span>`
+            : '';
+
+        const card = document.createElement('a');
+        card.href      = s.url;
+        card.target    = '_blank';
+        card.rel       = 'noopener';
+        card.className = 'np-chat__content-card';
+        card.innerHTML = `
+            <div class="np-chat__content-card-top">
+                <span class="np-chat__content-type">${typeLabel}</span>
+                <span class="np-chat__psy-btn">Sprawdź →</span>
+            </div>
+            <span class="np-chat__content-name">${this._escapeHtml(title)}</span>
+            ${dateStr}${tagsStr}`;
+        return card;
     }
 
     _savePanelState(items) {
