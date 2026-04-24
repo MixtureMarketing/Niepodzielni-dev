@@ -8,6 +8,7 @@
 
 const STORAGE_KEY  = 'np_ai_chat_history';
 const CONSULT_KEY  = 'np_ai_consult_type';
+const PANEL_KEY    = 'np_ai_panel_items';
 const MAX_HISTORY  = 20;
 
 // Lodołamacze — zastępują dwuetapowy onboarding, każdy automatycznie ustawia consult_type
@@ -35,6 +36,8 @@ class NpAiChat {
 
         if (this.messages.length > 0) {
             this._renderHistory();
+            const saved = this._loadPanelState();
+            if (saved.length) this._updatePanel(saved);
         }
     }
 
@@ -65,55 +68,79 @@ class NpAiChat {
                 <span class="np-chat__subtitle">Pomogę Ci znaleźć specjalistę</span>
             </div>
         </div>
-        <button class="np-chat__clear" title="Wyczyść rozmowę" aria-label="Wyczyść historię rozmowy">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-            </svg>
-        </button>
+        <div class="np-chat__header-right">
+            <button class="np-chat__panel-toggle" hidden aria-label="Pokaż dopasowanych specjalistów">
+                👥 <span class="np-chat__panel-count">0</span>
+            </button>
+            <button class="np-chat__clear" title="Wyczyść rozmowę" aria-label="Wyczyść historię rozmowy">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                </svg>
+            </button>
+        </div>
     </div>
 
     <div class="np-chat__gdpr" role="note">
         🔒 Nie podawaj imienia, PESEL ani adresu — rozmowa służy wyłącznie do znalezienia specjalisty.
     </div>
 
-    <div class="np-chat__messages" role="log" aria-live="polite" aria-atomic="false">
-        <div class="np-chat__welcome">
-            <p>Cześć! Jestem asystentem Fundacji Niepodzielni. Pomogę Ci znaleźć odpowiedniego psychologa.</p>
-            <p>Jak mogę Ci pomóc?</p>
+    <div class="np-chat__body">
+        <div class="np-chat__conversation">
+            <div class="np-chat__messages" role="log" aria-live="polite" aria-atomic="false">
+                <div class="np-chat__welcome">
+                    <p>Cześć! Jestem asystentem Fundacji Niepodzielni. Pomogę Ci znaleźć odpowiedniego psychologa.</p>
+                    <p>Jak mogę Ci pomóc?</p>
+                </div>
+            </div>
+
+            <div class="np-chat__typing" hidden aria-live="polite">
+                <span></span><span></span><span></span>
+            </div>
+
+            <form class="np-chat__form" novalidate>
+                <textarea
+                    class="np-chat__input"
+                    placeholder="Napisz wiadomość…"
+                    rows="1"
+                    maxlength="500"
+                    aria-label="Twoja wiadomość"
+                ></textarea>
+                <button type="submit" class="np-chat__send" aria-label="Wyślij wiadomość" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </form>
         </div>
-    </div>
 
-    <div class="np-chat__typing" hidden aria-live="polite">
-        <span></span><span></span><span></span>
+        <aside class="np-chat__panel" aria-label="Dopasowani specjaliści">
+            <div class="np-chat__panel-header">
+                <span>Specjaliści</span>
+                <button class="np-chat__panel-close" title="Zamknij" aria-label="Zamknij panel">✕</button>
+            </div>
+            <div class="np-chat__panel-content">
+                <p class="np-chat__panel-empty">Tu pojawią się specjaliści dopasowani do Twojego pytania.</p>
+            </div>
+        </aside>
     </div>
-
-    <form class="np-chat__form" novalidate>
-        <textarea
-            class="np-chat__input"
-            placeholder="Napisz wiadomość…"
-            rows="1"
-            maxlength="500"
-            aria-label="Twoja wiadomość"
-        ></textarea>
-        <button type="submit" class="np-chat__send" aria-label="Wyślij wiadomość" disabled>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
-            </svg>
-        </button>
-    </form>
 </div>`;
 
-        this.toggleBtn  = this.root.querySelector('.np-chat__toggle');
-        this.badgeEl    = this.root.querySelector('.np-chat__badge');
-        this.window     = this.root.querySelector('.np-chat__window');
-        this.messagesEl = this.root.querySelector('.np-chat__messages');
-        this.typingEl   = this.root.querySelector('.np-chat__typing');
-        this.form       = this.root.querySelector('.np-chat__form');
-        this.input      = this.root.querySelector('.np-chat__input');
-        this.sendBtn    = this.root.querySelector('.np-chat__send');
-        this.clearBtn   = this.root.querySelector('.np-chat__clear');
-        this.iconOpen   = this.root.querySelector('.np-chat__toggle-icon--open');
-        this.iconClose  = this.root.querySelector('.np-chat__toggle-icon--close');
+        this.toggleBtn      = this.root.querySelector('.np-chat__toggle');
+        this.badgeEl        = this.root.querySelector('.np-chat__badge');
+        this.window         = this.root.querySelector('.np-chat__window');
+        this.messagesEl     = this.root.querySelector('.np-chat__messages');
+        this.typingEl       = this.root.querySelector('.np-chat__typing');
+        this.form           = this.root.querySelector('.np-chat__form');
+        this.input          = this.root.querySelector('.np-chat__input');
+        this.sendBtn        = this.root.querySelector('.np-chat__send');
+        this.clearBtn       = this.root.querySelector('.np-chat__clear');
+        this.iconOpen       = this.root.querySelector('.np-chat__toggle-icon--open');
+        this.iconClose      = this.root.querySelector('.np-chat__toggle-icon--close');
+        this.panelEl        = this.root.querySelector('.np-chat__panel');
+        this.panelContent   = this.root.querySelector('.np-chat__panel-content');
+        this.panelToggleBtn = this.root.querySelector('.np-chat__panel-toggle');
+        this.panelCountEl   = this.root.querySelector('.np-chat__panel-count');
+        this.panelCloseBtn  = this.root.querySelector('.np-chat__panel-close');
     }
 
     // ── Eventy ───────────────────────────────────────────────────────────────
@@ -139,6 +166,14 @@ class NpAiChat {
         });
 
         this.clearBtn.addEventListener('click', () => this._clearHistory());
+
+        this.panelToggleBtn.addEventListener('click', () => {
+            this.panelEl.classList.toggle('np-chat__panel--visible');
+        });
+
+        this.panelCloseBtn.addEventListener('click', () => {
+            this.panelEl.classList.remove('np-chat__panel--visible');
+        });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen) this._toggle();
@@ -250,7 +285,7 @@ class NpAiChat {
                     this._appendQuickReplies(data.quick_replies);
                 }
                 if (data.suggestions?.length) {
-                    this._appendSuggestions(data.suggestions);
+                    this._updatePanel(data.suggestions);
                 }
                 if (data.contact_fallback) {
                     this._appendContactFallback();
@@ -336,9 +371,12 @@ class NpAiChat {
     // ── DOM helpers ───────────────────────────────────────────────────────────
 
     _appendMessage(role, text, isError = false) {
+        const display = role === 'assistant'
+            ? text.replace(/\s*\[SPECJALIŚCI:[^\]]*\]/g, '').trim()
+            : text;
         const div = document.createElement('div');
         div.className = `np-chat__message np-chat__message--${role}${isError ? ' np-chat__message--error' : ''}`;
-        div.innerHTML = `<div class="np-chat__bubble">${this._escapeHtml(text).replace(/\n/g, '<br>')}</div>`;
+        div.innerHTML = `<div class="np-chat__bubble">${this._renderMarkdown(display)}</div>`;
         this.messagesEl.appendChild(div);
         this._scrollToBottom();
     }
@@ -481,6 +519,63 @@ class NpAiChat {
         this._scrollToBottom();
     }
 
+    // ── Panel boczny ──────────────────────────────────────────────────────────
+
+    _updatePanel(suggestions) {
+        this.panelContent.innerHTML = '';
+
+        if (!suggestions?.length) {
+            this.panelContent.innerHTML = '<p class="np-chat__panel-empty">Tu pojawią się specjaliści dopasowani do Twojego pytania.</p>';
+            this.panelToggleBtn.hidden = true;
+            this._savePanelState([]);
+            return;
+        }
+
+        suggestions.forEach(s => {
+            const dateStr = s.nearest_date
+                ? `<span class="np-chat__psy-date">${this._formatDate(s.nearest_date)}</span>`
+                : '';
+            const card = document.createElement('a');
+            card.href      = s.url;
+            card.className = 'np-chat__psy-card';
+            card.target    = '_blank';
+            card.rel       = 'noopener';
+            card.dataset.psyId   = s.id;
+            card.dataset.psyName = s.name;
+            card.innerHTML = `
+                ${s.photo_url
+                    ? `<img src="${this._escapeHtml(s.photo_url)}" alt="${this._escapeHtml(s.name)}" class="np-chat__psy-photo" loading="lazy" width="48" height="48">`
+                    : `<span class="np-chat__psy-avatar" aria-hidden="true">👤</span>`
+                }
+                <div class="np-chat__psy-info">
+                    <span class="np-chat__psy-name">${this._escapeHtml(s.name)}</span>
+                    ${dateStr}
+                </div>
+                <span class="np-chat__psy-btn">Umów →</span>`;
+
+            card.addEventListener('click', () => {
+                this._track('psychologist_card_clicked', {
+                    psychologist_id:   card.dataset.psyId,
+                    psychologist_name: card.dataset.psyName,
+                });
+            });
+
+            this.panelContent.appendChild(card);
+        });
+
+        this.panelCountEl.textContent = suggestions.length;
+        this.panelToggleBtn.hidden    = false;
+        this._savePanelState(suggestions);
+    }
+
+    _savePanelState(items) {
+        try { localStorage.setItem(PANEL_KEY, JSON.stringify(items)); } catch {}
+    }
+
+    _loadPanelState() {
+        try { return JSON.parse(localStorage.getItem(PANEL_KEY) ?? '[]'); } catch { return []; }
+    }
+
     _renderHistory() {
         const welcome = this.messagesEl.querySelector('.np-chat__welcome');
         if (welcome) welcome.remove();
@@ -512,11 +607,13 @@ class NpAiChat {
     _clearHistory() {
         this.messages = [];
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(PANEL_KEY);
         this.messagesEl.innerHTML = `
 <div class="np-chat__welcome">
     <p>Cześć! Jestem asystentem Fundacji Niepodzielni. Pomogę Ci znaleźć odpowiedniego psychologa.</p>
     <p>Jak mogę Ci pomóc?</p>
 </div>`;
+        this._updatePanel([]);
         this._showOnboarding();
     }
 
