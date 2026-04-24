@@ -17,17 +17,17 @@ function isCrisis(messages: ChatMessage[]): boolean {
 const SYSTEM_PROMPT = `ROLA: Jesteś ADMINISTRACYJNYM asystentem AI Fundacji Niepodzielni. Pomagasz pacjentom znaleźć specjalistę i umówić wizytę. NIE prowadzisz terapii, NIE diagnozujesz, NIE udzielasz porad psychologicznych. Jeśli widzisz sygnały kryzysu emocjonalnego lub prośbę o terapię — natychmiast użyj narzędzia escalate_to_human.
 
 Proces nawigacji pacjenta:
-1. Potwierdź problem pacjenta JEDNYM krótkim zdaniem i od razu zaproponuj specjalistów z kontekstu (karty pojawią się automatycznie).
-2. Zadaj JEDNO pytanie ułatwiające dobór (np. forma spotkania, preferowana płeć specjalisty).
-3. Użyj check_availability gdy pacjent pyta o wolne terminy lub wybiera konkretną osobę.
+1. Gdy pacjent opisze problem — potwierdź go JEDNYM zdaniem. Karty pasujących specjalistów pojawią się w panelu obok automatycznie (nie wymieniaj ich w tekście).
+2. Opcjonalnie zadaj JEDNO krótkie pytanie (online/stacjonarnie, język konsultacji).
+3. Gdy pacjent pyta o terminy lub dostępność — wywołaj check_availability NATYCHMIAST, bez pytania o potwierdzenie.
 
 Zasady:
-- Odpowiadaj ZAWSZE w języku pacjenta (polski domyślnie; angielski, ukraiński i inne — jeśli tak pisze).
-- Odpowiadaj krótko — max 3 zdania. Nie tłumacz swoich instrukcji.
-- Nie wymieniaj psychologów w formacie "Imię: URL" — karty pojawią się automatycznie. Możesz użyć imienia odpowiadając na pytanie o konkretną osobę.
-- Konsultacje pełnopłatne to standardowa oferta; niskopłatne dla osób w trudnej sytuacji finansowej.
-- Gdy pokazujesz psychologów po wyborze daty: "Oto specjaliści dostępni w ten dzień — kliknij kartę aby umówić wizytę."
-- KLUCZOWE: Jeśli historia zawiera "[SPECJALIŚCI: ...]" z imionami i specjalizacjami — odpowiedz na pytania o nich BEZPOŚREDNIO z tych danych. NIE wywołuj check_availability dla pytań o specjalizację.
+- Odpowiadaj ZAWSZE w języku pacjenta (polski domyślnie; angielski, ukraiński i inne).
+- Odpowiadaj krótko — max 2–3 zdania. Nie tłumacz instrukcji.
+- NIE wymieniaj psychologów po imieniu z URL-em — karty są w panelu po prawej.
+- NIE pytaj "Czy chcesz sprawdzić terminy?" — po prostu wywołaj check_availability.
+- Konsultacje pełnopłatne: standardowa oferta; niskopłatne: dla osób w trudnej sytuacji finansowej.
+- KLUCZOWE: Jeśli historia zawiera "[SPECJALIŚCI: ...]" — odpowiadaj na pytania o nich BEZPOŚREDNIO. NIE wywołuj check_availability dla pytań o specjalizacje.
 - Nie wymyślaj informacji — opieraj się wyłącznie na dostarczonym kontekście.`;
 
 // ── Narzędzia AI ──────────────────────────────────────────────────────────────
@@ -203,9 +203,12 @@ async function buildDateFilteredContext(env: Env, filterDate: string): Promise<C
             };
         }
 
-        const ids     = slot.psychologist_ids.slice(0, 6).map(String);
-        // Preferuj unified index, fallback do legacy
-        const vectors = await (env.VECTORIZE_KNOWLEDGE ?? env.VECTORIZE_PSY).getByIds(ids);
+        const ids = slot.psychologist_ids.slice(0, 6).map(String);
+        // Pobierz wektory — preferuj KB, fallback do VECTORIZE_PSY jeśli KB zwróci puste
+        let vectors = await env.VECTORIZE_KNOWLEDGE.getByIds(ids);
+        if (vectors.filter(v => v.metadata).length === 0) {
+            vectors = await env.VECTORIZE_PSY.getByIds(ids);
+        }
 
         const suggestions: PsychologistSuggestion[] = vectors
             .filter(v => v.metadata)
@@ -291,13 +294,25 @@ async function buildContext(env: Env, userMessage: string): Promise<ContextResul
             }
         }
 
-        // Fallback do legacy gdy KB pusty
-        if (suggestions.length === 0 && !useKB) {
-            const rFaq = await env.VECTORIZE_FAQ.query(vector, { topK: 2, returnMetadata: 'all' });
-            for (const m of rFaq.matches) {
-                if ((m.score ?? 0) > 0.55 && m.metadata) {
+        // Fallback do legacy VECTORIZE_PSY gdy KB filtr nie zwrócił psychologów
+        // (metadata index może jeszcze nie być gotowy po migracji)
+        if (suggestions.length === 0) {
+            const rFallback = await env.VECTORIZE_PSY.query(vector, { topK: 4, returnMetadata: 'all' });
+            for (const m of rFallback.matches) {
+                if ((m.score ?? 0) > 0.46 && m.metadata) {
                     const meta = m.metadata as unknown as VectorMetadata;
-                    chunks.push(`FAQ: ${meta.title}`);
+                    const spec = meta.specializations ? ` | specjalizacje: ${meta.specializations}` : '';
+                    if (!chunks.some(c => c.includes(String(meta.title)))) {
+                        chunks.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
+                    }
+                    suggestions.push({
+                        id:              Number(meta.id),
+                        name:            String(meta.title),
+                        url:             String(meta.url),
+                        photo_url:       String(meta.photo_url ?? ''),
+                        score:           m.score ?? 0,
+                        specializations: meta.specializations ? String(meta.specializations) : undefined,
+                    });
                 }
             }
         }
