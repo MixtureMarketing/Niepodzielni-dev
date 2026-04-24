@@ -354,14 +354,12 @@ class NpAiChat {
             btn.textContent = item.label ?? item;
 
             btn.addEventListener('click', () => {
+                if (this.isTyping) return;
                 wrap.remove();
 
-                // Obsługa wyboru typu konsultacji (onboarding krok 1)
                 if (item.consult_type) {
                     this.consultType = item.consult_type;
                     localStorage.setItem(CONSULT_KEY, item.consult_type);
-                    this._showProblemChips();
-                    return;
                 }
 
                 this.input.value      = item.label ?? item;

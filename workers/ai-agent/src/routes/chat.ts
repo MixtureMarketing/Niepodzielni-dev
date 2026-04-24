@@ -59,7 +59,37 @@ const TOOLS = [
             parameters:  { type: 'object', properties: {}, required: [] },
         },
     },
+    {
+        type: 'function' as const,
+        function: {
+            name:        'recommend_resources',
+            description: 'Wyszukuje psychologów pasujących do problemu pacjenta. Użyj gdy pacjent opisał swój problem i potrzebujesz zaproponować konkretnych specjalistów.',
+            parameters:  {
+                type:       'object',
+                properties: {
+                    query: {
+                        type:        'string',
+                        description: 'Opis problemu pacjenta użyty do wyszukiwania semantycznego',
+                    },
+                },
+                required: ['query'],
+            },
+        },
+    },
+    {
+        type: 'function' as const,
+        function: {
+            name:        'get_pricing_info',
+            description: 'Zwraca informacje o cenach i typach konsultacji (pełnopłatne vs niskopłatne).',
+            parameters:  { type: 'object', properties: {}, required: [] },
+        },
+    },
 ];
+
+const PRICING_INFO = `Konsultacje w Fundacji Niepodzielni:
+• Konsultacje PEŁNOPŁATNE: standardowa oferta dla wszystkich pacjentów. Cena zależy od specjalisty i widoczna jest na profilu psychologa na stronie niepodzielni.pl.
+• Konsultacje NISKOPŁATNE: dla osób w trudnej sytuacji finansowej lub materialnej. Dostępne po wstępnej kwalifikacji przez recepcję Fundacji.
+Aby umówić konsultację lub dowiedzieć się o aktualnych stawkach, skontaktuj się z Fundacją.`;
 
 type AiMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string };
 
@@ -245,6 +275,10 @@ async function buildContext(env: Env, userMessage: string): Promise<ContextResul
             if (d) s.nearest_date = d;
         }
 
+        if (chunks.length === 0 && suggestions.length === 0) {
+            console.log(JSON.stringify({ type: 'blind_alley', query: userMessage.slice(0, 200), ts: Date.now() }));
+        }
+
         return {
             contextText: chunks.length ? '\n\nKontekst:\n' + chunks.join('\n\n') : '',
             suggestions,
@@ -374,6 +408,65 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
                 writer.close();
             })();
             return new Response(readable, { headers: sseHeaders });
+        }
+
+        if (call.name === 'recommend_resources') {
+            const query  = call.arguments.query ?? lastUser;
+            const vector = await embed(env, query);
+            const rPsy   = await env.VECTORIZE_PSY.query(vector, { topK: 5, returnMetadata: 'all' });
+
+            const toolSuggestions: PsychologistSuggestion[] = [];
+            const resLines: string[] = [];
+
+            for (const m of rPsy.matches) {
+                if ((m.score ?? 0) > 0.40 && m.metadata) {
+                    const meta = m.metadata as unknown as VectorMetadata;
+                    const spec = meta.specializations ? ` (specjalizacje: ${meta.specializations})` : '';
+                    resLines.push(`Psycholog: ${meta.title}${spec} — ${meta.url}`);
+                    toolSuggestions.push({
+                        id:              Number(meta.id),
+                        name:            String(meta.title),
+                        url:             String(meta.url),
+                        photo_url:       String(meta.photo_url ?? ''),
+                        score:           m.score ?? 0,
+                        specializations: meta.specializations ? String(meta.specializations) : undefined,
+                    });
+                }
+            }
+
+            const toolContext = resLines.length
+                ? `Znalezieni specjaliści pasujący do problemu "${query}":\n${resLines.join('\n')}`
+                : `Nie znaleziono specjalistów pasujących do: "${query}".`;
+
+            const nearestDates = await fetchNearestDates(env, toolSuggestions.map(s => s.id));
+            for (const s of toolSuggestions) {
+                const d = nearestDates.get(s.id);
+                if (d) s.nearest_date = d;
+            }
+
+            const followUp = await env.AI.run(CHAT_MODEL, {
+                messages: [
+                    ...allMessages,
+                    { role: 'assistant', content: `Szukam specjalistów: ${query}` },
+                    { role: 'tool',      content: toolContext },
+                ],
+                stream: true,
+            }) as ReadableStream;
+
+            return streamResponse(followUp, toolSuggestions.slice(0, 3), [], sseHeaders);
+        }
+
+        if (call.name === 'get_pricing_info') {
+            const followUp = await env.AI.run(CHAT_MODEL, {
+                messages: [
+                    ...allMessages,
+                    { role: 'assistant', content: 'Sprawdzam informacje o cenach.' },
+                    { role: 'tool',      content: PRICING_INFO },
+                ],
+                stream: true,
+            }) as ReadableStream;
+
+            return streamResponse(followUp, suggestions.slice(0, 3), [], sseHeaders);
         }
 
         const typ   = call.arguments.consult_type ?? consult_type ?? 'pelno';

@@ -56,3 +56,15 @@ export interface QuickReply {
     label:        string;
     filter_date?: string; // jeśli ustawione, frontend wysyła je z filter_date
 }
+
+export interface PanelItem {
+    type:              'psychologist' | 'article' | 'workshop' | 'group' | 'faq';
+    id:                number;
+    title:             string;
+    url:               string;
+    photo_url?:        string;
+    tags?:             string;
+    nearest_date?:     string;
+    specializations?:  string;
+    score:             number;
+}
