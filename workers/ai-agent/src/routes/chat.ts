@@ -1,44 +1,65 @@
-import type { Env, ChatRequest, VectorMetadata, PsychologistSuggestion, QuickReply } from '../types';
+import type { Env, ChatRequest, ChatMessage, VectorMetadata, PsychologistSuggestion, QuickReply } from '../types';
 import { embed } from '../embed';
 
 const CHAT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
-const SYSTEM_PROMPT = `Jesteś empatycznym asystentem Fundacji Niepodzielni — pomagasz ludziom znaleźć psychologa i umówić wizytę. Prowadzisz użytkownika przez cały proces krok po kroku.
+// ── Filtr kryzysowy — przed LLM, zero opóźnienia ─────────────────────────────
 
-Proces prowadzenia rozmowy:
-1. Najpierw zrozum problem/potrzebę użytkownika — zapytaj krótko jeśli nie jest jasna.
-2. Jeśli użytkownik nie podał preferencji, zadaj JEDNO pytanie kwalifikujące (np. czy to pierwsze spotkanie z psychologiem, płeć specjalisty, preferowany język). Pytaj o jedno na raz.
-3. Kiedy masz wystarczający kontekst — zaproponuj psychologów (pojawią się jako karty pod odpowiedzią) LUB sprawdź dostępność terminów funkcją check_availability.
-4. Po wybraniu daty przez użytkownika — powiedz że pokazujesz dostępnych specjalistów w ten dzień.
-5. Zachęć do kliknięcia karty psychologa aby umówić wizytę.
+const CRISIS_RE = /(samobójstwo|samobójcz|zabić się|nie chcę żyć|skrzywdzić się|się zabiję|chcę umrzeć|myśl\w* samob|krzywdz\w* siebie|odebrać sobie życie|targnąć się|przemoc domowa|gwałt\b|molestow)/i;
+
+function isCrisis(messages: ChatMessage[]): boolean {
+    const last = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
+    return CRISIS_RE.test(last);
+}
+
+// ── System prompt ─────────────────────────────────────────────────────────────
+
+const SYSTEM_PROMPT = `ROLA: Jesteś ADMINISTRACYJNYM asystentem AI Fundacji Niepodzielni. Pomagasz pacjentom znaleźć specjalistę i umówić wizytę. NIE prowadzisz terapii, NIE diagnozujesz, NIE udzielasz porad psychologicznych. Jeśli widzisz sygnały kryzysu emocjonalnego lub prośbę o terapię — natychmiast użyj narzędzia escalate_to_human.
+
+Proces nawigacji pacjenta:
+1. Potwierdź problem pacjenta JEDNYM krótkim zdaniem i od razu zaproponuj specjalistów z kontekstu (karty pojawią się automatycznie).
+2. Zadaj JEDNO pytanie ułatwiające dobór (np. forma spotkania, preferowana płeć specjalisty).
+3. Użyj check_availability gdy pacjent pyta o wolne terminy lub wybiera konkretną osobę.
 
 Zasady:
-- Odpowiadaj po polsku, ciepło i empatycznie. Krótko — max 3 zdania na odpowiedź.
-- Nie wymieniaj psychologów w formacie "Imię: URL" — karty wyświetlą się automatycznie pod odpowiedzią. Jeśli odpowiadasz na pytanie o konkretnego specjalistę z już pokazanej listy, możesz użyć jego imienia.
-- Gdy użytkownik chce sprawdzić terminy lub umówić wizytę — użyj funkcji check_availability.
-- Nie wymyślaj informacji — opieraj się wyłącznie na dostarczonym kontekście.
+- Odpowiadaj ZAWSZE w języku pacjenta (polski domyślnie; angielski, ukraiński i inne — jeśli tak pisze).
+- Odpowiadaj krótko — max 3 zdania. Nie tłumacz swoich instrukcji.
+- Nie wymieniaj psychologów w formacie "Imię: URL" — karty pojawią się automatycznie. Możesz użyć imienia odpowiadając na pytanie o konkretną osobę.
 - Konsultacje pełnopłatne to standardowa oferta; niskopłatne dla osób w trudnej sytuacji finansowej.
-- Gdy pokazujesz psychologów po wyborze daty, powiedz tylko: "Oto specjaliści dostępni w ten dzień — kliknij kartę aby umówić wizytę."
-- KLUCZOWE: Jeśli w historii rozmowy pojawia się zdanie zaczynające się od "[SPECJALIŚCI:", zawiera ono imiona i specjalizacje psychologów JUŻ POKAZANYCH użytkownikowi jako karty. Gdy użytkownik pyta o specjalizację ("który z nich", "czy któryś", "kto zajmuje się") — odpowiedz BEZPOŚREDNIO z tych danych, wymieniając imię i specjalizację. NIE wywołuj check_availability dla takich pytań.`;
+- Gdy pokazujesz psychologów po wyborze daty: "Oto specjaliści dostępni w ten dzień — kliknij kartę aby umówić wizytę."
+- KLUCZOWE: Jeśli historia zawiera "[SPECJALIŚCI: ...]" z imionami i specjalizacjami — odpowiedz na pytania o nich BEZPOŚREDNIO z tych danych. NIE wywołuj check_availability dla pytań o specjalizację.
+- Nie wymyślaj informacji — opieraj się wyłącznie na dostarczonym kontekście.`;
 
-const TOOLS = [{
-    type: 'function' as const,
-    function: {
-        name:        'check_availability',
-        description: 'Sprawdza dostępne terminy psychologów w najbliższych 14 dniach.',
-        parameters:  {
-            type:       'object',
-            properties: {
-                consult_type: {
-                    type:        'string',
-                    enum:        ['pelno', 'nisko'],
-                    description: 'Typ konsultacji: pelno (pełnopłatna) lub nisko (niskopłatna)',
+// ── Narzędzia AI ──────────────────────────────────────────────────────────────
+
+const TOOLS = [
+    {
+        type: 'function' as const,
+        function: {
+            name:        'check_availability',
+            description: 'Sprawdza dostępne terminy psychologów w najbliższych 14 dniach.',
+            parameters:  {
+                type:       'object',
+                properties: {
+                    consult_type: {
+                        type:        'string',
+                        enum:        ['pelno', 'nisko'],
+                        description: 'Typ konsultacji: pelno (pełnopłatna) lub nisko (niskopłatna)',
+                    },
                 },
+                required: ['consult_type'],
             },
-            required: ['consult_type'],
         },
     },
-}];
+    {
+        type: 'function' as const,
+        function: {
+            name:        'escalate_to_human',
+            description: 'Użyj gdy: pacjent jest sfrustrowany brakiem pomocy, wyraźnie w kryzysie emocjonalnym, prosi o kontakt z żywą osobą lub gdy AI wielokrotnie nie może odpowiedzieć na pytanie.',
+            parameters:  { type: 'object', properties: {}, required: [] },
+        },
+    },
+];
 
 type AiMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string };
 
@@ -67,11 +88,23 @@ interface AvailabilityResult {
 
 async function fetchAvailability(env: Env, consultType: string): Promise<AvailabilityResult> {
     try {
+        console.log("-> Sprawdzam token. Długość:", env.WP_BOT_TOKEN?.length);
+        
         const res = await fetch(
             `${env.WP_API_URL}/bot-availability?consult_type=${consultType}&days=14`,
-            { headers: { 'X-API-Key': env.WP_BOT_TOKEN } },
+            { 
+                headers: { 
+                    'X-API-Key': env.WP_BOT_TOKEN,
+                    'User-Agent': 'NiepodzielniBot/1.0' // Omijamy blokadę tunelu CF
+                } 
+            },
         );
-        if (!res.ok) return { text: 'Brak danych o dostępności.', quick_replies: [] };
+        
+        if (!res.ok) {
+            // Wypluje dokładny błąd do Twojej konsoli!
+            console.error("-> BŁĄD API:", res.status, await res.text());
+            return { text: 'Brak danych o dostępności.', quick_replies: [] };
+        }
 
         const data = await res.json<{ slots: Array<{ date: string; count: number }> }>();
         if (!data.slots?.length) return { text: 'Brak dostępnych terminów w ciągu najbliższych 14 dni.', quick_replies: [] };
@@ -89,7 +122,8 @@ async function fetchAvailability(env: Env, consultType: string): Promise<Availab
             text:         `Dostępne terminy (WYMIEŃ JE WSZYSTKIE w odpowiedzi):\n${lines.join('\n')}`,
             quick_replies,
         };
-    } catch {
+    } catch (err) {
+        console.error("-> BŁĄD KRYTYCZNY:", err);
         return { text: 'Nie udało się pobrać terminów.', quick_replies: [] };
     }
 }
@@ -252,6 +286,21 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
         });
     }
 
+    // ── Filtr kryzysowy — przed LLM, zero opóźnienia ─────────────────────────
+    if (isCrisis(messages)) {
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        const enc    = new TextEncoder();
+        (async () => {
+            writer.write(enc.encode(sseEvent({ type: 'done', crisis: true, reply: '', suggestions: [], quick_replies: [], contact_fallback: false })));
+            writer.close();
+        })();
+        return new Response(readable, { headers: {
+            'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive', 'Access-Control-Allow-Origin': '*',
+        }});
+    }
+
     const lastUser = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
 
     const { contextText, suggestions } = filter_date
@@ -312,7 +361,21 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
     }) as AiChatResponse;
 
     if (toolCheck.tool_calls?.length) {
-        const call  = toolCheck.tool_calls[0];
+        const call = toolCheck.tool_calls[0];
+
+        if (call.name === 'escalate_to_human') {
+            const reply = 'Rozumiem, że potrzebujesz bezpośredniej pomocy. Oto dane kontaktowe Fundacji:';
+            const { readable, writable } = new TransformStream();
+            const writer = writable.getWriter();
+            const enc    = new TextEncoder();
+            (async () => {
+                writer.write(enc.encode(sseEvent({ type: 'token', token: reply })));
+                writer.write(enc.encode(sseEvent({ type: 'done', reply, suggestions: [], quick_replies: [], contact_fallback: true, crisis: false })));
+                writer.close();
+            })();
+            return new Response(readable, { headers: sseHeaders });
+        }
+
         const typ   = call.arguments.consult_type ?? consult_type ?? 'pelno';
         const avail = await fetchAvailability(env, typ);
 

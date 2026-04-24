@@ -148,6 +148,18 @@
   color: #fff;
 }
 
+/* ── RODO disclaimer ───────────────────────────────────────────────────────── */
+
+.np-chat__gdpr {
+  padding: 5px 14px;
+  background: #fffbe6;
+  border-bottom: 1px solid #ffe58f;
+  font-size: 11px;
+  color: #7a5c00;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
 /* ── Messages ──────────────────────────────────────────────────────────────── */
 
 .np-chat__messages {
@@ -488,6 +500,61 @@
   font-size: 13px;
   font-weight: var(--mix-font-weight-bold);
   color: var(--mix-color-text-base);
+}
+
+/* ── Panel kryzysowy ───────────────────────────────────────────────────────── */
+
+.np-chat__crisis {
+  background: #fff0f0;
+  border: 2px solid #e63946;
+  border-radius: var(--mix-radius-large);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.np-chat__crisis-title {
+  font-size: 13px;
+  color: #b30000;
+}
+
+.np-chat__crisis-desc {
+  font-size: 12px;
+  color: #7a0000;
+  margin: 0;
+}
+
+.np-chat__crisis-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #fff;
+  border: 1px solid #ffd5d5;
+  border-radius: var(--mix-radius-medium);
+  color: #b30000;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: background var(--mix-transition-fast), border-color var(--mix-transition-fast);
+}
+
+.np-chat__crisis-line:hover {
+  background: #fff5f5;
+  border-color: #e63946;
+}
+
+.np-chat__crisis-line--alert {
+  border-color: #e63946;
+  background: #fff0f0;
+  font-weight: var(--mix-font-weight-bold);
+}
+
+.np-chat__crisis-icon {
+  flex-shrink: 0;
+  line-height: 1.4;
 }
 
 /* ── Onboarding problem chips (zawijają się) ───────────────────────────────── */

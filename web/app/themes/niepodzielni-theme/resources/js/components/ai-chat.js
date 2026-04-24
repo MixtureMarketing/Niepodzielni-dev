@@ -10,13 +10,12 @@ const STORAGE_KEY  = 'np_ai_chat_history';
 const CONSULT_KEY  = 'np_ai_consult_type';
 const MAX_HISTORY  = 20;
 
-const PROBLEM_CHIPS = [
-    'Depresja i obniżony nastrój',
-    'Lęki i stres',
-    'Trauma i PTSD',
-    'Relacje i związki',
-    'Wypalenie zawodowe',
-    'Inne',
+// Lodołamacze — zastępują dwuetapowy onboarding, każdy automatycznie ustawia consult_type
+const ICEBREAKERS = [
+    { label: 'Szukam pomocy przy depresji lub obniżonym nastroju', consult_type: 'pelno' },
+    { label: 'Potrzebuję kogoś od lęków, stresu lub ataków paniki', consult_type: 'pelno' },
+    { label: 'Szukam tańszej lub bezpłatnej pomocy psychologicznej', consult_type: 'nisko' },
+    { label: 'Jak wybrać dobrego psychologa dla siebie?', consult_type: 'pelno' },
 ];
 
 class NpAiChat {
@@ -71,6 +70,10 @@ class NpAiChat {
                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
             </svg>
         </button>
+    </div>
+
+    <div class="np-chat__gdpr" role="note">
+        🔒 Nie podawaj imienia, PESEL ani adresu — rozmowa służy wyłącznie do znalezienia specjalisty.
     </div>
 
     <div class="np-chat__messages" role="log" aria-live="polite" aria-atomic="false">
@@ -176,27 +179,10 @@ class NpAiChat {
         this.badgeEl.hidden = true;
     }
 
-    // ── Onboarding ────────────────────────────────────────────────────────────
+    // ── Onboarding / Icebreakers ──────────────────────────────────────────────
 
     _showOnboarding() {
-        // Krok 1: typ konsultacji
-        this._appendQuickReplies([
-            { label: 'Konsultacja standardowa (pełnopłatna)', consult_type: 'pelno' },
-            { label: 'Konsultacja niskopłatna (dla osób w trudnej sytuacji)', consult_type: 'nisko' },
-        ], 'np-chat__onboarding np-chat__onboarding--consult');
-        this._scrollToBottom();
-    }
-
-    _showProblemChips() {
-        const msg = document.createElement('div');
-        msg.className = 'np-chat__message np-chat__message--assistant';
-        msg.innerHTML = '<div class="np-chat__bubble">Czego głównie dotyczy Twoja potrzeba?</div>';
-        this.messagesEl.appendChild(msg);
-
-        this._appendQuickReplies(
-            PROBLEM_CHIPS.map(label => ({ label })),
-            'np-chat__onboarding--problems',
-        );
+        this._appendQuickReplies(ICEBREAKERS, 'np-chat__onboarding');
         this._scrollToBottom();
     }
 
@@ -324,6 +310,13 @@ class NpAiChat {
                         bubbleEl.innerHTML += this._escapeHtml(event.token).replace(/\n/g, '<br>');
                         this._scrollToBottom();
                     } else if (event.type === 'done') {
+                        if (event.crisis) {
+                            // Usuń pusty bąbelek streamingu i pokaż panel kryzysowy
+                            bubbleEl.closest('.np-chat__message')?.remove();
+                            this._renderCrisisPanel();
+                            onDone({ ...event, reply: '', suggestions: [], quick_replies: [] });
+                            return;
+                        }
                         // Pełny tekst z markdown — podmień całe innerHTML
                         if (event.reply) {
                             bubbleEl.classList.remove('np-chat__bubble--streaming');
@@ -420,6 +413,32 @@ class NpAiChat {
         });
 
         this.messagesEl.appendChild(wrap);
+        this._scrollToBottom();
+    }
+
+    _renderCrisisPanel() {
+        const div = document.createElement('div');
+        div.className = 'np-chat__crisis';
+        div.innerHTML = `
+            <strong class="np-chat__crisis-title">Wygląda na to, że to może być trudna chwila.</strong>
+            <p class="np-chat__crisis-desc">Proszę zadzwoń lub napisz do kogoś, kto może pomóc teraz:</p>
+            <a href="tel:116123" class="np-chat__crisis-line">
+                <span class="np-chat__crisis-icon">📞</span>
+                <span>Telefon Zaufania dla Dorosłych — <strong>116 123</strong><br><small>bezpłatny, całą dobę</small></span>
+            </a>
+            <a href="tel:116111" class="np-chat__crisis-line">
+                <span class="np-chat__crisis-icon">📞</span>
+                <span>Telefon Zaufania dla Dzieci i Młodzieży — <strong>116 111</strong></span>
+            </a>
+            <a href="tel:8007022222" class="np-chat__crisis-line">
+                <span class="np-chat__crisis-icon">📞</span>
+                <span>Centrum Wsparcia w Kryzysie Psychicznym — <strong>800 70 2222</strong><br><small>bezpłatny</small></span>
+            </a>
+            <a href="tel:112" class="np-chat__crisis-line np-chat__crisis-line--alert">
+                <span class="np-chat__crisis-icon">🚨</span>
+                <span>Zagrożenie życia — <strong>112</strong></span>
+            </a>`;
+        this.messagesEl.appendChild(div);
         this._scrollToBottom();
     }
 
