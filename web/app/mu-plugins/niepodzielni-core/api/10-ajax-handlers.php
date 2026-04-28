@@ -397,7 +397,6 @@ function np_ajax_bk_verify_hour(): void
     $cal_hash    = np_bookero_cal_id_for($typ);
     $sync        = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo);
     $account_cfg = $sync->getAccountConfig($typ);
-    $service_id  = $account_cfg->serviceId;
 
     // Micro-Cache: jeśli transient ma < 60 s → nie uderzamy ponownie w API Bookero.
     // Zapobiega kaskadowym requestom przy równoczesnych rezerwacjach + chroni przed
@@ -419,6 +418,7 @@ function np_ajax_bk_verify_hour(): void
         } else {
             // Transient wygasł lub za stary — odpytujemy Bookero API (OOP)
             try {
+                $service_id = $account_cfg->getServiceIdForWorker($worker_id);
                 $hours = $client->getMonthDay($cal_hash, $worker_id, $date, $service_id);
                 set_transient($cache_key, $hours, 5 * MINUTE_IN_SECONDS); // dla micro-cache odczytu
                 set_transient($ts_key, time(), 300);                       // znacznik świeżości

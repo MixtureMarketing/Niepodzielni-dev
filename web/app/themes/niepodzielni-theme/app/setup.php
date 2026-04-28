@@ -119,6 +119,29 @@ add_action('wp_enqueue_scripts', function () {
     if (is_page_template($events_templates)) {
         wp_enqueue_script('sage/events-listing.js', Vite::asset('resources/js/events-listing.js'), [], null, true);
     }
+
+    // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS
+    $panel_templates = [
+        'template-panel-dashboard.blade.php',
+        'template-panel-logowanie.blade.php',
+    ];
+    if (is_page_template($panel_templates)) {
+        wp_enqueue_script('sage/panel.js', Vite::asset('resources/js/panel.js'), [], null, true);
+        // CSS jest generowany przez Vite z importu w panel.js — enqueue jawnie z manifestu
+        if (! Vite::isRunningHot()) {
+            $manifest_path = get_theme_file_path('public/build/manifest.json');
+            if (file_exists($manifest_path)) {
+                $manifest = json_decode((string) file_get_contents($manifest_path), true);
+                foreach ($manifest['resources/js/panel.js']['css'] ?? [] as $css_file) {
+                    wp_enqueue_style('sage/panel.css', get_theme_file_uri('public/build/' . $css_file), [], null);
+                }
+            }
+        }
+        wp_localize_script('sage/panel.js', 'npPanel', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('np_panel_nonce'),
+        ]);
+    }
 }, 100);
 
 /**

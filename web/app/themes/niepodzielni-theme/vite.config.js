@@ -29,6 +29,7 @@ export default defineConfig({
         'resources/css/editor.css',
         'resources/js/editor.js',
         'resources/js/matchmaker.js',
+        'resources/js/panel.js',
       ],
       refresh: true,
     }),

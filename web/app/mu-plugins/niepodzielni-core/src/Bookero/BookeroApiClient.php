@@ -90,7 +90,11 @@ class BookeroApiClient
 
     /**
      * Pobiera konfigurację konta z endpointu /init.
-     * Wybiera usługę z największą liczbą pracowników (= główna usługa konsultacyjna).
+     *
+     * serviceId — usługa fallback (z największą liczbą workers) dla workerów nie znalezionych w mapie.
+     * workerServiceMap — mapa workerId → serviceId zbudowana ze wszystkich services_list[].workers.
+     *   Każdy worker jest przypisany do PIERWSZEGO serwisu w którym się pojawia.
+     *   Dzięki temu getMonth jest wysyłany z właściwym service_id per worker.
      *
      * @throws BookeroApiException
      */
@@ -102,15 +106,32 @@ class BookeroApiClient
             'type'       => 'calendar',
         ], timeout: 10);
 
-        // Usługa z największą liczbą pracowników — dla nisko: 50604 (158 workers > 36549 (11))
-        $serviceId   = 0;
-        $serviceName = '';
+        $serviceId        = 0;
+        $serviceName      = '';
+        $workerServiceMap = [];
+
         if (! empty($body['services_list']) && is_array($body['services_list'])) {
             $best      = $body['services_list'][0];
             $bestCount = is_array($best['workers'] ?? null) ? count($best['workers']) : 0;
 
             foreach ($body['services_list'] as $svc) {
-                $cnt = is_array($svc['workers'] ?? null) ? count($svc['workers']) : 0;
+                $svcId   = (int) ($svc['id'] ?? 0);
+                $workers = $svc['workers'] ?? [];
+
+                if (! is_array($workers) || ! $svcId) {
+                    continue;
+                }
+
+                // Buduj mapę worker → service (pierwszy serwis w którym worker się pojawia)
+                foreach ($workers as $wId) {
+                    $key = (string) $wId;
+                    if (! isset($workerServiceMap[$key])) {
+                        $workerServiceMap[$key] = $svcId;
+                    }
+                }
+
+                // Fallback serviceId = serwis z największą liczbą workers
+                $cnt = count($workers);
                 if ($cnt > $bestCount) {
                     $bestCount = $cnt;
                     $best      = $svc;
@@ -134,7 +155,95 @@ class BookeroApiClient
             }
         }
 
-        return new AccountConfig($serviceId, $serviceName, $paymentId);
+        return new AccountConfig($serviceId, $serviceName, $paymentId, $workerServiceMap);
+    }
+
+    /**
+     * Pobiera dostępne godziny dla wielu pracowników jednocześnie (cURL multi).
+     *
+     * Zamienia N sekwencyjnych requestów HTTP w jeden równoległy batch.
+     * Czas odpowiedzi ≈ najwolniejszy pojedynczy request zamiast sumy wszystkich.
+     *
+     * @param  array<string, int> $workerServiceMap  workerId → serviceId
+     * @return array<string, string[]|null>  workerId → godziny (null = błąd API)
+     */
+    public function getMonthDayBatch(string $calHash, string $date, array $workerServiceMap): array
+    {
+        if (empty($workerServiceMap)) {
+            return [];
+        }
+
+        $pluginComment = wp_json_encode([ 'data' => [ 'parameters' => (object) [] ] ]);
+        $mh      = curl_multi_init();
+        $handles = [];
+
+        foreach ($workerServiceMap as $workerId => $serviceId) {
+            $params = http_build_query([
+                'bookero_id'         => $calHash,
+                'worker'             => $workerId,
+                'date'               => $date,
+                'service'            => $serviceId,
+                'people'             => 1,
+                'lang'               => 'pl',
+                'periodicity_id'     => 0,
+                'custom_duration_id' => 0,
+                'hour'               => '',
+                'phone'              => '',
+                'email'              => '',
+                'plugin_comment'     => $pluginComment,
+            ]);
+            $ch = curl_init(self::BASE_URL . 'getMonthDay?' . $params);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 10,
+                CURLOPT_USERAGENT      => self::USER_AGENT,
+                CURLOPT_HTTPHEADER     => [ 'Accept: application/json' ],
+            ]);
+            $handles[ $workerId ] = $ch;
+            curl_multi_add_handle($mh, $ch);
+        }
+
+        // Wykonaj wszystkie requesty równolegle
+        $running = null;
+        do {
+            $status = curl_multi_exec($mh, $running);
+            if ($running > 0) {
+                curl_multi_select($mh, 0.05);
+            }
+        } while ($running > 0 && $status === CURLM_OK);
+
+        // Zbierz wyniki
+        $results = [];
+        foreach ($handles as $workerId => $ch) {
+            $raw      = curl_multi_getcontent($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $errno    = curl_errno($ch);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+
+            if ($errno !== 0 || $httpCode !== 200 || ! $raw) {
+                $results[ $workerId ] = null; // błąd — caller użyje negative cache
+                continue;
+            }
+
+            $body = json_decode($raw, true);
+            if (! is_array($body) || (int) ($body['result'] ?? 0) !== 1) {
+                $results[ $workerId ] = null;
+                continue;
+            }
+
+            $hours = [];
+            foreach (($body['data']['hours'] ?? []) as $slot) {
+                if (! empty($slot['valid']) && ! empty($slot['hour'])) {
+                    $hours[] = (string) $slot['hour'];
+                }
+            }
+            $results[ $workerId ] = $hours;
+        }
+
+        curl_multi_close($mh);
+
+        return $results;
     }
 
     /**

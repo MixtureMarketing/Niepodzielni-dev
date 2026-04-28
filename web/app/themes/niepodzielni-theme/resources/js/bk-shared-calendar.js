@@ -178,6 +178,25 @@ class BkSharedCalendar {
         }
     }
 
+    // ─── Session cache dla slotów (per typ+date) ─────────────────────────────
+
+    _slotCacheKey(dateStr) { return `bksc_slots_${this.typ}_${dateStr}`; }
+
+    _slotCacheGet(dateStr) {
+        try {
+            const raw = sessionStorage.getItem(this._slotCacheKey(dateStr));
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    }
+
+    _slotCacheSet(dateStr, workers) {
+        try { sessionStorage.setItem(this._slotCacheKey(dateStr), JSON.stringify(workers)); } catch {}
+    }
+
+    _slotCacheDel(dateStr) {
+        try { sessionStorage.removeItem(this._slotCacheKey(dateStr)); } catch {}
+    }
+
     // ─── Krok 1: Wybór dnia ───────────────────────────────────────────────────
 
     _selectDate(dateStr) {
@@ -196,17 +215,24 @@ class BkSharedCalendar {
         const btn = this.el.querySelector(`[data-date="${dateStr}"]`);
         if (btn) btn.classList.add('bk-sc__day--selected');
 
-        // Pokaż kolumnę godzin ze stanem ładowania
-        this.q('.bk-sc__hours-date-label').textContent = this._formatDate(dateStr);
-        this.q('.bk-sc__hours-list').innerHTML = '<p class="bk-sc__info">Ładowanie godzin…</p>';
-        this._openHoursCol(dateStr, null);
-
         // Prompt w prawej kolumnie — poczekaj na wybór godziny
         this.q('.bk-sc__panel-header').innerHTML = '';
         this.q('.bk-sc__panel-cards').innerHTML  =
             '<p class="bk-sc__info bk-sc__info--prompt">Wybierz godzinę, aby zobaczyć specjalistów</p>';
 
-        // Pobierz sloty dla dnia
+        // Sprawdź session cache — jeśli trafienie, otwórz natychmiast bez AJAX
+        const cached = this._slotCacheGet(dateStr);
+        if (cached) {
+            this._slotWorkers = cached;
+            this._openHoursCol(dateStr, this._slotWorkers);
+            return;
+        }
+
+        // Cache miss — pokaż spinner i odpytaj serwer
+        this.q('.bk-sc__hours-date-label').textContent = this._formatDate(dateStr);
+        this.q('.bk-sc__hours-list').innerHTML = '<p class="bk-sc__info">Ładowanie godzin…</p>';
+        this._openHoursCol(dateStr, null);
+
         const cfg  = window.niepodzielniBookero || {};
         const body = new FormData();
         body.append('action', 'bk_get_date_slots');
@@ -219,6 +245,7 @@ class BkSharedCalendar {
             .then(res => {
                 if (!res.success) throw new Error('API error');
                 this._slotWorkers = res.data.workers || [];
+                this._slotCacheSet(dateStr, this._slotWorkers);
                 this._openHoursCol(dateStr, this._slotWorkers);
             })
             .catch(() => {
@@ -355,6 +382,8 @@ class BkSharedCalendar {
                     if (worker && worker.hours) {
                         worker.hours = worker.hours.filter(h => h !== snapshotHour);
                     }
+                    // Zaktualizuj session cache żeby powrót do tej daty nie przywrócił starych godzin
+                    this._slotCacheSet(snapshotDate, this._slotWorkers);
 
                     const card = cards.querySelector(`[data-bookero-id="${bid}"]`);
                     if (!card) return;

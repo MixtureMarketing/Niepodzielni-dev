@@ -14,6 +14,18 @@ if (! defined('ABSPATH')) {
 }
 
 add_action('rest_api_init', function (): void {
+    register_rest_route('niepodzielni/v1', '/bookero-status', [
+        'methods'             => 'GET',
+        'callback'            => 'np_ai_rest_bookero_status',
+        'permission_callback' => 'np_ai_rest_verify_token',
+    ]);
+
+    register_rest_route('niepodzielni/v1', '/bookero-clear-cb', [
+        'methods'             => 'POST',
+        'callback'            => 'np_ai_rest_clear_cb',
+        'permission_callback' => 'np_ai_rest_verify_token',
+    ]);
+
     register_rest_route('niepodzielni/v1', '/bot-availability', [
         'methods'             => 'GET',
         'callback'            => 'np_ai_rest_bot_availability',
@@ -135,4 +147,149 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
     }
 
     return new \WP_REST_Response(['slots' => $result], 200);
+}
+
+/**
+ * GET /wp-json/niepodzielni/v1/bookero-status
+ *
+ * Diagnostyka: stan circuit breaker + lista nisko-psychologów z ich terminem i timestampem synchrnoizacji.
+ * Pomaga diagnozować dlaczego daty nie pojawiają się na listingu.
+ */
+function np_ai_rest_bookero_status(): \WP_REST_Response
+{
+    $cb_active      = (bool) get_transient(BOOKERO_LOCKOUT_KEY);
+    $lockout_since  = (int) get_option('np_bookero_lockout_since', 0);
+    $last_cron      = (int) get_option('np_bookero_last_cron_run', 0);
+
+    $psycholodzy = get_posts([
+        'post_type'      => 'psycholog',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => [[
+            'key'     => 'bookero_id_niski',
+            'compare' => 'EXISTS',
+        ]],
+    ]);
+
+    $workers = [];
+    foreach ($psycholodzy as $post_id) {
+        $pid         = (int) $post_id;
+        $updated_at  = (int) get_post_meta($pid, 'np_termin_updated_at', true);
+        $termin      = (string) get_post_meta($pid, 'najblizszy_termin_niskoplatny', true);
+        $slots_json  = (string) get_post_meta($pid, 'bookero_slots_nisko', true);
+        $slots       = $slots_json ? json_decode($slots_json, true) : [];
+        $worker_id   = (string) get_post_meta($pid, 'bookero_id_niski', true);
+
+        $workers[] = [
+            'post_id'     => $pid,
+            'name'        => get_the_title($pid),
+            'worker_id'   => $worker_id,
+            'termin'      => $termin ?: null,
+            'slots_count' => is_array($slots) ? count($slots) : 0,
+            'synced_at'   => $updated_at ? gmdate('Y-m-d H:i:s', $updated_at) . ' UTC' : null,
+            'synced_ago'  => $updated_at ? human_time_diff($updated_at) . ' ago' : 'never',
+        ];
+    }
+
+    usort($workers, fn($a, $b) => ($a['synced_at'] ?? '') <=> ($b['synced_at'] ?? ''));
+
+    return new \WP_REST_Response([
+        'circuit_breaker' => [
+            'active'       => $cb_active,
+            'locked_since' => $lockout_since ? gmdate('Y-m-d H:i:s', $lockout_since) . ' UTC' : null,
+        ],
+        'last_cron_run'   => $last_cron ? gmdate('Y-m-d H:i:s', $last_cron) . ' UTC' : null,
+        'nisko_workers'   => $workers,
+        'listing_cache'   => [
+            'note' => 'Use POST /bookero-clear-cb to clear CB and listing cache',
+        ],
+    ], 200);
+}
+
+/**
+ * POST /wp-json/niepodzielni/v1/bookero-clear-cb
+ *
+ * Awaryjne czyszczenie circuit breakera i cache listingu.
+ * Usuwa lockout transient żeby następny cron mógł normalnie zadziałać.
+ * Opcjonalnie: force_sync=true wymusza synchronizację pierwszych 5 nisko-psychologów natychmiast.
+ */
+function np_ai_rest_clear_cb(\WP_REST_Request $request): \WP_REST_Response
+{
+    $was_active = (bool) get_transient(BOOKERO_LOCKOUT_KEY);
+
+    delete_transient(BOOKERO_LOCKOUT_KEY);
+    delete_option('np_bookero_lockout_since');
+
+    // Wyczyść cache konfiguracji konta (24h TTL) — wymusza ponowne pobranie /init z mapą workerów
+    $repo = new \Niepodzielni\Bookero\PsychologistRepository();
+    delete_transient($repo->configCacheKey('nisko'));
+    delete_transient($repo->configCacheKey('pelnoplatny'));
+
+    // Wyczyść listing cache żeby pokazać aktualne dane
+    if (class_exists('App\Services\PsychologistListingService')) {
+        \App\Services\PsychologistListingService::clearCache();
+    }
+
+    // Wyczyść shared calendar month transients (5 min TTL) — zawierają stary service_id per worker
+    foreach (['nisko', 'pelnoplatny'] as $t) {
+        for ($i = 0; $i <= 2; $i++) {
+            delete_transient($repo->sharedMonthCacheKey($t, $i));
+        }
+    }
+
+    $synced = [];
+    $errors = [];
+
+    if ($request->get_param('force_sync')) {
+        $explicit_ids = $request->get_param('post_ids');
+        if (! empty($explicit_ids) && is_array($explicit_ids)) {
+            $to_sync = array_map('absint', $explicit_ids);
+        } else {
+            $to_sync = get_posts([
+                'post_type'              => 'psycholog',
+                'post_status'            => 'publish',
+                'posts_per_page'         => 5,
+                'fields'                 => 'ids',
+                'meta_key'               => 'np_termin_updated_at',
+                'orderby'                => 'meta_value_num',
+                'order'                  => 'ASC',
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+                'meta_query'             => [[
+                    'key'     => 'bookero_id_niski',
+                    'compare' => 'EXISTS',
+                ]],
+            ]);
+        }
+
+        $client  = new \Niepodzielni\Bookero\BookeroApiClient();
+        $repo_s  = new \Niepodzielni\Bookero\PsychologistRepository();
+        $service = new \Niepodzielni\Bookero\BookeroSyncService($client, $repo_s);
+
+        foreach ($to_sync as $pid) {
+            try {
+                $result   = $service->syncSingleWorker((int) $pid);
+                $synced[] = [
+                    'post_id'      => (int) $pid,
+                    'nearest_nisko' => $result->nearestNisko,
+                ];
+            } catch (\Exception $e) {
+                $errors[] = ['post_id' => (int) $pid, 'error' => $e->getMessage()];
+            }
+        }
+
+        if (! empty($synced)) {
+            do_action('niepodzielni_bookero_batch_synced');
+        }
+    }
+
+    return new \WP_REST_Response([
+        'ok'                => true,
+        'cb_was_active'     => $was_active,
+        'cb_cleared'        => true,
+        'listing_cleared'   => true,
+        'synced'            => $synced,
+        'errors'            => $errors,
+    ], 200);
 }

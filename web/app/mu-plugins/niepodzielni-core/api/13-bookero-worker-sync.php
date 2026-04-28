@@ -52,9 +52,14 @@ function np_bookero_worker_sync_oop(): void
     // ── Circuit Breaker: sprawdź lockout ──────────────────────────────────────
     // Jeśli poprzedni przebieg otrzymał HTTP 429 lub Timeout, daj Bookero odpocząć.
     if (get_transient(BOOKERO_LOCKOUT_KEY)) {
+        // Czas wygaśnięcia: przy Redis transiencie _transient_timeout_ nie istnieje w DB,
+        // więc liczymy od czasu ustawienia lockoutu przechowywanego w osobnej opcji.
+        $lockout_since = (int) get_option('np_bookero_lockout_since', 0);
+        $lockout_until = $lockout_since ? $lockout_since + BOOKERO_LOCKOUT_TTL : 0;
+        $remaining     = $lockout_until > time() ? gmdate('i:s', $lockout_until - time()) . ' min' : 'wygasa wkrótce';
         np_bookero_log_error(
             'cron',
-            'Circuit breaker aktywny — lockout do ' . date('H:i:s', time() + (int) get_option('_transient_timeout_' . BOOKERO_LOCKOUT_KEY, 0) - time()) . '. Pominięto przebieg.',
+            'Circuit breaker aktywny — pozostało ~' . $remaining . '. Pominięto przebieg.',
         );
         return;
     }
@@ -127,6 +132,7 @@ function np_bookero_worker_sync_oop(): void
             );
             error_log('[Bookero] RateLimit cron postId=' . $postId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             set_transient(BOOKERO_LOCKOUT_KEY, 1, BOOKERO_LOCKOUT_TTL);
+            update_option('np_bookero_lockout_since', time(), false);
 
             // Zainwaliduj listing cache nawet przy przerwaniu — część batcha mogła zmienić daty
             if ($synced_count > 0) {

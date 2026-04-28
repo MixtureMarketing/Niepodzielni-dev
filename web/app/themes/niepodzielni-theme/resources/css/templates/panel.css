@@ -1,0 +1,403 @@
+/* ============================================================
+   Panel Psychologa — frontend dashboard + login
+   ============================================================ */
+
+.panel-page {
+    background: var(--mix-color-background-grey-light, #f7f7f9);
+    min-height: 70vh;
+    padding: 40px 16px;
+    box-sizing: border-box;
+}
+
+.panel-container {
+    max-width: 880px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: var(--mix-radius-xl, 16px);
+    box-shadow: var(--mix-shadow-card, 0 2px 12px rgba(0, 0, 0, .06));
+    padding: 32px 36px;
+    box-sizing: border-box;
+}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--mix-color-background-grey-medium, #e0e0e3);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.panel-header__user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.panel-header__greeting {
+    font-size: .95rem;
+    color: var(--mix-color-text-dark, #1d2327);
+}
+
+.panel-header__badge {
+    font-size: .7rem;
+    font-weight: 700;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 3px 10px;
+    border-radius: 12px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.panel-header__logout {
+    color: var(--mix-color-brand-secondary, #6a3d9a);
+    font-size: .9rem;
+    text-decoration: none;
+    font-weight: 600;
+}
+.panel-header__logout:hover { text-decoration: underline; }
+
+/* ─── Title ──────────────────────────────────────────────────── */
+.panel-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--mix-color-text-dark, #1d2327);
+    margin: 0 0 8px;
+}
+
+.panel-subtitle {
+    color: var(--mix-color-text-subtle, #6b7280);
+    margin: 0 0 32px;
+    font-size: .95rem;
+}
+
+/* ─── Sekcje ────────────────────────────────────────────────── */
+.panel-section {
+    border-top: 1px solid var(--mix-color-background-grey-medium, #e0e0e3);
+    padding: 28px 0;
+}
+.panel-section:first-of-type { border-top: none; padding-top: 0; }
+
+.panel-section__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--mix-color-text-dark, #1d2327);
+    margin: 0 0 20px;
+}
+
+/* ─── Form fields ───────────────────────────────────────────── */
+.panel-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.panel-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.panel-field > label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--mix-color-text-dark, #1d2327);
+    letter-spacing: .02em;
+}
+
+.panel-textarea,
+.panel-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--mix-color-background-grey-medium, #d4d4d8);
+    border-radius: var(--mix-radius-medium, 8px);
+    font-size: .95rem;
+    font-family: inherit;
+    color: var(--mix-color-text-dark, #1d2327);
+    background: #fff;
+    transition: border-color .15s;
+    box-sizing: border-box;
+    resize: vertical;
+}
+.panel-textarea--short { min-height: 56px; }
+.panel-textarea:focus,
+.panel-input:focus {
+    outline: none;
+    border-color: var(--mix-color-brand-secondary, #6a3d9a);
+}
+
+.panel-help {
+    font-size: .78rem;
+    color: var(--mix-color-text-subtle, #6b7280);
+    margin: 4px 0 0;
+    line-height: 1.4;
+}
+
+/* ─── Buttons ───────────────────────────────────────────────── */
+.panel-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: var(--mix-radius-pill, 999px);
+    font-size: .9rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: background .15s, color .15s, opacity .15s;
+    font-family: inherit;
+    align-self: flex-start;
+}
+
+.panel-button--primary {
+    background: var(--mix-color-brand-primary, #6a3d9a);
+    color: #fff;
+}
+.panel-button--primary:hover:not(:disabled) {
+    background: var(--mix-color-brand-primary-hover, #54307a);
+}
+
+.panel-button--secondary {
+    background: transparent;
+    color: var(--mix-color-brand-secondary, #6a3d9a);
+    border: 2px solid var(--mix-color-brand-secondary, #6a3d9a);
+    cursor: pointer;
+}
+.panel-button--secondary:hover {
+    background: var(--mix-color-brand-secondary, #6a3d9a);
+    color: #fff;
+}
+
+.panel-button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+/* ─── Photo section ─────────────────────────────────────────── */
+.panel-photo {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 28px;
+    align-items: start;
+}
+
+.panel-photo__preview {
+    width: 200px;
+    height: 200px;
+    border-radius: var(--mix-radius-large, 12px);
+    overflow: hidden;
+    background: var(--mix-color-background-grey-light, #f3f4f6);
+    border: 1px solid var(--mix-color-background-grey-medium, #e0e0e3);
+}
+.panel-photo__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.panel-photo__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--mix-color-text-subtle, #6b7280);
+    font-size: .85rem;
+    text-align: center;
+    padding: 20px;
+}
+
+.panel-photo__form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+    .panel-photo {
+        grid-template-columns: 1fr;
+    }
+    .panel-photo__preview {
+        width: 100%;
+        max-width: 240px;
+    }
+}
+
+/* ─── Tags (multiselect via checkboxy) ──────────────────────── */
+.panel-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.panel-tag {
+    cursor: pointer;
+    user-select: none;
+    background: var(--mix-color-background-grey-light, #f3f4f6);
+    border: 1.5px solid var(--mix-color-background-grey-medium, #e0e0e3);
+    color: var(--mix-color-text-dark, #1d2327);
+    padding: 6px 14px;
+    border-radius: var(--mix-radius-pill, 999px);
+    font-size: .85rem;
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.panel-tag input[type=checkbox] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.panel-tag--checked {
+    background: var(--mix-color-brand-secondary, #6a3d9a);
+    color: #fff;
+    border-color: var(--mix-color-brand-secondary, #6a3d9a);
+}
+
+.panel-tag:hover:not(.panel-tag--checked) {
+    border-color: var(--mix-color-brand-secondary, #6a3d9a);
+}
+
+/* ─── Empty state ───────────────────────────────────────────── */
+.panel-empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+.panel-empty h2 {
+    font-size: 1.2rem;
+    margin: 0 0 12px;
+    color: var(--mix-color-text-dark, #1d2327);
+}
+.panel-empty p {
+    color: var(--mix-color-text-subtle, #6b7280);
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* ─── Toast ─────────────────────────────────────────────────── */
+.panel-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 20px;
+    border-radius: var(--mix-radius-medium, 8px);
+    font-size: .9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .15);
+    background: #1d2327;
+    color: #fff;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .25s, transform .25s;
+    max-width: 360px;
+}
+.panel-toast--visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.panel-toast--success { background: #16a34a; }
+.panel-toast--error   { background: #dc2626; }
+
+/* ─── Login page ────────────────────────────────────────────── */
+.panel-page--login { padding: 80px 16px; }
+
+.panel-login {
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+.panel-login__card {
+    background: #fff;
+    border-radius: var(--mix-radius-xl, 16px);
+    box-shadow: var(--mix-shadow-card, 0 2px 12px rgba(0, 0, 0, .08));
+    padding: 36px 32px;
+}
+
+.panel-login__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+    text-align: center;
+}
+
+.panel-login__subtitle {
+    color: var(--mix-color-text-subtle, #6b7280);
+    margin: 0 0 24px;
+    text-align: center;
+    font-size: .95rem;
+}
+
+#panel-login-form .login-username,
+#panel-login-form .login-password,
+#panel-login-form .login-remember,
+#panel-login-form .login-submit {
+    margin-bottom: 14px;
+}
+#panel-login-form label {
+    display: block;
+    font-size: .85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--mix-color-text-dark, #1d2327);
+}
+#panel-login-form input[type=text],
+#panel-login-form input[type=password] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--mix-color-background-grey-medium, #d4d4d8);
+    border-radius: var(--mix-radius-medium, 8px);
+    font-size: .95rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+#panel-login-form input[type=text]:focus,
+#panel-login-form input[type=password]:focus {
+    outline: none;
+    border-color: var(--mix-color-brand-secondary, #6a3d9a);
+}
+#panel-login-form .login-remember label {
+    font-weight: 400;
+    font-size: .85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#panel-login-form .button-primary,
+#panel-login-form #wp-submit {
+    background: var(--mix-color-brand-primary, #6a3d9a);
+    color: #fff;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--mix-radius-pill, 999px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    cursor: pointer;
+    font-size: .9rem;
+}
+#panel-login-form .button-primary:hover,
+#panel-login-form #wp-submit:hover {
+    background: var(--mix-color-brand-primary-hover, #54307a);
+}
+
+.panel-login__forgot {
+    text-align: center;
+    margin: 18px 0 0;
+    font-size: .85rem;
+}
+.panel-login__forgot a {
+    color: var(--mix-color-brand-secondary, #6a3d9a);
+    text-decoration: none;
+}
+.panel-login__forgot a:hover { text-decoration: underline; }

@@ -101,7 +101,21 @@ class BookeroSyncService
         $nearest = '';
 
         for ($i = 0; $i <= 2; $i++) {
-            $slots = $this->getMonthSlots($workerId, $typ, $i);
+            try {
+                $slots = $this->getMonthSlots($workerId, $typ, $i);
+            } catch (BookeroRateLimitException $e) {
+                if ($i === 0) {
+                    // Miesiąc bieżący niedostępny — brak danych, circuit breaker ma prawo zadziałać.
+                    throw $e;
+                }
+                // Miesiąc przyszły (i=1 lub i=2) timeout/rate-limit — zachowaj co już zebraliśmy
+                // i przerwij pętlę. Nie blokuj crona z powodu powolnego endpointu dla dat +2 miesięcy.
+                np_bookero_log_error(
+                    'getAvailability',
+                    "Timeout na miesiącu +{$i} dla worker={$workerId} typ={$typ} — używam danych z miesięcy 0–" . ($i - 1) . '.',
+                );
+                break;
+            }
 
             foreach ($slots as $slot) {
                 $date = $slot['date'];
@@ -184,8 +198,9 @@ class BookeroSyncService
         }
 
         try {
-            $config = $this->getAccountConfig($typ);
-            $slots  = $this->client->getMonth($calHash, $workerId, $config->serviceId, $plusMonths);
+            $config    = $this->getAccountConfig($typ);
+            $serviceId = $config->getServiceIdForWorker($workerId);
+            $slots     = $this->client->getMonth($calHash, $workerId, $serviceId, $plusMonths);
             $this->repo->setMonthTransient($typ, $workerId, $plusMonths, $slots);
 
             return $slots;
@@ -227,8 +242,9 @@ class BookeroSyncService
         }
 
         try {
-            $config = $this->getAccountConfig($typ);
-            $hours  = $this->client->getMonthDay($calHash, $workerId, $nearestDate, $config->serviceId);
+            $config    = $this->getAccountConfig($typ);
+            $serviceId = $config->getServiceIdForWorker($workerId);
+            $hours     = $this->client->getMonthDay($calHash, $workerId, $nearestDate, $serviceId);
             $this->repo->saveHours($postId, $typ, $nearestDate, $hours);
         } catch (BookeroRateLimitException $e) {
             // Rate limit podczas pre-warmu — rzuć wyżej do circuit breaker w cron.

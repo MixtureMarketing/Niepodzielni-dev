@@ -203,6 +203,15 @@ function np_cf_psycholog(): void
             Field::make('text', 'tryb_konsultacji_info', 'Tryb konsultacji (info)')
                 ->set_attribute('placeholder', 'np. Przyjmuję od poniedziałku do piątku')
                 ->set_help_text('Dodatkowa informacja o dostępności — widoczna na profilu.'),
+
+            // ── Konto WP psychologa ───────────────────────────────────────────
+            Field::make('html', 'cf_sep_konto')
+                ->set_html('<h3 style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Konto psychologa (panel frontendowy)</h3>'),
+
+            Field::make('text', 'email_kontaktowy', 'Email logowania')
+                ->set_attribute('type', 'email')
+                ->set_attribute('placeholder', 'jan.kowalski@example.com')
+                ->set_help_text('Po wpisaniu emaila i zapisaniu posta — w boxie "Konto psychologa" pojawi się przycisk do utworzenia konta WP.'),
         ]);
 
     // ── Kontener 2: Obszary, Nurty, Języki, Specjalizacje ────────────────────

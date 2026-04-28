@@ -51,12 +51,16 @@ require_once NIEPODZIELNI_CORE_PATH . 'api/18-ai-sync.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/19-ai-endpoints.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/20-ai-feedback.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/22-media-helpers.php';
+require_once NIEPODZIELNI_CORE_PATH . 'api/30-panel-psycholog.php'; // panel psychologa — AJAX endpoints
 
 // 3. MODYFIKACJE PANELU ADMINA
 require_once NIEPODZIELNI_CORE_PATH . 'admin/5-admin-dashboard.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/6-admin-product-columns.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/7-admin-settings.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/8-login-page.php';
+require_once NIEPODZIELNI_CORE_PATH . 'admin/9-psycholog-role.php';                // rola WP psycholog + redirecty
+require_once NIEPODZIELNI_CORE_PATH . 'admin/10-psycholog-admin-cols.php';         // kolumna "Konto" na liście
+require_once NIEPODZIELNI_CORE_PATH . 'admin/11-psycholog-account-metabox.php';    // metabox "Stwórz konto"
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';

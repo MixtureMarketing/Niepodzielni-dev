@@ -23,6 +23,19 @@ export default {
             response = await handleChat(request, env);
         } else if (pathname === '/feedback' && request.method === 'POST') {
             response = await handleFeedback(request, env);
+        } else if (pathname === '/debug-llm' && request.method === 'GET') {
+            // Temporary: test raw CF AI Gateway response for diagnosing fallback format
+            try {
+                const raw = await fetch(`${env.GATEWAY_BASE_URL}/chat/completions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.CF_AIG_TOKEN}` },
+                    body: JSON.stringify({ model: env.CHAT_MODEL, messages: [{ role: 'user', content: 'Cześć' }] }),
+                });
+                const text = await raw.text();
+                response = new Response(JSON.stringify({ status: raw.status, body: text }), { headers: { 'Content-Type': 'application/json' } });
+            } catch (e) {
+                response = new Response(JSON.stringify({ error: String(e) }), { headers: { 'Content-Type': 'application/json' } });
+            }
         } else {
             response = new Response(JSON.stringify({ ok: true, service: 'niepodzielni-ai-agent' }), {
                 headers: { 'Content-Type': 'application/json' },

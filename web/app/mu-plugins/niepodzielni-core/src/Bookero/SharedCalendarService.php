@@ -79,7 +79,7 @@ class SharedCalendarService
             $entry = [
                 'bookero_id'  => $worker->workerId,
                 'cal_hash'    => $calHash,
-                'service_id'  => $config->serviceId ?: null,
+                'service_id'  => $config->getServiceIdForWorker($worker->workerId) ?: null,
                 'name'        => $worker->name,
                 'avatar'      => $worker->avatar,
                 'price'       => $worker->price,
@@ -111,8 +111,8 @@ class SharedCalendarService
     /**
      * Zwraca psychologów dostępnych w konkretnym dniu wraz z godzinami.
      *
-     * Godziny: najpierw DB cache (WorkerRecord::$hoursCache), potem API.
-     * Zapis do DB odbywa się przez persistHoursMap() — bez dodatkowego odczytu.
+     * Godziny: L1 DB cache → L2 negative cache (90s) → L3 API (batch cURL multi).
+     * Wszystkie braki cache pobierane równolegle — czas ≈ najwolniejszy request.
      *
      * @return array{workers: array<int, array<string, mixed>>}
      */
@@ -125,26 +125,88 @@ class SharedCalendarService
         // Batch load: 2 SQL zamiast 1 + N×get_post_meta
         $workers = $this->repo->getAllWorkersWithMeta($typ);
 
-        $result  = [];
+        // Faza 1: podziel workers na tych z cache i tych wymagających API
+        /** @var WorkerRecord[] $needsApi */
+        $needsApi      = [];  // workerId → WorkerRecord
+        $resolvedHours = [];  // workerId → string[]
 
         foreach ($workers as $worker) {
             if (! $worker->hasDate($date)) {
-                // Fallback: stara logika dla psychologów bez bookero_slots_* (nowy lub niezsynch.)
                 if (! $this->workerHasDateViaFallback($worker, $date)) {
                     continue;
                 }
             }
 
-            $hours = $this->resolveHours($worker, $typ, $date, $calHash, $config, $today);
+            $cached = $worker->cachedHoursFor($date);
+            if ($cached !== null) {
+                $resolvedHours[ $worker->workerId ] = $cached;
+                continue;
+            }
 
+            if ($this->repo->getHoursErrorTransient($typ, $worker->workerId, $date)) {
+                $resolvedHours[ $worker->workerId ] = [];
+                continue;
+            }
+
+            $needsApi[ $worker->workerId ] = $worker;
+        }
+
+        // Faza 2: batch cURL multi dla brakujących godzin (równolegle)
+        if (! empty($needsApi) && $calHash) {
+            $workerServiceMap = [];
+            foreach ($needsApi as $wid => $w) {
+                $workerServiceMap[ (string) $wid ] = $config->getServiceIdForWorker((string) $wid);
+            }
+
+            $batchResults = $this->client->getMonthDayBatch($calHash, $date, $workerServiceMap);
+
+            foreach ($batchResults as $workerId => $hours) {
+                $worker = $needsApi[ $workerId ] ?? $needsApi[ (int) $workerId ] ?? null;
+                if (! $worker) {
+                    continue;
+                }
+
+                if ($hours === null) {
+                    // Błąd API — ustaw negative cache, nie blokuj pozostałych
+                    $this->repo->setHoursErrorTransient($typ, $workerId, $date);
+                    $resolvedHours[ $workerId ] = [];
+                    continue;
+                }
+
+                // Zaktualizuj mapę godzin w DB (scal z istniejącymi, wyczyść przeszłość)
+                $updatedMap          = $worker->hoursCache;
+                $updatedMap[ $date ] = array_values($hours);
+                foreach (array_keys($updatedMap) as $d) {
+                    if ($d < $today) {
+                        unset($updatedMap[ $d ]);
+                    }
+                }
+                $this->repo->persistHoursMap($worker->postId, $typ, $updatedMap);
+
+                if (empty($hours)) {
+                    $this->repo->removeDateFromSlots($worker->postId, $typ, $date);
+                    $this->repo->invalidateSharedMonthTransients($typ);
+                }
+
+                $resolvedHours[ $workerId ] = $hours;
+            }
+        }
+
+        // Faza 3: zbuduj wynik ze wszystkich zgromadzonych godzin
+        $result = [];
+        foreach ($workers as $worker) {
+            if (! isset($resolvedHours[ $worker->workerId ])) {
+                continue;
+            }
+            $hours = $resolvedHours[ $worker->workerId ];
             if (empty($hours)) {
-                continue; // Brak wolnych godzin — pomiń w wynikach
+                continue;
             }
 
             $result[] = [
                 'bookero_id'  => $worker->workerId,
                 'cal_hash'    => $calHash,
-                'service_id'  => $config->serviceId ?: null,
+                'service_id'  => $config->getServiceIdForWorker($worker->workerId) ?: null,
                 'name'        => $worker->name,
                 'avatar'      => $worker->avatar,
                 'price'       => $worker->price,
@@ -233,87 +295,6 @@ class SharedCalendarService
         $dateYmd = substr($sortable, 0, 4) . '-' . substr($sortable, 4, 2) . '-' . substr($sortable, 6, 2);
 
         return $dateYmd === $date;
-    }
-
-    /**
-     * Zwraca godziny dla psychologa w danym dniu.
-     *
-     * Trzypoziomowy priorytet — każdy poziom wyżej eliminuje zapytanie HTTP:
-     *   L1 — DB cache (WorkerRecord::$hoursCache)   → zero SQL, zero HTTP
-     *   L2 — Negative cache (transient 90s)         → zero SQL, zero HTTP
-     *   L3 — API Bookero (getMonthDay)               → 1 HTTP request
-     *
-     * Negative cache (L2): jeśli API ostatnio zwróciło błąd dla tej kombinacji
-     * (worker × data × typ), przez 90 sekund zwracamy [] bez ponownego odpytania.
-     * Chroni przed "spam-clicking" przez wielu użytkowników w tę samą datę
-     * podczas przeciążenia Bookero.
-     *
-     * @return string[]
-     */
-    private function resolveHours(
-        WorkerRecord  $worker,
-        string        $typ,
-        string        $date,
-        string        $calHash,
-        AccountConfig $config,
-        string        $today,
-    ): array {
-        // L1: DB cache z WorkerRecord — zero SQL, zero HTTP
-        $cached = $worker->cachedHoursFor($date);
-        if ($cached !== null) {
-            return $cached;
-        }
-
-        // L2: Negative cache — API niedawno zwróciło błąd dla tej kombinacji.
-        // Klucz jest per (typ × workerId × date): awaria jednego psychologa nie blokuje
-        // pozostałych na tę samą datę. Nie ponawiamy requestu przez HOURS_ERROR_TTL (90s).
-        if ($this->repo->getHoursErrorTransient($typ, $worker->workerId, $date)) {
-            return [];
-        }
-
-        // L3: Brak w cache i brak flagi błędu — odpytaj API
-        if (! $calHash) {
-            return [];
-        }
-
-        try {
-            $hours = $this->client->getMonthDay($calHash, $worker->workerId, $date, $config->serviceId);
-        } catch (BookeroRateLimitException $e) {
-            // Rate limit z frontendu — graceful degradation: zwróć [] i ustaw negative cache.
-            // Nie rzucamy dalej (inaczej crash całego kalendarza dla użytkownika).
-            // Cron ma własny circuit breaker — tutaj tylko chronimy frontend.
-            np_bookero_log_error('getMonthDay', "Rate limit — worker={$worker->workerId} date={$date}: " . $e->getMessage());
-            $this->repo->setHoursErrorTransient($typ, $worker->workerId, $date);
-            return [];
-        } catch (BookeroApiException $e) {
-            np_bookero_log_error('getMonthDay', "worker={$worker->workerId} date={$date}: " . $e->getMessage());
-            // Flaga błędu scoped do tego konkretnego pracownika — pozostali nie są blokowani
-            $this->repo->setHoursErrorTransient($typ, $worker->workerId, $date);
-            return [];
-        }
-
-        // Sukces — zapisz wynik do DB przez persistHoursMap() (scala mapę w pamięci,
-        // bez dodatkowego get_post_meta() read który byłby w saveHours()).
-        $updatedMap          = $worker->hoursCache;
-        $updatedMap[ $date ] = array_values($hours);
-
-        // Wyczyść daty z przeszłości przed zapisem
-        foreach (array_keys($updatedMap) as $d) {
-            if ($d < $today) {
-                unset($updatedMap[ $d ]);
-            }
-        }
-
-        $this->repo->persistHoursMap($worker->postId, $typ, $updatedMap);
-
-        // API potwierdziło brak terminów — usuń datę ze slotów i inwaliduj cache
-        // żeby przy ponownym wejściu data nie pojawiała się jako dostępna.
-        if (empty($hours)) {
-            $this->repo->removeDateFromSlots($worker->postId, $typ, $date);
-            $this->repo->invalidateSharedMonthTransients($typ);
-        }
-
-        return $hours;
     }
 
     // ─── Prywatne — account config ────────────────────────────────────────────────
