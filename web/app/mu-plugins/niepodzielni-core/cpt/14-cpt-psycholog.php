@@ -28,7 +28,7 @@ function np_register_cpt_psycholog(): void
         'show_in_rest'       => true,
         'has_archive'        => false,
         'rewrite'            => [ 'slug' => 'psycholog' ],
-        'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
+        'supports'           => [ 'title', 'editor', 'thumbnail', 'excerpt', 'comments' ],
         'menu_icon'          => 'dashicons-businessperson',
         'menu_position'      => 5,
     ]);

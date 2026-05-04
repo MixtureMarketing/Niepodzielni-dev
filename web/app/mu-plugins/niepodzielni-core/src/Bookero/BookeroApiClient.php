@@ -269,6 +269,35 @@ class BookeroApiClient
         ];
     }
 
+    /**
+     * Sprawdza, czy dany e-mail ma rezerwację u konkretnego pracownika.
+     *
+     * Pobiera listę rezerwacji dla pracownika z Bookero i filtruje po e-mailu.
+     * Zwraca false przy jakimkolwiek błędzie API (weryfikacja jest opcjonalna).
+     */
+    public function checkEmailBookedWithWorker(string $calHash, string $workerId, string $email): bool
+    {
+        try {
+            $body        = $this->get('getReservations', [
+                'bookero_id' => $calHash,
+                'worker'     => $workerId,
+            ], timeout: 8);
+            $reservations = $body['data']['reservations'] ?? $body['data'] ?? [];
+
+            $emailLower = strtolower(trim($email));
+            foreach ((array) $reservations as $r) {
+                $rEmail = strtolower(trim((string) ($r['email'] ?? $r['customer_email'] ?? '')));
+                if ($rEmail === $emailLower) {
+                    return true;
+                }
+            }
+        } catch (BookeroApiException) {
+            // Endpoint może nie istnieć — weryfikacja opcjonalna
+        }
+
+        return false;
+    }
+
     // ─── Prywatne metody transportowe ─────────────────────────────────────────────
 
     /**

@@ -220,3 +220,100 @@ function np_ajax_panel_upload_photo(): void
         'url'           => $url,
     ]);
 }
+
+// ─── Endpoint: lista opinii dla psychologa ────────────────────────────────────
+
+add_action('wp_ajax_np_panel_get_reviews', 'np_ajax_panel_get_reviews');
+
+function np_ajax_panel_get_reviews(): void
+{
+    $post_id = np_panel_validate_request();
+
+    $comments = get_comments([
+        'post_id' => $post_id,
+        'type'    => 'review',
+        'status'  => 'approve',
+        'parent'  => 0,
+        'orderby' => 'comment_date',
+        'order'   => 'DESC',
+        'number'  => 100,
+    ]);
+
+    $data = [];
+    foreach ($comments as $c) {
+        $id      = (int) $c->comment_ID;
+        $rating  = (int) get_comment_meta($id, '_rating', true);
+        $verified = (bool) get_comment_meta($id, '_verified_visit', true);
+
+        // Pierwsza odpowiedź psychologa (child comment)
+        $replies = get_comments(['parent' => $id, 'status' => 'approve', 'number' => 1]);
+        $reply   = $replies[0] ?? null;
+
+        $data[] = [
+            'id'             => $id,
+            'author'         => $c->comment_author,
+            'date'           => get_comment_date('j F Y', $id),
+            'rating'         => $rating,
+            'verified_visit' => $verified,
+            'content'        => $c->comment_content,
+            'reply'          => $reply ? [
+                'id'      => (int) $reply->comment_ID,
+                'content' => $reply->comment_content,
+                'date'    => get_comment_date('j F Y', (int) $reply->comment_ID),
+            ] : null,
+        ];
+    }
+
+    wp_send_json_success(['reviews' => $data]);
+}
+
+// ─── Endpoint: odpowiedź na opinię ───────────────────────────────────────────
+
+add_action('wp_ajax_np_panel_reply_review', 'np_ajax_panel_reply_review');
+
+function np_ajax_panel_reply_review(): void
+{
+    $post_id = np_panel_validate_request();
+
+    $comment_id = (int) ($_POST['comment_id'] ?? 0);
+    $content    = sanitize_textarea_field((string) wp_unslash($_POST['content'] ?? ''));
+
+    if (! $comment_id || ! $content) {
+        wp_send_json_error(['message' => 'Brakuje wymaganych danych.'], 400);
+    }
+
+    // Upewnij się, że komentarz dotyczy tego posta
+    $parent = get_comment($comment_id);
+    if (! $parent || (int) $parent->comment_post_ID !== $post_id || $parent->comment_type !== 'review') {
+        wp_send_json_error(['message' => 'Nieprawidłowy komentarz.'], 403);
+    }
+
+    // Usuń poprzednią odpowiedź, jeśli istnieje
+    $existing = get_comments(['parent' => $comment_id, 'status' => 'approve', 'number' => 1]);
+    foreach ($existing as $old) {
+        wp_delete_comment((int) $old->comment_ID, true);
+    }
+
+    $current_user = wp_get_current_user();
+
+    $reply_id = wp_insert_comment([
+        'comment_post_ID'      => $post_id,
+        'comment_parent'       => $comment_id,
+        'comment_author'       => $current_user->display_name,
+        'comment_author_email' => $current_user->user_email,
+        'comment_content'      => $content,
+        'comment_type'         => 'review',
+        'comment_approved'     => 1,
+        'user_id'              => $current_user->ID,
+    ]);
+
+    if (! $reply_id) {
+        wp_send_json_error(['message' => 'Błąd zapisu odpowiedzi.'], 500);
+    }
+
+    wp_send_json_success([
+        'message'  => 'Odpowiedź zapisana.',
+        'reply_id' => $reply_id,
+        'date'     => get_comment_date('j F Y', (int) $reply_id),
+    ]);
+}

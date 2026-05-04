@@ -32,6 +32,7 @@
 @import './organisms/matchmaker.css';
 @import './organisms/ai-chatbot.css';
 @import './organisms/forms.css';
+@import './organisms/reviews.css';
 
 /* Molecules — listing cards */
 @import './molecules/listing-cards.css';

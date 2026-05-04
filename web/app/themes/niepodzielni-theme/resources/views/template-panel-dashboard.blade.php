@@ -174,6 +174,17 @@
                     </form>
                 </section>
 
+                {{-- ── Sekcja: Opinie ───────────────────────────────────── --}}
+                <section class="panel-section" id="panel-opinie-section">
+                    <h2 class="panel-section__title">Opinie pacjentów</h2>
+                    <p class="panel-help" style="margin-bottom:20px;">
+                        Poniżej znajdziesz opinie wystawione Twojemu profilowi. Możesz odpowiedzieć na każdą z nich.
+                    </p>
+                    <div id="panel-reviews-list">
+                        <p class="panel-help">Ładowanie opinii…</p>
+                    </div>
+                </section>
+
                 {{-- Toast container --}}
                 <div id="panel-toast" class="panel-toast" hidden></div>
             </div>

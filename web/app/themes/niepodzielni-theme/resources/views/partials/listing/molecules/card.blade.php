@@ -110,6 +110,16 @@
             <a href="{{ $item['link'] }}">{{ $item['title'] }}</a>
         </h3>
 
+        @if( $variant === 'psycholog' && !empty($item['avg_rating']) && $item['avg_rating'] > 0 )
+            <div class="psy-card-rating">
+                <span class="psy-card-rating__stars">{{ str_repeat('★', (int) round($item['avg_rating'])) }}{{ str_repeat('☆', 5 - (int) round($item['avg_rating'])) }}</span>
+                <span>{{ number_format((float) $item['avg_rating'], 1) }}</span>
+                @if( !empty($item['reviews_count']) )
+                    <span>({{ $item['reviews_count'] }})</span>
+                @endif
+            </div>
+        @endif
+
         @if( !empty($excerpt_text) )
             <p class="nlisting-card__excerpt">{{ $excerpt_text }}</p>
         @endif
