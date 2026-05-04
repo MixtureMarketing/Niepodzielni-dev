@@ -63,7 +63,7 @@ function np_zgloszenie_add_metabox(): void
         'np_zgloszenie_render_metabox',
         'zgloszenie',
         'normal',
-        'high'
+        'high',
     );
 }
 

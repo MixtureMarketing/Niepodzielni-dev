@@ -58,7 +58,7 @@ abstract class BaseFormHandler
             if ($type === 'checkbox') {
                 $sanitized[$name] = ! empty($value);
                 if ($required && ! $sanitized[$name]) {
-                    $errors[$name] = "Pole „{$label}" jest wymagane.";
+                    $errors[$name] = "Pole \"{$label}\" jest wymagane.";
                 }
                 continue;
             }
@@ -66,7 +66,7 @@ abstract class BaseFormHandler
             $value = is_string($value) ? trim($value) : '';
 
             if ($required && $value === '') {
-                $errors[$name] = "Pole „{$label}" jest wymagane.";
+                $errors[$name] = "Pole \"{$label}\" jest wymagane.";
                 $sanitized[$name] = '';
                 continue;
             }
@@ -78,18 +78,18 @@ abstract class BaseFormHandler
             // Walidacja typu
             if ($type === 'email' && $value !== '') {
                 if (! is_email($sanitized[$name])) {
-                    $errors[$name] = "Pole „{$label}" musi być prawidłowym adresem e-mail.";
+                    $errors[$name] = "Pole \"{$label}\" musi być prawidłowym adresem e-mail.";
                 }
             }
 
             // Maksymalna długość
             if (isset($config['max_length']) && mb_strlen((string) $sanitized[$name]) > (int) $config['max_length']) {
-                $errors[$name] = "Pole „{$label}" może mieć maksymalnie {$config['max_length']} znaków.";
+                $errors[$name] = "Pole \"{$label}\" może mieć maksymalnie {$config['max_length']} znaków.";
             }
 
             // Wzorzec regex (opcjonalny)
             if (isset($config['pattern']) && $value !== '' && ! preg_match('/' . $config['pattern'] . '/', (string) $sanitized[$name])) {
-                $errors[$name] = $config['pattern_message'] ?? "Pole „{$label}" ma nieprawidłowy format.";
+                $errors[$name] = $config['pattern_message'] ?? "Pole \"{$label}\" ma nieprawidłowy format.";
             }
         }
 
@@ -118,7 +118,7 @@ abstract class BaseFormHandler
         $title = sprintf(
             'Zgłoszenie [%s] — %s',
             $this->getFormId(),
-            current_time('Y-m-d H:i:s')
+            current_time('Y-m-d H:i:s'),
         );
 
         $postId = wp_insert_post([
@@ -132,11 +132,11 @@ abstract class BaseFormHandler
             return 0;
         }
 
-        update_post_meta($postId, '_form_id',    sanitize_text_field($this->getFormId()));
-        update_post_meta($postId, '_form_data',  wp_json_encode($sanitized));
+        update_post_meta($postId, '_form_id', sanitize_text_field($this->getFormId()));
+        update_post_meta($postId, '_form_data', wp_json_encode($sanitized));
         update_post_meta($postId, '_source_url', esc_url_raw($sourceUrl));
         update_post_meta($postId, '_user_email', sanitize_email($email));
-        update_post_meta($postId, '_verified',   $this->requireVerification ? '0' : '1');
+        update_post_meta($postId, '_verified', $this->requireVerification ? '0' : '1');
 
         return $postId;
     }
@@ -170,12 +170,12 @@ abstract class BaseFormHandler
         }
         $adminBody .= '</table>';
 
-        add_filter('wp_mail_content_type', static fn () => 'text/html');
+        add_filter('wp_mail_content_type', static fn() => 'text/html');
 
         wp_mail(
             $adminEmail,
             "[{$siteName}] Nowe zgłoszenie — {$this->getFormId()}",
-            $adminBody
+            $adminBody,
         );
 
         // ── Potwierdzenie dla użytkownika ──
@@ -184,11 +184,11 @@ abstract class BaseFormHandler
             wp_mail(
                 $userEmail,
                 "[{$siteName}] Potwierdzenie zgłoszenia",
-                $userBody
+                $userBody,
             );
         }
 
-        remove_filter('wp_mail_content_type', static fn () => 'text/html');
+        remove_filter('wp_mail_content_type', static fn() => 'text/html');
     }
 
     /**
@@ -217,7 +217,7 @@ abstract class BaseFormHandler
         $hash    = hash_hmac('sha256', $code, wp_salt('auth'));
         $expires = time() + (15 * MINUTE_IN_SECONDS);
 
-        update_post_meta($submissionId, '_otp_hash',       $hash);
+        update_post_meta($submissionId, '_otp_hash', $hash);
         update_post_meta($submissionId, '_otp_expires_at', (string) $expires);
 
         $siteName = get_bloginfo('name');
@@ -225,13 +225,13 @@ abstract class BaseFormHandler
                   . "<h2 style=\"letter-spacing:8px;font-size:32px;\">{$code}</h2>"
                   . "<p>Kod jest ważny przez 15 minut.</p>";
 
-        add_filter('wp_mail_content_type', static fn () => 'text/html');
+        add_filter('wp_mail_content_type', static fn() => 'text/html');
         $sent = wp_mail(
             $userEmail,
             "[{$siteName}] Kod weryfikacyjny",
-            $body
+            $body,
         );
-        remove_filter('wp_mail_content_type', static fn () => 'text/html');
+        remove_filter('wp_mail_content_type', static fn() => 'text/html');
 
         return $sent;
     }
@@ -243,7 +243,7 @@ abstract class BaseFormHandler
     public function verifyOTP(int $submissionId, string $code): bool
     {
         $storedHash = (string) get_post_meta($submissionId, '_otp_hash', true);
-        $expires    = (int)   get_post_meta($submissionId, '_otp_expires_at', true);
+        $expires    = (int) get_post_meta($submissionId, '_otp_expires_at', true);
 
         if (! $storedHash || ! $expires) {
             return false;

@@ -253,7 +253,7 @@ function np_forms_enqueue_assets(): void
         $jsUrl,
         [],
         (string) filemtime($jsPath),
-        true
+        true,
     );
 
     $siteKey = defined('NP_CF_TURNSTILE_SITE_KEY')
