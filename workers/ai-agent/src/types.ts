@@ -37,6 +37,7 @@ export interface ChatRequest {
     post_id?:      number;
     consult_type?: 'pelno' | 'nisko';
     filter_date?:  string; // ISO "YYYY-MM-DD" — filtruje psychologów po dacie
+    intent?:       string; // Fast Track — pomija LLM i Vectorize, bezpośrednio odpytuje WP API
 }
 
 export interface VectorMetadata {

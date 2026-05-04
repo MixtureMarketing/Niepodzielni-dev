@@ -740,7 +740,7 @@ function sseEvent(data: unknown): string {
 
 export async function handleChat(request: Request, env: Env): Promise<Response> {
     const body = await request.json<ChatRequest>();
-    const { messages, filter_date, consult_type } = body;
+    const { messages, filter_date, consult_type, intent } = body;
 
     if (!messages?.length) {
         return new Response(JSON.stringify({ error: 'Brak wiadomości' }), {
@@ -817,6 +817,42 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
             'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
             'Connection': 'keep-alive', 'Access-Control-Allow-Origin': '*',
         }});
+    }
+
+    // ── Intent Fast Track — omija LLM i Vectorize, bezpośrednio WP API ──────────
+    // Dodaj kolejne case'y aby obsłużyć nowe intencje w przyszłości.
+    if (intent) {
+        switch (intent) {
+            case 'find_low_cost': {
+                const { suggestions: ftSugg, quick_replies: ftQR } =
+                    await buildAvailabilityContext(env, 'nisko');
+                const ftReply = ftSugg.length
+                    ? 'Oto specjaliści świadczący wsparcie niskopłatne lub darmowe, posortowani według najbliższych wolnych terminów. Kliknij kartę w panelu, aby umówić wizytę.'
+                    : 'Aktualnie brak dostępnych terminów niskopłatnych w najbliższych 30 dniach. Możesz sprawdzić terminy pełnopłatne lub skontaktować się bezpośrednio z recepcją Fundacji.';
+                return sseInstantWithToken(ftReply, {
+                    type: 'done', reply: ftReply,
+                    suggestions:  pickPanelItems(ftSugg),
+                    quick_replies: ftQR,
+                    contact_fallback: false,
+                });
+            }
+            case 'find_standard': {
+                const { suggestions: ftSugg, quick_replies: ftQR } =
+                    await buildAvailabilityContext(env, 'pelno');
+                const ftReply = ftSugg.length
+                    ? 'Oto specjaliści dostępni na konsultacje pełnopłatne, posortowani według najbliższych wolnych terminów. Kliknij kartę w panelu, aby umówić wizytę.'
+                    : 'Aktualnie brak dostępnych terminów pełnopłatnych w najbliższych 30 dniach. Spróbuj ponownie za kilka dni lub skontaktuj się z recepcją Fundacji.';
+                return sseInstantWithToken(ftReply, {
+                    type: 'done', reply: ftReply,
+                    suggestions:  pickPanelItems(ftSugg),
+                    quick_replies: ftQR,
+                    contact_fallback: false,
+                });
+            }
+            // Przyszłe intencje: 'find_workshops', 'get_pricing', 'open_contact_form' itp.
+            default:
+                break; // Nieznana intencja — kontynuuj normalny flow z LLM
+        }
     }
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
