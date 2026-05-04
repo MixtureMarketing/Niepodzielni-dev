@@ -84,7 +84,8 @@
   },
   "autoload": {
     "psr-4": {
-      "Niepodzielni\\Bookero\\": "web/app/mu-plugins/niepodzielni-core/src/Bookero/"
+      "Niepodzielni\\Bookero\\": "web/app/mu-plugins/niepodzielni-core/src/Bookero/",
+      "Niepodzielni\\Forms\\": "web/app/mu-plugins/niepodzielni-core/src/Forms/"
     }
   },
   "scripts": {
