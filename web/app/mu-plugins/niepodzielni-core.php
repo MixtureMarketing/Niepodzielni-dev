@@ -37,10 +37,13 @@ require_once NIEPODZIELNI_CORE_PATH . 'cpt/18-cpt-warsztaty.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/19-cpt-grupy-wsparcia.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/20-cpt-metaboxes.php'; // fallback gdy brak CF
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/21-carbon-fields.php'; // Carbon Fields (główny)
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-osrodki.php';      // Psychomapa: CPT + taksonomie
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/23-osrodki-metaboxes.php'; // Psychomapa: Carbon Fields
 
 // 2. INTEGRACJA API BOOKERO I AJAX
 // 8-bookero-api.php usunięty — logika przeniesiona do BookeroApiClient + PsychologistRepository (OOP)
 require_once NIEPODZIELNI_CORE_PATH . 'api/9-bookero-sync.php';
+require_once NIEPODZIELNI_CORE_PATH . 'api/21-psychomapa-endpoint.php'; // Psychomapa: REST API
 require_once NIEPODZIELNI_CORE_PATH . 'api/10-ajax-handlers.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/11-bookero-shortcodes.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/12-bookero-enqueue.php';
@@ -64,6 +67,23 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/11-psycholog-account-metabox.php'; 
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';
+
+// 5. SERWISY OOP (require_once — poza PSR-4 z src/)
+require_once NIEPODZIELNI_CORE_PATH . 'services/GeocodingService.php';
+
+// Zarejestruj hook geokodowania (admin: automatyczny zapis po Carbon Fields)
+(new \Niepodzielni\Psychomapa\GeocodingService())->registerHooks();
+
+// 6. WP-CLI — komendy dostępne tylko w kontekście CLI
+if (defined('WP_CLI') && WP_CLI) {
+    require_once NIEPODZIELNI_CORE_PATH . 'cli/ImportPsychomapyCommand.php';
+    \WP_CLI::add_command(
+        'niepodzielni import-psychomapa',
+        new \Niepodzielni\Psychomapa\ImportPsychomapyCommand(
+            new \Niepodzielni\Psychomapa\GeocodingService()
+        )
+    );
+}
 
 // JEDNORAZOWE — usuń po wykonaniu
 if (file_exists(NIEPODZIELNI_CORE_PATH . 'misc/99-term-cleanup.php')) {
