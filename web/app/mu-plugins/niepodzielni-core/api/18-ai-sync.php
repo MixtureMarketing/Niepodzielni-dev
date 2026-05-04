@@ -105,9 +105,13 @@ function np_ai_build_blog_payload(int $post_id): ?array
     }
 
     $cats = wp_get_post_terms($post_id, 'category', ['fields' => 'names']);
-    $tags = wp_get_post_terms($post_id, 'post_tag',  ['fields' => 'names']);
-    if (is_wp_error($cats)) $cats = [];
-    if (is_wp_error($tags)) $tags = [];
+    $tags = wp_get_post_terms($post_id, 'post_tag', ['fields' => 'names']);
+    if (is_wp_error($cats)) {
+        $cats = [];
+    }
+    if (is_wp_error($tags)) {
+        $tags = [];
+    }
     $all_tags = array_values(array_unique(array_merge($cats, $tags)));
 
     return [

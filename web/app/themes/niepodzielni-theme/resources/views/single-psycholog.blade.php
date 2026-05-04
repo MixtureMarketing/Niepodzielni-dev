@@ -14,6 +14,46 @@
     $icon = '';
     if ($has_online)       $icon .= get_niepodzielni_svg_icon('online');
     if ($has_stacjonarnie) $icon .= get_niepodzielni_svg_icon('stacjonarnie');
+
+    // ── Opinie ─────────────────────────────────────────────────────────────
+    $avg_rating    = (float) get_post_meta($post_id, '_average_rating', true);
+    $reviews_count = (int)   get_post_meta($post_id, '_reviews_count',  true);
+
+    $reviews = get_comments([
+        'post_id' => $post_id,
+        'type'    => 'review',
+        'status'  => 'approve',
+        'parent'  => 0,
+        'orderby' => 'comment_date',
+        'order'   => 'DESC',
+        'number'  => 50,
+    ]);
+
+    // Magic token z URL
+    $magic_token = sanitize_text_field($_GET['magic_token'] ?? '');
+    $rvw_email   = sanitize_email($_GET['rvw_email'] ?? '');
+    $is_magic    = $magic_token && $rvw_email
+        && function_exists('np_reviews_generate_magic_token')
+        && hash_equals(np_reviews_generate_magic_token($rvw_email, $post_id), $magic_token);
+
+    // CF Turnstile site key
+    $cf_site_key = '';
+    foreach (['NP_CF_TURNSTILE_SITE_KEY', 'CF_TURNSTILE_SITE_KEY'] as $_c) {
+        if (defined($_c) && constant($_c)) { $cf_site_key = (string) constant($_c); break; }
+    }
+    if (!$cf_site_key) $cf_site_key = (string) get_option('np_cf_turnstile_site_key', '');
+
+    // Helper: gwiazdki HTML
+    $stars_html = function(float $rating, string $class = '') use (&$stars_html): string {
+        $full  = (int) floor($rating);
+        $half  = ($rating - $full) >= 0.5;
+        $empty = 5 - $full - ($half ? 1 : 0);
+        return '<span class="' . esc_attr($class) . '" aria-hidden="true">'
+             . str_repeat('★', $full)
+             . ($half ? '½' : '')
+             . str_repeat('☆', $empty)
+             . '</span>';
+    };
 @endphp
 
 <main id="main" class="osoba-template">
@@ -47,6 +87,14 @@
                 {!! do_shortcode('[tytul_wyrozniony]') !!}
 
                 <div class="psy-tag-profession">{{ $spec_name }}</div>
+
+                @if($avg_rating > 0)
+                    <div class="psy-header-rating">
+                        {!! $stars_html($avg_rating, 'psy-header-rating__stars') !!}
+                        <span>{{ number_format($avg_rating, 1) }}</span>
+                        <span>({{ $reviews_count }} {{ $reviews_count === 1 ? 'opinia' : ($reviews_count < 5 ? 'opinie' : 'opinii') }})</span>
+                    </div>
+                @endif
 
                 <div class="psy-specializations-row">
                     {!! do_shortcode('[specjalizacje_produktu]') !!}
@@ -120,7 +168,144 @@
             </div>
         </section>
 
+        {{-- ── Sekcja opinii ──────────────────────────────────────────────── --}}
+        <section class="psy-reviews" id="opinie">
+            <h2 class="psy-reviews__title">Opinie</h2>
+
+            @if($avg_rating > 0)
+                <div class="psy-rating-summary">
+                    {!! $stars_html($avg_rating, 'psy-rating-summary__stars') !!}
+                    <span class="psy-rating-summary__value">{{ number_format($avg_rating, 1) }}</span>
+                    <span class="psy-rating-summary__count">/ 5 ({{ $reviews_count }} {{ $reviews_count === 1 ? 'opinia' : ($reviews_count < 5 ? 'opinie' : 'opinii') }})</span>
+                </div>
+            @endif
+
+            {{-- Lista opinii --}}
+            @if(!empty($reviews))
+                <ul class="rvw-list">
+                @foreach($reviews as $review)
+                    @php
+                        $r_id      = (int) $review->comment_ID;
+                        $r_rating  = (int) get_comment_meta($r_id, '_rating', true);
+                        $r_verified = (bool) get_comment_meta($r_id, '_verified_visit', true);
+                        $r_date    = get_comment_date('j F Y', $r_id);
+
+                        // Odpowiedź psychologa (pierwsze child comment)
+                        $replies = get_comments([
+                            'parent' => $r_id,
+                            'status' => 'approve',
+                            'number' => 1,
+                        ]);
+                        $reply = $replies[0] ?? null;
+                    @endphp
+                    <li class="rvw-item">
+                        <div class="rvw-item__header">
+                            <span class="rvw-item__author">{{ esc_html($review->comment_author) }}</span>
+                            @if($r_rating > 0)
+                                <span class="rvw-item__stars" aria-label="{{ $r_rating }} na 5">{{ str_repeat('★', $r_rating) . str_repeat('☆', 5 - $r_rating) }}</span>
+                            @endif
+                            @if($r_verified)
+                                <span class="rvw-badge">✓ Zweryfikowana wizyta</span>
+                            @endif
+                            <span class="rvw-item__date">{{ $r_date }}</span>
+                        </div>
+                        @if($review->comment_content)
+                            <p class="rvw-item__content">{{ $review->comment_content }}</p>
+                        @endif
+
+                        @if($reply)
+                            <div class="rvw-reply">
+                                <p class="rvw-reply__label">Odpowiedź psychologa</p>
+                                <p class="rvw-reply__content">{{ $reply->comment_content }}</p>
+                            </div>
+                        @endif
+                    </li>
+                @endforeach
+                </ul>
+            @else
+                <p style="color:var(--mix-color-text-subtle);margin-bottom:32px;">Brak opinii. Bądź pierwszy!</p>
+            @endif
+
+            {{-- Formularz dodawania opinii --}}
+            <div class="rvw-form-section">
+                <h3 class="rvw-form-section__title">
+                    @if($is_magic) Dodaj opinię (zweryfikowany pacjent) @else Dodaj opinię @endif
+                </h3>
+
+                <form
+                    class="rvw-form"
+                    data-post-id="{{ $post_id }}"
+                    novalidate
+                >
+                    {{-- Gwiazdki --}}
+                    <div class="rvw-star-group">
+                        <span class="rvw-star-group__label">Twoja ocena <span style="color:#c0392b">*</span></span>
+                        <div class="rvw-star-row" role="group" aria-label="Wybierz ocenę">
+                            @for($i = 1; $i <= 5; $i++)
+                                <button
+                                    type="button"
+                                    class="rvw-star"
+                                    aria-label="{{ $i }} gwiazdka"
+                                    tabindex="0"
+                                >★</button>
+                            @endfor
+                        </div>
+                        <input type="hidden" name="rating" value="0">
+                        <span class="field-error" role="alert"></span>
+                    </div>
+
+                    {{-- Imię (opcjonalne) --}}
+                    <div class="form-field">
+                        <label class="form-field__label" for="rvw-author">Imię (opcjonalne)</label>
+                        <input type="text" id="rvw-author" name="author_name" class="form-field__input" maxlength="60" autocomplete="given-name">
+                        <span class="field-error" role="alert"></span>
+                    </div>
+
+                    {{-- E-mail --}}
+                    <div class="form-field rvw-email-field">
+                        <label class="form-field__label" for="rvw-email">
+                            Adres e-mail <span style="color:#c0392b">*</span>
+                        </label>
+                        <input
+                            type="email"
+                            id="rvw-email"
+                            name="email"
+                            class="form-field__input"
+                            required
+                            autocomplete="email"
+                            @if($is_magic) value="{{ esc_attr($rvw_email) }}" @endif
+                        >
+                        <p class="form-field__hint">Nie będzie opublikowany.</p>
+                        <span class="field-error" role="alert"></span>
+                    </div>
+
+                    {{-- Treść (opcjonalna) --}}
+                    <div class="form-field">
+                        <label class="form-field__label" for="rvw-content">Opinia (opcjonalna)</label>
+                        <textarea id="rvw-content" name="content" class="form-field__input form-field__input--textarea" rows="4" maxlength="1000"></textarea>
+                        <span class="field-error" role="alert"></span>
+                    </div>
+
+                    {{-- CF Turnstile --}}
+                    @if(!$is_magic && $cf_site_key)
+                        <div class="form-field rvw-turnstile-field">
+                            <div class="rvw-turnstile-container"></div>
+                            <input type="hidden" name="cf-turnstile-response" value="">
+                        </div>
+                    @endif
+
+                    <div class="rvw-general-error" hidden role="alert"></div>
+
+                    <button type="submit" class="btn btn--primary">Wyślij opinię</button>
+                </form>
+            </div>
+        </section>
+
     </article>
 
 </main>
+
+@if(!$is_magic && $cf_site_key)
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+@endif
 @endsection

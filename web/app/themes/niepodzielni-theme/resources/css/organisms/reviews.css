@@ -1,0 +1,253 @@
+/* =========================================================
+   Opinie psychologów — reviews
+   ========================================================= */
+
+/* ── Sekcja ────────────────────────────────────────────── */
+.psy-reviews {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--mix-color-border-light);
+}
+
+.psy-reviews__title {
+    font-size: 1.4rem;
+    font-weight: var(--mix-font-weight-bold);
+    margin-bottom: 8px;
+}
+
+/* ── Średnia ocen ───────────────────────────────────────── */
+.psy-rating-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.psy-rating-summary__stars {
+    display: flex;
+    gap: 3px;
+    color: #f59e0b;
+    font-size: 1.25rem;
+}
+
+.psy-rating-summary__value {
+    font-size: 1.1rem;
+    font-weight: var(--mix-font-weight-bold);
+    color: var(--mix-color-text-dark);
+}
+
+.psy-rating-summary__count {
+    font-size: 0.9rem;
+    color: var(--mix-color-text-subtle);
+}
+
+/* ── Gwiazdki w nagłówku karty ──────────────────────────── */
+.psy-header-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 0.9rem;
+    color: var(--mix-color-text-subtle);
+}
+
+.psy-header-rating__stars { color: #f59e0b; }
+
+/* ── Lista opinii ───────────────────────────────────────── */
+.rvw-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.rvw-item {
+    background: var(--mix-color-background-grey-light);
+    border-radius: var(--mix-radius-medium);
+    padding: 20px 24px;
+}
+
+.rvw-item__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.rvw-item__author {
+    font-weight: var(--mix-font-weight-medium);
+    color: var(--mix-color-text-dark);
+}
+
+.rvw-item__stars {
+    display: flex;
+    gap: 2px;
+    color: #f59e0b;
+    font-size: 1rem;
+}
+
+.rvw-item__date {
+    font-size: 0.8rem;
+    color: var(--mix-color-text-subtle);
+    margin-left: auto;
+}
+
+.rvw-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: var(--mix-font-weight-medium);
+    background: #ecfdf5;
+    color: #065f46;
+    border-radius: var(--mix-radius-pill);
+    padding: 2px 10px;
+}
+
+.rvw-item__content {
+    font-size: 0.95rem;
+    color: var(--mix-color-text-dark);
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ── Odpowiedź psychologa ───────────────────────────────── */
+.rvw-reply {
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: #fff;
+    border-left: 3px solid var(--mix-color-brand-primary);
+    border-radius: 0 var(--mix-radius-small) var(--mix-radius-small) 0;
+}
+
+.rvw-reply__label {
+    font-size: 0.8rem;
+    font-weight: var(--mix-font-weight-bold);
+    color: var(--mix-color-brand-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+.rvw-reply__content {
+    font-size: 0.9rem;
+    color: var(--mix-color-text-dark);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ── Formularz opinii ───────────────────────────────────── */
+.rvw-form-section {
+    margin-top: 32px;
+    background: var(--mix-color-background-light);
+    border: 1px solid var(--mix-color-border-light);
+    border-radius: var(--mix-radius-medium);
+    padding: 28px 32px;
+}
+
+.rvw-form-section__title {
+    font-size: 1.1rem;
+    font-weight: var(--mix-font-weight-bold);
+    margin-bottom: 20px;
+}
+
+.rvw-star-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.rvw-star-group__label {
+    font-size: 0.95rem;
+    font-weight: var(--mix-font-weight-medium);
+}
+
+.rvw-star-row {
+    display: flex;
+    gap: 6px;
+}
+
+.rvw-star {
+    font-size: 2rem;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: color var(--mix-transition-fast), transform var(--mix-transition-fast);
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
+}
+
+.rvw-star:hover,
+.rvw-star.is-active,
+.rvw-star.is-preview { color: #f59e0b; transform: scale(1.15); }
+
+.rvw-general-error {
+    padding: 10px 14px;
+    background: #fdf3f3;
+    border: 1px solid #f5c6cb;
+    border-radius: var(--mix-radius-small);
+    color: #721c24;
+    font-size: 0.9rem;
+    margin-bottom: 14px;
+}
+
+.rvw-success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px;
+    text-align: center;
+    color: var(--mix-color-brand-primary);
+}
+.rvw-success p {
+    font-size: 1.1rem;
+    font-weight: var(--mix-font-weight-medium);
+    color: var(--mix-color-text-dark);
+}
+
+/* ── Karta listingu — minioceny ─────────────────────────── */
+.psy-card-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    color: var(--mix-color-text-subtle);
+    margin-top: 4px;
+}
+.psy-card-rating__stars { color: #f59e0b; font-size: 0.85rem; }
+
+/* ── Panel psychologa — zakładka Opinie ─────────────────── */
+.panel-review-item {
+    border: 1px solid var(--mix-color-border-light);
+    border-radius: var(--mix-radius-medium);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+
+.panel-review-item__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.panel-review-item__stars { color: #f59e0b; }
+
+.panel-review-item__reply-form {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--mix-color-border-light);
+}
+
+.panel-review-item__reply-text {
+    font-size: 0.875rem;
+    color: var(--mix-color-text-subtle);
+    font-style: italic;
+}

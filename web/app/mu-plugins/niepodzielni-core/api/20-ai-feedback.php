@@ -56,7 +56,7 @@ function np_ai_register_dashboard_widget(): void
     wp_add_dashboard_widget(
         'np_ai_chat_ratings_widget',
         '🤖 AI Chatbot — Oceny rozmów',
-        'np_ai_render_dashboard_widget'
+        'np_ai_render_dashboard_widget',
     );
 }
 

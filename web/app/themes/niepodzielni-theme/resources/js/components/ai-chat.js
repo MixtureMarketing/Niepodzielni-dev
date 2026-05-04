@@ -12,10 +12,11 @@ const PANEL_KEY    = 'np_ai_panel_items';
 const MAX_HISTORY  = 20;
 
 // Lodołamacze — zastępują dwuetapowy onboarding, każdy automatycznie ustawia consult_type
+// intent: Fast Track — pomija LLM/Vectorize i bezpośrednio odpytuje WP API po dostępność
 const ICEBREAKERS = [
-    { label: 'Szukam pomocy przy depresji lub obniżonym nastroju', consult_type: 'pelno' },
-    { label: 'Potrzebuję kogoś od lęków, stresu lub ataków paniki', consult_type: 'pelno' },
-    { label: 'Szukam tańszej lub bezpłatnej pomocy psychologicznej', consult_type: 'nisko' },
+    { label: 'Szukam pomocy przy depresji lub obniżonym nastroju', consult_type: 'pelno', intent: 'find_standard' },
+    { label: 'Potrzebuję kogoś od lęków, stresu lub ataków paniki', consult_type: 'pelno', intent: 'find_standard' },
+    { label: 'Szukam tańszej lub bezpłatnej pomocy psychologicznej', consult_type: 'nisko', intent: 'find_low_cost' },
     { label: 'Jak wybrać dobrego psychologa dla siebie?', consult_type: 'pelno' },
 ];
 
@@ -223,7 +224,7 @@ class NpAiChat {
 
     // ── Wysyłanie ─────────────────────────────────────────────────────────────
 
-    async _send(filterDate = null) {
+    async _send(filterDate = null, intent = null) {
         const text = this.input.value.trim();
         if (! text || this.isTyping) return;
 
@@ -246,6 +247,7 @@ class NpAiChat {
             consult_type: this.consultType,
         };
         if (filterDate) payload.filter_date = filterDate;
+        if (intent)     payload.intent      = intent;
 
         // Tworzymy bąbelek odpowiedzi — będzie uzupełniany przez streaming
         const bubbleEl = this._createStreamBubble();
@@ -416,7 +418,7 @@ class NpAiChat {
 
                 this.input.value      = item.label ?? item;
                 this.sendBtn.disabled = false;
-                this._send(item.filter_date ?? null);
+                this._send(item.filter_date ?? null, item.intent ?? null);
             });
 
             wrap.appendChild(btn);

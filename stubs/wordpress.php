@@ -314,3 +314,104 @@ if (! function_exists('np_get_post_image_url')) {
         return '';
     }
 }
+
+// ─── Stubs dla Niepodzielni\Forms (BaseFormHandler, ContactForm) ──────────────
+
+if (! function_exists('apply_filters')) {
+    function apply_filters(string $hook_name, mixed $value, mixed ...$args): mixed
+    {
+        return $value;
+    }
+}
+
+if (! function_exists('add_action')) {
+    function add_action(string $hook_name, callable $callback, int $priority = 10, int $accepted_args = 1): true
+    {
+        return true;
+    }
+}
+
+if (! function_exists('add_filter')) {
+    function add_filter(string $hook_name, callable $callback, int $priority = 10, int $accepted_args = 1): true
+    {
+        return true;
+    }
+}
+
+if (! function_exists('remove_filter')) {
+    function remove_filter(string $hook_name, callable $callback, int $priority = 10): bool
+    {
+        return true;
+    }
+}
+
+if (! function_exists('is_email')) {
+    function is_email(string $email, bool $deprecated = false): string|false
+    {
+        return $email;
+    }
+}
+
+if (! function_exists('sanitize_text_field')) {
+    function sanitize_text_field(string $str): string
+    {
+        return $str;
+    }
+}
+
+if (! function_exists('sanitize_email')) {
+    function sanitize_email(string $email): string
+    {
+        return $email;
+    }
+}
+
+if (! function_exists('esc_url_raw')) {
+    function esc_url_raw(string $url, ?array $protocols = null): string
+    {
+        return $url;
+    }
+}
+
+if (! function_exists('esc_html')) {
+    function esc_html(string $text): string
+    {
+        return $text;
+    }
+}
+
+if (! function_exists('get_bloginfo')) {
+    function get_bloginfo(string $show = '', string $filter = 'raw'): string
+    {
+        return '';
+    }
+}
+
+if (! function_exists('wp_insert_post')) {
+    function wp_insert_post(array $postarr, bool $wp_error = false, bool $fire_after_hooks = true): int|WP_Error
+    {
+        return 0;
+    }
+}
+
+if (! function_exists('wp_mail')) {
+    /** @param string|string[] $to @param string|string[] $headers @param string|string[] $attachments */
+    function wp_mail(string|array $to, string $subject, string $message, string|array $headers = '', string|array $attachments = []): bool
+    {
+        return true;
+    }
+}
+
+if (! function_exists('wp_salt')) {
+    function wp_salt(string $scheme = 'auth'): string
+    {
+        return '';
+    }
+}
+
+if (! function_exists('current_time')) {
+    function current_time(string $type, bool|int $gmt = 0): string|int
+    {
+        return '';
+    }
+}
