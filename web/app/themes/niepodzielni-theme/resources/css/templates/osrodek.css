@@ -1,0 +1,505 @@
+/* ═══════════════════════════════════════════════════════
+   Single: Ośrodek pomocy
+   ═══════════════════════════════════════════════════════ */
+
+.osrodek-single {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+/* Back link — reuse psy-back */
+.osrodek-single .psy-back-container {
+  margin-bottom: 24px;
+}
+
+/* Card */
+.osrodek-card {
+  background: var(--mix-color-background-light);
+  border-radius: var(--mix-radius-xl);
+  box-shadow: var(--mix-shadow-card);
+  overflow: hidden;
+  padding: 36px;
+}
+
+@media (max-width: 600px) {
+  .osrodek-card { padding: 20px 16px; }
+}
+
+/* Header */
+.osrodek-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.osrodek-logo {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--mix-radius-medium);
+  border: 1px solid var(--mix-color-border-light);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mix-color-background-grey-light);
+  padding: 6px;
+}
+
+.osrodek-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.osrodek-title {
+  font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+  font-weight: var(--mix-font-weight-bold);
+  color: var(--mix-color-text-dark);
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.osrodek-address {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--mix-color-text-subtle);
+  margin: 0;
+}
+
+/* Tags */
+.osrodek-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.osrodek-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--mix-radius-pill);
+  font-size: 0.8rem;
+  font-weight: var(--mix-font-weight-medium);
+  line-height: 1.4;
+}
+
+.osrodek-tag--rodzaj {
+  background: rgba(1, 190, 74, 0.1);
+  color: var(--mix-color-brand-primary);
+  border: 1px solid rgba(1, 190, 74, 0.25);
+}
+
+.osrodek-tag--grupa {
+  background: rgba(21, 0, 187, 0.06);
+  color: var(--mix-color-brand-secondary);
+  border: 1px solid rgba(21, 0, 187, 0.15);
+}
+
+/* Content */
+.osrodek-content {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--mix-color-text-base);
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--mix-color-border-light);
+  padding-bottom: 24px;
+}
+
+/* Grid */
+.osrodek-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 680px) {
+  .osrodek-grid { grid-template-columns: 1fr; gap: 24px; }
+}
+
+/* Section */
+.osrodek-section {
+  border-top: 1px solid var(--mix-color-border-light);
+  padding-top: 24px;
+}
+
+.osrodek-section__title {
+  font-size: 1rem;
+  font-weight: var(--mix-font-weight-bold);
+  color: var(--mix-color-text-dark);
+  margin: 0 0 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Contact list */
+.osrodek-contact-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.osrodek-contact-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.osrodek-contact-list a {
+  color: var(--mix-color-text-dark);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.osrodek-contact-list a:hover {
+  color: var(--mix-color-brand-primary);
+}
+
+/* Social */
+.osrodek-social {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.osrodek-social__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--mix-color-background-grey-light);
+  color: var(--mix-color-text-subtle);
+  transition: background 0.15s, color 0.15s;
+}
+
+.osrodek-social__link:hover {
+  background: var(--mix-color-brand-primary);
+  color: #fff;
+}
+
+/* Hours table */
+.osrodek-hours {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.osrodek-hours__row {
+  border-bottom: 1px solid var(--mix-color-border-light);
+}
+
+.osrodek-hours__row:last-child { border-bottom: none; }
+
+.osrodek-hours__day,
+.osrodek-hours__time {
+  padding: 7px 4px;
+}
+
+.osrodek-hours__day {
+  font-weight: var(--mix-font-weight-medium);
+  color: var(--mix-color-text-dark);
+  width: 50%;
+}
+
+.osrodek-hours__time { color: var(--mix-color-text-base); }
+
+.osrodek-hours__row.is-closed .osrodek-hours__day,
+.osrodek-hours__row.is-closed .osrodek-hours__time {
+  color: var(--mix-color-text-subtle);
+}
+
+.osrodek-hours__closed { font-style: italic; }
+
+/* Map section */
+.osrodek-map-section { grid-column: 1 / -1; }
+
+.osrodek-map {
+  height: 320px;
+  border-radius: var(--mix-radius-large);
+  overflow: hidden;
+  border: 1px solid var(--mix-color-border-light);
+  z-index: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Template: Psychomapa (listing + mapa)
+   ═══════════════════════════════════════════════════════ */
+
+.psychomapa-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--mix-header-height));
+}
+
+/* Header with filters */
+.psychomapa-header {
+  background: var(--mix-color-brand-secondary);
+  color: #fff;
+  padding: 40px 20px 32px;
+}
+
+.psychomapa-header__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.psychomapa-header__title {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: var(--mix-font-weight-black);
+  color: #fff;
+  margin: 0 0 8px;
+}
+
+.psychomapa-header__desc {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.75);
+  margin: 0 0 24px;
+}
+
+/* Filters row */
+.psychomapa-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.psychomapa-search {
+  position: relative;
+  flex: 1 1 280px;
+  min-width: 200px;
+}
+
+.psychomapa-search svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.psychomapa-search__input {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  border: none;
+  border-radius: var(--mix-radius-pill);
+  font-size: 0.9rem;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  outline: none;
+  transition: background 0.2s;
+}
+
+.psychomapa-search__input::placeholder { color: rgba(255,255,255,0.6); }
+.psychomapa-search__input:focus { background: rgba(255,255,255,0.25); }
+
+.psychomapa-select {
+  padding: 12px 16px;
+  border: none;
+  border-radius: var(--mix-radius-pill);
+  font-size: 0.9rem;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 160px;
+}
+
+.psychomapa-select option { color: var(--mix-color-text-dark); background: #fff; }
+.psychomapa-select:focus { background: rgba(255,255,255,0.25); }
+
+/* Layout: sidebar + map */
+.psychomapa-layout {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - var(--mix-header-height) - 180px);
+  min-height: 500px;
+}
+
+@media (max-width: 768px) {
+  .psychomapa-layout {
+    flex-direction: column;
+    height: auto;
+  }
+}
+
+/* Sidebar */
+.psychomapa-sidebar {
+  width: 360px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--mix-color-border-light);
+  background: var(--mix-color-background-light);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .psychomapa-sidebar {
+    width: 100%;
+    max-height: 340px;
+    border-right: none;
+    border-bottom: 1px solid var(--mix-color-border-light);
+    order: 2;
+  }
+}
+
+.psychomapa-sidebar__count {
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  font-weight: var(--mix-font-weight-medium);
+  color: var(--mix-color-text-subtle);
+  border-bottom: 1px solid var(--mix-color-border-light);
+  background: var(--mix-color-background-grey-light);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* List */
+.psychomapa-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.psychomapa-list__loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.psychomapa-list__empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--mix-color-text-subtle);
+  font-size: 0.9rem;
+}
+
+/* List item */
+.psychomapa-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--mix-color-border-light);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.psychomapa-item:hover,
+.psychomapa-item.is-active {
+  background: rgba(1, 190, 74, 0.05);
+}
+
+.psychomapa-item.is-active {
+  border-left: 3px solid var(--mix-color-brand-primary);
+}
+
+.psychomapa-item__logo {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--mix-radius-small);
+  object-fit: contain;
+  border: 1px solid var(--mix-color-border-light);
+  background: var(--mix-color-background-grey-light);
+  flex-shrink: 0;
+  padding: 4px;
+}
+
+.psychomapa-item__body { flex: 1; min-width: 0; }
+
+.psychomapa-item__name {
+  font-size: 0.88rem;
+  font-weight: var(--mix-font-weight-medium);
+  color: var(--mix-color-text-dark);
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.psychomapa-item__city {
+  font-size: 0.8rem;
+  color: var(--mix-color-text-subtle);
+}
+
+/* Map */
+.psychomapa-map-wrap {
+  flex: 1;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .psychomapa-map-wrap {
+    order: 1;
+    height: 55vw;
+    min-height: 280px;
+  }
+}
+
+.psychomapa-map {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* Leaflet popup */
+.np-popup {
+  font-family: var(--mix-font-family-primary);
+  font-size: 0.88rem;
+}
+
+.np-popup__name {
+  font-weight: var(--mix-font-weight-bold);
+  margin: 0 0 4px;
+  font-size: 0.92rem;
+}
+
+.np-popup__city {
+  color: var(--mix-color-text-subtle);
+  margin: 0 0 8px;
+}
+
+.np-popup__link {
+  display: inline-block;
+  padding: 6px 14px;
+  background: var(--mix-color-brand-primary);
+  color: #fff;
+  border-radius: var(--mix-radius-pill);
+  font-size: 0.82rem;
+  font-weight: var(--mix-font-weight-medium);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.np-popup__link:hover { background: var(--mix-color-brand-primary-hover); }
+
+/* Spinner */
+.psychomapa-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--mix-color-border-light);
+  border-top-color: var(--mix-color-brand-primary);
+  border-radius: 50%;
+  animation: np-spin 0.8s linear infinite;
+}
+
+@keyframes np-spin {
+  to { transform: rotate(360deg); }
+}

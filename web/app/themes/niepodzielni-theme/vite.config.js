@@ -30,6 +30,7 @@ export default defineConfig({
         'resources/js/editor.js',
         'resources/js/matchmaker.js',
         'resources/js/panel.js',
+        'resources/js/psychomapa.js',
       ],
       refresh: true,
     }),

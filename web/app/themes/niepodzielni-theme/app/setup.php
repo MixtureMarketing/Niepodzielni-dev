@@ -120,6 +120,18 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script('sage/events-listing.js', Vite::asset('resources/js/events-listing.js'), [], null, true);
     }
 
+    // Psychomapa — mapa ośrodków pomocy (Leaflet CDN + własny JS)
+    if (is_page_template('template-psychomapa.blade.php') || is_singular('osrodek_pomocy')) {
+        wp_enqueue_style('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css', [], '1.9.4');
+        wp_enqueue_script('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.js', [], '1.9.4', true);
+    }
+    if (is_page_template('template-psychomapa.blade.php')) {
+        wp_enqueue_script('sage/psychomapa.js', Vite::asset('resources/js/psychomapa.js'), ['leaflet'], null, true);
+    }
+    if (is_singular('osrodek_pomocy')) {
+        wp_enqueue_script('sage/psychomapa.js', Vite::asset('resources/js/psychomapa.js'), ['leaflet'], null, true);
+    }
+
     // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS
     $panel_templates = [
         'template-panel-dashboard.blade.php',
