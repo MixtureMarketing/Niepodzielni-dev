@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-@while(have_posts()) @php(the_post())
+@while(have_posts())
+@php(the_post())
 @php
     $post_id = get_the_ID();
 

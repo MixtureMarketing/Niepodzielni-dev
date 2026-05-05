@@ -9,7 +9,7 @@
     $api_url       = rest_url('niepodzielni/v1/psychomapa');
 @endphp
 
-<script>
+<script data-cfasync="false">
 window.npPsychomapa = {
     apiUrl: {{ json_encode($api_url) }},
     rodzajeTerms: {!! json_encode(
