@@ -3,7 +3,8 @@
  * Używa Leaflet.js (CDN) + REST endpoint /wp-json/niepodzielni/v1/psychomapa
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+// Modules are deferred — DOM is ready when this executes
+function initPsychomapa() {
     // ── Single ośrodek: mini-mapa ─────────────────────────────────────────────
     const singleMapEl = document.getElementById('osrodek-map');
     if (singleMapEl && window.L) {
@@ -166,4 +167,12 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput?.addEventListener('input',  () => debounce(render));
     rodzajSelect?.addEventListener('change', render);
     grupaSelect?.addEventListener('change',  render);
-});
+}
+
+// Leaflet is a classic script loaded before this module in footer —
+// wait for it if not yet available (race condition guard)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPsychomapa);
+} else {
+    initPsychomapa();
+}
