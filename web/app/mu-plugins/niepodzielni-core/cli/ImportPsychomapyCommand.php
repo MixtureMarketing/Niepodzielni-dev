@@ -216,12 +216,13 @@ class ImportPsychomapyCommand
         ));
     }
 
-    /** Zapisuje podstawowe meta wg META_MAP. */
+    /** Zapisuje meta wg META_MAP — podwójny zapis (plain + _prefix) wymagany przez Carbon Fields. */
     private function saveMeta(int $postId, array $data, array $colIndex): void
     {
         foreach (self::META_MAP as $csvCol => $metaKey) {
-            $value = $data[$csvCol] ?? '';
-            update_post_meta($postId, $metaKey, sanitize_text_field($value));
+            $value = sanitize_text_field($data[$csvCol] ?? '');
+            update_post_meta($postId, $metaKey, $value);
+            update_post_meta($postId, '_' . $metaKey, $value);
         }
     }
 
@@ -248,7 +249,7 @@ class ImportPsychomapyCommand
         }
     }
 
-    /** Przepisuje logo URL i zapisuje w meta. */
+    /** Przepisuje logo URL i zapisuje w meta (plain + _prefix dla Carbon Fields). */
     private function saveLogo(int $postId, string $logoUrl): void
     {
         if ($logoUrl === '') {
@@ -261,24 +262,28 @@ class ImportPsychomapyCommand
             $logoUrl
         );
 
-        update_post_meta($postId, 'np_logo_url', esc_url_raw($rewritten));
+        $url = esc_url_raw($rewritten);
+        update_post_meta($postId, 'np_logo_url', $url);
+        update_post_meta($postId, '_np_logo_url', $url);
     }
 
-    /** Zapisuje godziny otwarcia dla każdego dnia tygodnia. */
+    /** Zapisuje godziny otwarcia (plain + _prefix dla Carbon Fields). */
     private function saveHours(int $postId, array $data): void
     {
         foreach (self::DAYS as $prefix => $csvPrefix) {
-            $open  = $data["{$csvPrefix}_godzina_otwarcia"]  ?? '';
-            $close = $data["{$csvPrefix}_godzina_zamkniecia"] ?? '';
-
-            update_post_meta($postId, "{$prefix}_otwarcie",   sanitize_text_field($open));
-            update_post_meta($postId, "{$prefix}_zamkniecie", sanitize_text_field($close));
-
-            // Oznacz jako zamknięte gdy brak godzin i nie ma "całodobowe"
+            $open   = sanitize_text_field($data["{$csvPrefix}_godzina_otwarcia"]  ?? '');
+            $close  = sanitize_text_field($data["{$csvPrefix}_godzina_zamkniecia"] ?? '');
             $closed = ($open === '' && $close === '' && stripos($open . $close, 'całodobowe') === false)
-                ? 'tak'
-                : '';
-            update_post_meta($postId, "{$prefix}_zamkniete", $closed);
+                ? 'tak' : '';
+
+            foreach ([
+                "{$prefix}_otwarcie"   => $open,
+                "{$prefix}_zamkniecie" => $close,
+                "{$prefix}_zamkniete"  => $closed,
+            ] as $key => $val) {
+                update_post_meta($postId, $key, $val);
+                update_post_meta($postId, '_' . $key, $val);
+            }
         }
     }
 
@@ -316,8 +321,10 @@ class ImportPsychomapyCommand
         $coords = $this->geocoder->geocodeAddress($address);
 
         if ($coords !== null) {
-            update_post_meta($postId, 'lat', $coords['lat']);
-            update_post_meta($postId, 'lng', $coords['lng']);
+            update_post_meta($postId, 'lat',  $coords['lat']);
+            update_post_meta($postId, '_lat', $coords['lat']);
+            update_post_meta($postId, 'lng',  $coords['lng']);
+            update_post_meta($postId, '_lng', $coords['lng']);
             \WP_CLI::line("    ✓ {$coords['lat']}, {$coords['lng']}");
         } else {
             \WP_CLI::warning("    Brak wyników Nominatim dla wiersza {$rowNum}: {$address}");
