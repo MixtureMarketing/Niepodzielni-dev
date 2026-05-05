@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@while(have_posts()) @php(the_post())
 @php
     $post_id = get_the_ID();
 
@@ -39,7 +40,7 @@
     ];
 @endphp
 
-<main id="main" class="osrodek-single">
+<div class="osrodek-single">
 
     <div class="psy-back-container">
         <a href="{{ home_url('/psychomapa/') }}" class="psy-back-link">
@@ -183,5 +184,6 @@
 
     </article>
 
-</main>
+</div>
+@endwhile
 @endsection
