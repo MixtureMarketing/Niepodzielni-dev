@@ -1,5 +1,6 @@
 @props([
     'title'   => 'Napisz do nas',
+    'intro'   => null,
     'siteKey' => null,
 ])
 
@@ -13,29 +14,56 @@
         <h2 class="contact-form__title">{{ $title }}</h2>
     @endif
 
+    @if($intro)
+        <p class="contact-form__intro">{{ $intro }}</p>
+    @endif
+
     <form
         data-niepodzielni-form="contact"
         class="niepodzielni-form"
         novalidate
     >
         <div class="form-fields">
-            <x-forms.input
-                name="imie"
-                label="Imię i nazwisko"
-                :required="true"
-                autocomplete="name"
-                maxlength="100"
-                placeholder="Jan Kowalski"
-            />
+            <div class="form-row">
+                <x-forms.input
+                    name="imie"
+                    label="Imię"
+                    :required="true"
+                    autocomplete="given-name"
+                    maxlength="50"
+                    placeholder="Jan"
+                />
 
-            <x-forms.input
-                name="email"
-                label="Adres e-mail"
-                type="email"
-                :required="true"
-                autocomplete="email"
-                placeholder="jan@przykład.pl"
-            />
+                <x-forms.input
+                    name="nazwisko"
+                    label="Nazwisko"
+                    :required="false"
+                    autocomplete="family-name"
+                    maxlength="50"
+                    placeholder="Kowalski"
+                />
+            </div>
+
+            <div class="form-row">
+                <x-forms.input
+                    name="telefon"
+                    label="Numer telefonu"
+                    type="tel"
+                    :required="false"
+                    autocomplete="tel"
+                    maxlength="20"
+                    placeholder="+48 123 456 789"
+                />
+
+                <x-forms.input
+                    name="email"
+                    label="Adres e-mail"
+                    type="email"
+                    :required="true"
+                    autocomplete="email"
+                    placeholder="jan@przykład.pl"
+                />
+            </div>
 
             <x-forms.textarea
                 name="wiadomosc"

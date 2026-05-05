@@ -25,10 +25,24 @@ class ContactForm extends BaseFormHandler
     {
         return [
             'imie' => [
-                'label'      => 'Imię i nazwisko',
+                'label'      => 'Imię',
                 'type'       => 'text',
                 'required'   => true,
-                'max_length' => 100,
+                'max_length' => 50,
+                'sanitize'   => 'sanitize_text_field',
+            ],
+            'nazwisko' => [
+                'label'      => 'Nazwisko',
+                'type'       => 'text',
+                'required'   => false,
+                'max_length' => 50,
+                'sanitize'   => 'sanitize_text_field',
+            ],
+            'telefon' => [
+                'label'      => 'Numer telefonu',
+                'type'       => 'tel',
+                'required'   => false,
+                'max_length' => 20,
                 'sanitize'   => 'sanitize_text_field',
             ],
             'email' => [

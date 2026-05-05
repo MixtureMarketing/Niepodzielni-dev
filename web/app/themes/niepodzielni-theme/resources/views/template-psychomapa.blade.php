@@ -7,23 +7,22 @@
     $rodzaje_terms = get_terms(['taxonomy' => 'rodzaj-pomocy', 'hide_empty' => true]);
     $grupy_terms   = get_terms(['taxonomy' => 'grupa-docelowa', 'hide_empty' => true]);
     $api_url       = rest_url('niepodzielni/v1/psychomapa');
+
+    // Przygotowujemy czyste tablice dla JavaScriptu
+    $rodzaje_data = (!is_wp_error($rodzaje_terms) && !empty($rodzaje_terms))
+        ? array_map(fn($t) => ['id' => $t->term_id, 'name' => $t->name], $rodzaje_terms)
+        : [];
+
+    $grupy_data = (!is_wp_error($grupy_terms) && !empty($grupy_terms))
+        ? array_map(fn($t) => ['id' => $t->term_id, 'name' => $t->name], $grupy_terms)
+        : [];
 @endphp
 
 <script data-cfasync="false">
 window.npPsychomapa = {
-    apiUrl: {{ json_encode($api_url) }},
-    rodzajeTerms: {!! json_encode(
-        (!is_wp_error($rodzaje_terms) && !empty($rodzaje_terms))
-            ? array_map(fn($t) => ['id' => $t->term_id, 'name' => $t->name], $rodzaje_terms)
-            : [],
-        JSON_HEX_TAG | JSON_HEX_AMP
-    ) !!},
-    grupyTerms: {!! json_encode(
-        (!is_wp_error($grupy_terms) && !empty($grupy_terms))
-            ? array_map(fn($t) => ['id' => $t->term_id, 'name' => $t->name], $grupy_terms)
-            : [],
-        JSON_HEX_TAG | JSON_HEX_AMP
-    ) !!},
+    apiUrl: @json($api_url),
+    rodzajeTerms: @json($rodzaje_data),
+    grupyTerms: @json($grupy_data)
 };
 </script>
 

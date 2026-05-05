@@ -2,6 +2,37 @@
    Niepodzielni Forms — style bazowe
    ========================================================= */
 
+/* ── Nagłówek formularza ──────────────────────────────── */
+.contact-form__title {
+    font-size: clamp(26px, 3vw, 36px);
+    font-weight: 700;
+    color: var(--mix-color-brand-primary);
+    margin: 0 0 12px;
+    line-height: 1.25;
+}
+
+.contact-form__intro {
+    font-size: 14px;
+    color: #707070;
+    margin: 0 0 32px;
+    max-width: 560px;
+    line-height: 1.6;
+}
+
+/* ── Grid/Layout formularza ───────────────────────────── */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
 /* ── Wrapper pola ─────────────────────────────────────── */
 .form-field {
     display: flex;
