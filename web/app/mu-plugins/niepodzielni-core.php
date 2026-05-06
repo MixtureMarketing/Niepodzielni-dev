@@ -58,6 +58,7 @@ require_once NIEPODZIELNI_CORE_PATH . 'api/22-media-helpers.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/30-panel-psycholog.php'; // panel psychologa — AJAX endpoints
 require_once NIEPODZIELNI_CORE_PATH . 'api/40-opinie-api.php';      // System opinii — REST API + enqueue
 require_once NIEPODZIELNI_CORE_PATH . 'api/50-forms-api.php';       // Niepodzielni Forms — REST API + enqueue
+require_once NIEPODZIELNI_CORE_PATH . 'api/63-crisis-setup.php';    // Crisis Help Hub — bootstrap termu taksonomii
 
 // 3. MODYFIKACJE PANELU ADMINA
 require_once NIEPODZIELNI_CORE_PATH . 'admin/5-admin-dashboard.php';

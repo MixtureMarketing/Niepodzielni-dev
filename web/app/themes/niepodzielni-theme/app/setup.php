@@ -121,7 +121,11 @@ add_action('wp_enqueue_scripts', function () {
     }
 
     // Psychomapa — mapa ośrodków pomocy (Leaflet + MarkerCluster + własny JS)
-    if (is_page_template('template-psychomapa.blade.php') || is_singular('osrodek_pomocy')) {
+    // Crisis Help Hub także używa Leaflet (bez clustering) na template Pomoc w kryzysie.
+    $needs_leaflet = is_page_template('template-psychomapa.blade.php')
+        || is_page_template('template-pomoc-kryzys.blade.php')
+        || is_singular('osrodek_pomocy');
+    if ($needs_leaflet) {
         wp_enqueue_style('leaflet', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css', [], null);
         wp_enqueue_script('leaflet', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js', [], null, true);
     }
@@ -142,6 +146,12 @@ add_action('wp_enqueue_scripts', function () {
             }
             return $tag;
         }, 10, 2);
+    }
+
+    // Crisis Help Hub — Esc handler + mini-mapa interwencyjna (Leaflet już załadowany powyżej)
+    if (is_page_template('template-pomoc-kryzys.blade.php')) {
+        wp_enqueue_script('sage/crisis-hide.js', Vite::asset('resources/js/crisis-hide.js'), [], null, true);
+        wp_enqueue_script('sage/crisis-map.js', Vite::asset('resources/js/crisis-map.js'), ['leaflet'], null, true);
     }
 
     // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS

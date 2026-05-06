@@ -25,5 +25,7 @@ GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7
 CHAT_MODEL       = "openai/gpt-4o-mini"
 EMBED_MODEL      = "@cf/baai/bge-m3"
 WP_API_URL       = "https://dev.niepodzielni.com/wp-json/niepodzielni/v1"
+WP_CRISIS_URL    = "https://dev.niepodzielni.com/pomoc-w-kryzysie/"
 # Stary tymczasowy tunel (trycloudflare): wygasł — zastąpiony stałym dev.niepodzielni.com
 # Produkcja: https://niepodzielni-dev-01.mixturemarketing.pl/wp-json/niepodzielni/v1
+# Produkcja crisis URL: https://niepodzielni.com/pomoc-w-kryzysie/

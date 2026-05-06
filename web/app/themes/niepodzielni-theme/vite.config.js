@@ -31,6 +31,8 @@ export default defineConfig({
         'resources/js/matchmaker.js',
         'resources/js/panel.js',
         'resources/js/psychomapa.js',
+        'resources/js/crisis-hide.js',
+        'resources/js/crisis-map.js',
       ],
       refresh: true,
     }),

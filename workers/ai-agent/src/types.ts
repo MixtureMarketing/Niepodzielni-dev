@@ -7,6 +7,7 @@ export interface Env {
     CHAT_MODEL:           string;
     EMBED_MODEL:          string;
     WP_API_URL:           string;
+    WP_CRISIS_URL?:       string; // URL do strony /pomoc-w-kryzysie — pojawia się jako link w SSE event przy detekcji kryzysu
     CF_AIG_TOKEN:         string;
     WORKER_SECRET:        string;
     WP_BOT_TOKEN:         string;

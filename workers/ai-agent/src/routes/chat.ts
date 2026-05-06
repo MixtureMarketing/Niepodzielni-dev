@@ -781,7 +781,15 @@ export async function handleChat(request: Request, env: Env): Promise<Response> 
 
     // ── Filtr kryzysowy — przed LLM, zero opóźnienia ─────────────────────────
     if (isCrisis(messages)) {
-        return sseInstant({ type: 'done', crisis: true, reply: '', suggestions: [], quick_replies: [], contact_fallback: false });
+        return sseInstant({
+            type: 'done',
+            crisis: true,
+            crisis_url: env.WP_CRISIS_URL ?? '',
+            reply: '',
+            suggestions: [],
+            quick_replies: [],
+            contact_fallback: false,
+        });
     }
 
     // ── Filtr jailbreak — przed LLM ──────────────────────────────────────────
