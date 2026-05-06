@@ -86,7 +86,6 @@
                     prefix-name="telefon_prefix"
                     label="Numer telefonu"
                     :required="true"
-                    placeholder="123456789"
                     :prefixes="$prefixes"
                     value-prefix="+48"
                 />

@@ -28,7 +28,7 @@
 
         @foreach($options as $val => $text)
             <option value="{{ $val }}" {{ (string)$val === (string)$value ? 'selected' : '' }}>
-                {{ $text }}
+                {{ is_array($text) ? ($text['label'] ?? $val) : $text }}
             </option>
         @endforeach
     </select>

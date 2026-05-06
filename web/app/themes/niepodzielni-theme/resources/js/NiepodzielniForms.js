@@ -112,6 +112,15 @@ class NiepodzielniForms {
             trigger.focus();
         };
 
+        // Inicjalizacja — synchronizuj placeholder i minlength z domyślnie zaznaczoną opcją
+        const initSelected = list.querySelector('.prefix-select__option.is-selected');
+        if (initSelected && phoneInput) {
+            const initPh = initSelected.dataset.placeholder;
+            if (initPh) phoneInput.placeholder = initPh;
+            phoneInput.minLength = parseInt(initSelected.dataset.min, 10) || 1;
+            phoneInput.maxLength = parseInt(initSelected.dataset.max, 10) || 15;
+        }
+
         // Toggle
         trigger.addEventListener('click', () => {
             dropdown.hidden ? open() : close();
@@ -204,7 +213,14 @@ class NiepodzielniForms {
 
         if (mask === 'phone') {
             const max = field.maxLength > 0 ? field.maxLength : 15;
-            field.value = val.replace(/\D/g, '').substring(0, max);
+            const min = field.minLength > 0 ? field.minLength : 1;
+            const cleaned = val.replace(/\D/g, '').substring(0, max);
+            field.value = cleaned;
+            if (cleaned.length > 0 && cleaned.length < min) {
+                field.setCustomValidity(`Numer musi mieć co najmniej ${min} cyfr.`);
+            } else {
+                field.setCustomValidity('');
+            }
         }
 
         if (mask === 'no-digits') {

@@ -87,27 +87,74 @@
     min-height: 120px;
 }
 
-/* ── Radio ───────────────────────────────────────────── */
+/* ── Select ───────────────────────────────────────────── */
+select.form-field__input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23828282' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+select.form-field__input:focus {
+    border-color: var(--mix-color-brand-primary);
+    box-shadow: 0 0 0 3px rgba(1, 190, 74, 0.15);
+}
+
+/* ── Radio — styl przycisków ─────────────────────────── */
 .form-field__radio-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
-    margin-top: 8px;
+    gap: 8px;
+    margin-top: 4px;
 }
 
 .form-field__radio-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    font-weight: var(--mix-font-weight-medium);
+    padding: 9px 16px;
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    background: var(--mix-color-background-light);
+    color: var(--mix-color-text-dark);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.form-field__radio-label:has(.form-field__radio:checked) {
+    border-color: var(--mix-color-brand-primary);
+    background: rgba(1, 190, 74, 0.07);
+    color: var(--mix-color-brand-primary);
+}
+
+.form-field__radio-label:hover {
+    border-color: var(--mix-color-brand-primary);
 }
 
 .form-field__radio {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--mix-color-brand-primary);
-    cursor: pointer;
+    display: none;
+}
+
+/* Fallback dla przeglądarek bez :has() */
+@supports not selector(:has(+*)) {
+    .form-field__radio {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        accent-color: var(--mix-color-brand-primary);
+        cursor: pointer;
+    }
+    .form-field__radio-label {
+        border: none;
+        padding: 0;
+        background: none;
+    }
 }
 
 /* ── Checkbox ─────────────────────────────────────────── */
@@ -132,6 +179,46 @@
     margin-top: 2px;
     accent-color: var(--mix-color-brand-primary);
     cursor: pointer;
+}
+
+/* ── Przycisk submit ──────────────────────────────────── */
+.niepodzielni-form [type="submit"],
+.contact-form-wrapper [type="submit"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 32px;
+    font-size: 1rem;
+    font-family: var(--mix-font-family-primary);
+    font-weight: var(--mix-font-weight-semibold, 600);
+    border: none;
+    border-radius: var(--mix-radius-small);
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.niepodzielni-form [type="submit"]:hover,
+.contact-form-wrapper [type="submit"]:hover {
+    background: #01a848;
+    box-shadow: 0 4px 12px rgba(1, 190, 74, 0.3);
+}
+
+.niepodzielni-form [type="submit"]:focus-visible,
+.contact-form-wrapper [type="submit"]:focus-visible {
+    outline: 3px solid rgba(1, 190, 74, 0.5);
+    outline-offset: 2px;
+}
+
+.niepodzielni-form [type="submit"]:disabled,
+.contact-form-wrapper [type="submit"]:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 /* ── Błąd pola ────────────────────────────────────────── */
