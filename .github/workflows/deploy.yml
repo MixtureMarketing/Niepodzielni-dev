@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Build & Deploy
     runs-on: ubuntu-24.04
     environment: production
 
@@ -14,12 +14,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/app/themes/niepodzielni-theme/package-lock.json
+
+      - name: Install npm dependencies
+        working-directory: web/app/themes/niepodzielni-theme
+        run: npm ci
+
+      - name: Build theme assets
+        working-directory: web/app/themes/niepodzielni-theme
+        run: npm run build
+
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan 185.201.113.217 >> ~/.ssh/known_hosts
+
+      - name: Upload built assets to server shared dir
+        run: |
+          ssh root@185.201.113.217 "mkdir -p /srv/www/new.niepodzielni.com/shared/theme-build"
+          rsync -az --delete \
+            web/app/themes/niepodzielni-theme/public/build/ \
+            root@185.201.113.217:/srv/www/new.niepodzielni.com/shared/theme-build/
 
       - name: Write vault password
         run: echo "${{ secrets.ANSIBLE_VAULT_PASS }}" > trellis/.vault_pass
@@ -42,4 +64,5 @@ jobs:
         run: |
           ansible-playbook deploy.yml \
             -e env=production \
+            -e site=new.niepodzielni.com \
             --vault-password-file .vault_pass

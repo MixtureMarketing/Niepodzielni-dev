@@ -6,9 +6,7 @@ wordpress_sites:
   new.niepodzielni.com:
     site_hosts:
       - canonical: new.niepodzielni.com
-        redirects:
-          - www.new.niepodzielni.com
-    local_path: ../Niepodzielni-dev # path targeting local Bedrock site directory (relative to Ansible root)
+    local_path: ../Niepodzielni-dev
     repo: git@github.com:MixtureMarketing/Niepodzielni-dev.git
     branch: main
     multisite:
@@ -29,3 +27,18 @@ wordpress_sites:
     php_fpm_pm_min_spare_servers: 2
     php_fpm_pm_max_spare_servers: 5
     php_fpm_pm_max_requests: 500
+    shared_children:
+      - path: web/app/themes/niepodzielni-theme/public/build
+        src: theme-build
+    env:
+      redis_host: "127.0.0.1"
+      redis_port: "6379"
+      np_ai_worker_url: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_ai_worker_url'] }}"
+      np_ai_worker_secret: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_ai_worker_secret'] }}"
+      np_ai_bot_token: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_ai_bot_token'] }}"
+      np_cf_turnstile_secret: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_cf_turnstile_secret'] }}"
+      np_cf_turnstile_site_key: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_cf_turnstile_site_key'] }}"
+      bookero_api_key_pelny: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_api_key_pelny'] }}"
+      bookero_api_key_nisko: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_api_key_nisko'] }}"
+      bookero_cal_id_pelny: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_cal_id_pelny'] }}"
+      bookero_cal_id_nisko: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_cal_id_nisko'] }}"

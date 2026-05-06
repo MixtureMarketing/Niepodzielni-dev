@@ -3,6 +3,7 @@
   command: wp acorn optimize
   args:
     chdir: "{{ deploy_helper.new_release_path }}"
+  ignore_errors: yes
 
 - name: Enable Redis object cache drop-in
   command: wp redis enable --force
