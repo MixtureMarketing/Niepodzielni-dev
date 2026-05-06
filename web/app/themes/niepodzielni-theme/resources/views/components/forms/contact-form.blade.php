@@ -55,6 +55,7 @@
                     name="kod_pocztowy"
                     label="Kod pocztowy"
                     :required="true"
+                    autocomplete="postal-code"
                     placeholder="00-000"
                     data-mask="00-000"
                     pattern="^[0-9]{2}-[0-9]{3}$"

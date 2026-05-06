@@ -1,19 +1,28 @@
 @props([
     'name',
     'label',
-    'prefixName' => null,
-    'prefixes'   => [],
-    'required'   => false,
-    'value'      => '',
+    'prefixName'  => null,
+    'prefixes'    => [],
+    'required'    => false,
+    'value'       => '',
     'valuePrefix' => null,
     'placeholder' => null,
-    'hint'       => null,
+    'hint'        => null,
 ])
 
 @php
     $initPrefix = $valuePrefix ?? array_key_first($prefixes) ?? '+48';
-    $initMeta   = $prefixes[$initPrefix] ?? ['iso' => 'pl', 'label' => '', 'min' => 7, 'max' => 15, 'placeholder' => ''];
+    $initMeta   = $prefixes[$initPrefix] ?? ['iso' => 'pl', 'label' => '', 'min' => 7, 'max' => 15, 'groups' => [3,3,3], 'placeholder' => ''];
+
     $initPlaceholder = $placeholder ?? $initMeta['placeholder'] ?? '';
+    $initGroups      = $initMeta['groups'] ?? [];
+    $initMinDigits   = $initMeta['min'] ?? 7;
+    $initMaxDigits   = $initMeta['max'] ?? 15;
+
+    // maxlength z uwzględnieniem spacji między grupami
+    $initMaxLength = $initGroups
+        ? array_sum($initGroups) + max(0, count($initGroups) - 1)
+        : $initMaxDigits;
 @endphp
 
 <div class="form-field">
@@ -31,6 +40,7 @@
                 type="hidden"
                 name="{{ $prefixName }}"
                 value="{{ $initPrefix }}"
+                autocomplete="tel-country-code"
                 data-prefix-input
             >
 
@@ -62,6 +72,12 @@
                 </div>
                 <ul class="prefix-select__list" data-prefix-list>
                     @foreach($prefixes as $val => $meta)
+                    @php
+                        $mGroups     = $meta['groups'] ?? [];
+                        $mMaxLength  = $mGroups
+                            ? array_sum($mGroups) + max(0, count($mGroups) - 1)
+                            : ($meta['max'] ?? 15);
+                    @endphp
                     <li
                         class="prefix-select__option{{ $val === $initPrefix ? ' is-selected' : '' }}"
                         role="option"
@@ -71,6 +87,8 @@
                         data-label="{{ $meta['label'] }}"
                         data-min="{{ $meta['min'] }}"
                         data-max="{{ $meta['max'] }}"
+                        data-max-length="{{ $mMaxLength }}"
+                        data-groups="{{ implode(',', $mGroups) }}"
                         data-placeholder="{{ $meta['placeholder'] ?? '' }}"
                         tabindex="-1"
                     >
@@ -90,9 +108,12 @@
             id="{{ $name }}"
             class="form-field__input"
             value="{{ $value }}"
+            autocomplete="tel-national"
             data-mask="phone"
-            minlength="{{ $initMeta['min'] }}"
-            maxlength="{{ $initMeta['max'] }}"
+            data-min-digits="{{ $initMinDigits }}"
+            data-max-digits="{{ $initMaxDigits }}"
+            data-groups="{{ implode(',', $initGroups) }}"
+            maxlength="{{ $initMaxLength }}"
             @if($required) required @endif
             @if($initPlaceholder) placeholder="{{ $initPlaceholder }}" @endif
             data-phone-input
