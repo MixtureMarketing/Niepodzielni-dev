@@ -69,6 +69,8 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/10-psycholog-admin-cols.php';      
 require_once NIEPODZIELNI_CORE_PATH . 'admin/11-psycholog-account-metabox.php';    // metabox "Stwórz konto"
 require_once NIEPODZIELNI_CORE_PATH . 'admin/12-cookie-hardening.php';             // Secure/HttpOnly/SameSite cookies + krótszy session
 require_once NIEPODZIELNI_CORE_PATH . 'admin/13-login-throttle.php';               // brute-force protection na logowanie
+require_once NIEPODZIELNI_CORE_PATH . 'admin/14-audit-log.php';                    // utrwalanie zdarzeń bezpieczeństwa
+require_once NIEPODZIELNI_CORE_PATH . 'admin/15-retention-cron.php';               // retention CPT zgłoszeń + audit log
 require_once NIEPODZIELNI_CORE_PATH . 'admin/16-security-headers.php';             // Referrer/Permissions/CSP-Report-Only
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
