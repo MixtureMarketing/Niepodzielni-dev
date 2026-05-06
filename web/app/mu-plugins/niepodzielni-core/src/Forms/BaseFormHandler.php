@@ -129,8 +129,10 @@ abstract class BaseFormHandler
     }
 
     /**
-     * Walidacja relacji między polami (np. długość numeru telefonu względem kierunkowego).
-     * Klasy potomne mogą nadpisać tę metodę.
+     * Walidacja relacji między polami.
+     * Automatycznie sprawdza długość numeru telefonu (pola tel z prefix_field)
+     * względem wybranego kierunkowego z PhonePrefixes.
+     * Klasy potomne mogą nadpisać tę metodę i wywołać parent::validateRelated() jeśli chcą zachować logikę bazową.
      *
      * @param  array<string, mixed>  $sanitized
      * @param  array<string, mixed>  $raw
@@ -138,7 +140,43 @@ abstract class BaseFormHandler
      */
     protected function validateRelated(array $sanitized, array $raw): array
     {
-        return [];
+        $errors = [];
+
+        foreach ($this->getFields() as $name => $config) {
+            if (($config['type'] ?? '') !== 'tel') {
+                continue;
+            }
+
+            $prefixField = $config['prefix_field'] ?? null;
+            if (! $prefixField) {
+                continue;
+            }
+
+            $phone  = (string) ($sanitized[$name] ?? '');
+            $prefix = (string) ($sanitized[$prefixField] ?? '');
+
+            if ($phone === '' || $prefix === '') {
+                continue;
+            }
+
+            $prefixes = \Niepodzielni\Forms\Helpers\PhonePrefixes::getAll();
+            if (! isset($prefixes[$prefix])) {
+                continue;
+            }
+
+            $len   = mb_strlen($phone);
+            $min   = $prefixes[$prefix]['min'];
+            $max   = $prefixes[$prefix]['max'];
+            $label = $config['label'] ?? $name;
+
+            if ($len < $min || $len > $max) {
+                $errors[$name] = $min === $max
+                    ? "Dla kierunkowego {$prefix} pole \"{$label}\" musi mieć dokładnie {$min} cyfr."
+                    : "Dla kierunkowego {$prefix} pole \"{$label}\" musi mieć od {$min} do {$max} cyfr.";
+            }
+        }
+
+        return $errors;
     }
 
     // ─── Zapis do bazy ────────────────────────────────────────────────────────

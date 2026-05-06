@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Niepodzielni\Forms;
 
 use Niepodzielni\Forms\Helpers\CommonFields;
-use Niepodzielni\Forms\Helpers\PhonePrefixes;
 
 /**
  * Formularz kontaktowy — testuje pełny zakres pól frameworka.
@@ -51,38 +50,6 @@ class ContactForm extends BaseFormHandler
                 'Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z Polityką prywatności.'
             ),
         ];
-    }
-
-    /**
-     * Walidacja relacyjna: długość numeru telefonu zależna od wybranego kierunkowego.
-     */
-    protected function validateRelated(array $sanitized, array $raw): array
-    {
-        $errors = [];
-
-        $prefix = (string) ($sanitized['telefon_prefix'] ?? '');
-        $phone  = (string) ($sanitized['telefon'] ?? '');
-
-        if ($prefix === '' || $phone === '') {
-            return $errors;
-        }
-
-        $prefixes = PhonePrefixes::getAll();
-        if (! isset($prefixes[$prefix])) {
-            return $errors;
-        }
-
-        $len = mb_strlen($phone);
-        $min = $prefixes[$prefix]['min'];
-        $max = $prefixes[$prefix]['max'];
-
-        if ($len < $min || $len > $max) {
-            $errors['telefon'] = $min === $max
-                ? "Dla kierunkowego {$prefix} numer telefonu musi mieć dokładnie {$min} cyfr."
-                : "Dla kierunkowego {$prefix} numer telefonu musi mieć od {$min} do {$max} cyfr.";
-        }
-
-        return $errors;
     }
 
     protected function getUserConfirmationBody(array $formData, string $siteName): string

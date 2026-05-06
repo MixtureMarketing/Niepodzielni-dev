@@ -60,7 +60,7 @@ class CommonFields
         ], $overrides);
     }
 
-    public static function telefon(array $overrides = []): array
+    public static function telefon(string $prefixField = 'telefon_prefix', array $overrides = []): array
     {
         return array_merge([
             'label'        => 'Numer telefonu',
@@ -69,6 +69,7 @@ class CommonFields
             'pattern'      => '^[0-9]{7,15}$',
             'custom_error' => 'Numer telefonu musi zawierać od 7 do 15 cyfr.',
             'sanitize'     => 'sanitize_text_field',
+            'prefix_field' => $prefixField,
         ], $overrides);
     }
 
