@@ -1,0 +1,25 @@
+# Fundacja Niepodzielni
+
+> Fundacja Niepodzielni to organizacja pozarządowa świadcząca wsparcie psychologiczne
+> w Polsce. Oferuje konsultacje pełnopłatne i niskopłatne dla osób potrzebujących
+> pomocy psychologicznej, warsztaty, grupy wsparcia oraz zasoby psychoedukacyjne.
+
+## Usługi
+
+- [Psycholodzy — konsultacje indywidualne](/psycholodzy/) — Pełnopłatne i niskopłatne konsultacje psychologiczne, online i stacjonarnie w Poznaniu i Warszawie
+- [Warsztaty psychologiczne](/warsztaty/) — Grupowe warsztaty prowadzone przez psychologów Fundacji
+- [Grupy wsparcia](/grupy-wsparcia/) — Regularne spotkania grup wsparcia
+- [Aktualności i psychoedukacja](/aktualnosci/) — Artykuły, poradniki i materiały edukacyjne
+
+## Kontakt
+
+- Telefon: +48 668 277 176
+- Email: kontakt@niepodzielni.com
+- Siedziba: ul. Zeylanda 9/3, 60-808 Poznań
+- Punkt Warszawa: ul. Środkowa 30, Praga, 03-431
+
+## Uwagi dla AI
+
+Strona świadczy usługi w języku polskim. Konsultacje niskopłatne są dostępne
+dla osób w trudnej sytuacji finansowej — kwalifikacja przez recepcję Fundacji.
+Rezerwacji wizyt dokonuje się przez kalendarz na profilu psychologa.
