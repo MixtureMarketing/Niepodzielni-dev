@@ -87,6 +87,7 @@
   "autoload": {
     "psr-4": {
       "Niepodzielni\\Bookero\\": "web/app/mu-plugins/niepodzielni-core/src/Bookero/",
+      "Niepodzielni\\Calendar\\": "web/app/mu-plugins/niepodzielni-core/src/Calendar/",
       "Niepodzielni\\Donations\\": "web/app/mu-plugins/niepodzielni-core/src/Donations/",
       "Niepodzielni\\Forms\\": "web/app/mu-plugins/niepodzielni-core/src/Forms/"
     }

@@ -30,6 +30,10 @@ $loader->addPsr4(
     'Niepodzielni\\Bookero\\',
     __DIR__ . '/../web/app/mu-plugins/niepodzielni-core/src/Bookero/',
 );
+$loader->addPsr4(
+    'Niepodzielni\\Calendar\\',
+    __DIR__ . '/../web/app/mu-plugins/niepodzielni-core/src/Calendar/',
+);
 
 // ─── Global state dla stubów ──────────────────────────────────────────────────
 
