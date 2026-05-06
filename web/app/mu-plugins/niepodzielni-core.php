@@ -62,6 +62,7 @@ require_once NIEPODZIELNI_CORE_PATH . 'api/63-crisis-setup.php';    // Crisis He
 require_once NIEPODZIELNI_CORE_PATH . 'api/70-donations-api.php';   // Donations + Stripe — bootstrap (DB + helpers + admin notice)
 require_once NIEPODZIELNI_CORE_PATH . 'api/71-public-stats.php';    // Wall of impact — invalidacja cache
 require_once NIEPODZIELNI_CORE_PATH . 'api/72-events-calendar-api.php'; // Calendar — REST .ics + reminder opt-in
+require_once NIEPODZIELNI_CORE_PATH . 'api/73-events-reminders-cron.php'; // Calendar — cron T-24h + unsubscribe
 
 // 3. MODYFIKACJE PANELU ADMINA
 require_once NIEPODZIELNI_CORE_PATH . 'admin/5-admin-dashboard.php';

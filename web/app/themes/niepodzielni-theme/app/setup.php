@@ -164,6 +164,15 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script('sage/event-calendar.js', Vite::asset('resources/js/components/event-calendar.js'), [], null, true);
     }
 
+    // Event reminder form (T-24h opt-in) — single pages: wydarzenia, warsztaty, grupy-wsparcia
+    if (is_singular(['wydarzenia', 'warsztaty', 'grupy-wsparcia'])) {
+        wp_enqueue_script('sage/event-reminder.js', Vite::asset('resources/js/components/event-reminder.js'), [], null, true);
+        // Cloudflare Turnstile — wymagany dla anty-spam
+        if (defined('NP_CF_TURNSTILE_SITEKEY') || get_option('np_cf_turnstile_sitekey')) {
+            wp_enqueue_script('cf-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', [], null, true);
+        }
+    }
+
     // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS
     $panel_templates = [
         'template-panel-dashboard.blade.php',
