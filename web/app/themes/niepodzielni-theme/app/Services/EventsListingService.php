@@ -5,28 +5,26 @@ namespace App\Services;
 /**
  * Serwis danych listingów wydarzeń.
  *
- * Enkapsuluje logikę czterech typów listingów:
- *   - Warsztaty + Grupy wsparcia
- *   - Wydarzenia
- *   - Aktualności
- *   - Psychoedukacja (WP Posts + tagi)
+ * Cztery typy listingów (warsztaty+grupy / wydarzenia / aktualności / psychoedukacja)
+ * dzielą:
+ *   - dwuwarstwowy cache: WP Object Cache (Redis) → Transient (1h TTL)
+ *   - bazowy rekord (id, title, link, thumb, thumb_tag, excerpt)
+ *   - WP_Query z bulk meta + term cache (eliminacja N+1)
  *
- * Poprzednio proceduralne funkcje w app/events-listing.php.
- *
- * Cache:
- *   L0: WP Object Cache (Redis) — wp_cache_get/set, zero SQL przy trafieniu
- *   L1: Transient (DB fallback) — 1h TTL
- *
- * N+1 elimination:
- *   update_post_meta_cache => true  (batch postmeta w WP_Query)
- *   update_post_term_cache => true  (batch term_relationships w WP_Query)
- *
- * Poprawka błędu: np_get_post_image_url() zwraca URL, a nie ID attachmentu —
- * usunięto pośrednie wywołanie wp_get_attachment_image_url($zdj_id, ...).
+ * Każdy listing dokleja własne pola w `$mapper` przekazanym do `buildList()`.
  */
 class EventsListingService
 {
     private const CACHE_GROUP = 'np_events_listing';
+
+    /** Pełna mapa cache_key → transient_key — używana przez {@see clearCache()}. */
+    private const CACHE_MAP = [
+        'workshops'           => ['np_workshops_listing',     ['warsztaty', 'grupy-wsparcia']],
+        'wydarzenia'          => ['np_wydarzenia_listing',    ['wydarzenia']],
+        'aktualnosci'         => ['np_aktualnosci_listing',   ['aktualnosci']],
+        'psychoedukacja'      => ['np_psychoedukacja_listing', ['post']],
+        'psychoedukacja_tags' => ['np_psychoedukacja_tags',    ['post']],
+    ];
 
     /**
      * Odczytuje wynik z Object Cache → transient, a jeśli brak — wywołuje $builder
@@ -36,8 +34,11 @@ class EventsListingService
      * @param callable(): T $builder
      * @return T
      */
-    private function withCache(string $cacheKey, string $transientKey, callable $builder): array
+    private function withCache(string $cacheKey, callable $builder): array
     {
+        $transientKey = self::CACHE_MAP[$cacheKey][0]
+            ?? throw new \InvalidArgumentException("Unknown cache key: {$cacheKey}");
+
         $cached = wp_cache_get($cacheKey, self::CACHE_GROUP);
         if (is_array($cached)) {
             return $cached;
@@ -58,6 +59,61 @@ class EventsListingService
         return $data;
     }
 
+    /**
+     * Wspólne pola listingowe.  Każdy listing dorzuca własne extra przez merge.
+     *
+     * @param array<int, string> $thumbMetaKeys lista kluczy Carbon Fields dla obrazka
+     * @return array<string, mixed>
+     */
+    private function commonRecord(\WP_Post $post, array $thumbMetaKeys = [], string $title = ''): array
+    {
+        $title ??= $post->post_title;
+
+        return [
+            'id'        => $post->ID,
+            'title'     => $title !== '' ? $title : $post->post_title,
+            'link'      => get_the_permalink($post->ID),
+            'thumb'     => np_get_post_image_url($post->ID, $thumbMetaKeys, 'medium_large')
+                ?: (string) get_the_post_thumbnail_url($post->ID, 'medium_large'),
+            'thumb_tag' => np_get_post_image_tag($post->ID, $thumbMetaKeys, 'medium_large', ['alt' => $title]),
+            'excerpt'   => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
+        ];
+    }
+
+    /**
+     * Wspólny pipeline: WP_Query → mapowanie → opcjonalny sort.
+     *
+     * @param array<string, mixed>                          $queryArgs   override WP_Query
+     * @param callable(\WP_Post): array<string, mixed>      $mapper
+     * @param ?callable(array<string, mixed>, array<string, mixed>): int $sorter
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildList(array $queryArgs, callable $mapper, ?callable $sorter = null): array
+    {
+        $defaults = [
+            'posts_per_page'         => -1,
+            'post_status'            => 'publish',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => true,
+            'update_post_term_cache' => false,
+        ];
+
+        $query = new \WP_Query(array_merge($defaults, $queryArgs));
+
+        $data = array_map($mapper, $query->posts);
+
+        if ($sorter !== null) {
+            usort($data, $sorter);
+        }
+
+        return $data;
+    }
+
+    private static function sortByDate(array $a, array $b): int
+    {
+        return strcmp($a['sort_date'] ?? '', $b['sort_date'] ?? '');
+    }
+
     // ─── 1. Warsztaty + Grupy wsparcia ──────────────────────────────────────────
 
     /**
@@ -65,56 +121,52 @@ class EventsListingService
      */
     public function getWorkshopsData(): array
     {
-        return $this->withCache('workshops', 'np_workshops_listing', function (): array {
+        return $this->withCache('workshops', function (): array {
             $today = current_time('Y-m-d');
-            $query = new \WP_Query([
-                'post_type'              => [ 'warsztaty', 'grupy-wsparcia' ],
+
+            // Prefetch meta prowadzących (psycholog CPT) — eliminuje N+1 w np_get_event_leader_name().
+            // Robimy najpierw szybki query po IDs, potem warmup postmeta cache, potem właściwy query.
+            $idsQuery = new \WP_Query([
+                'post_type'              => ['warsztaty', 'grupy-wsparcia'],
                 'posts_per_page'         => -1,
                 'post_status'            => 'publish',
                 'no_found_rows'          => true,
                 'update_post_meta_cache' => true,
                 'update_post_term_cache' => false,
+                'fields'                 => 'ids',
             ]);
 
-            // Prefetch meta prowadzących (psycholog CPT) — eliminuje N+1 w np_get_event_leader_name()
-            $fac_ids = array_values(array_unique(array_filter(
-                array_map(fn($p) => (int) get_post_meta($p->ID, 'prowadzacy_id', true), $query->posts),
+            $facIds = array_values(array_unique(array_filter(
+                array_map(static fn(int $pid) => (int) get_post_meta($pid, 'prowadzacy_id', true), $idsQuery->posts),
             )));
-            if ($fac_ids) {
-                update_postmeta_cache($fac_ids);
+            if ($facIds) {
+                update_postmeta_cache($facIds);
             }
 
-            $data = [];
-            foreach ($query->posts as $post) {
-                $pid   = $post->ID;
-                $date  = get_post_meta($pid, 'data', true);
-                $title = get_post_meta($pid, 'temat', true) ?: $post->post_title;
+            return $this->buildList(
+                ['post_type' => ['warsztaty', 'grupy-wsparcia']],
+                function (\WP_Post $post) use ($today): array {
+                    $pid   = $post->ID;
+                    $date  = (string) get_post_meta($pid, 'data', true);
+                    $title = (string) get_post_meta($pid, 'temat', true) ?: $post->post_title;
 
-                $data[] = [
-                    'id'          => $pid,
-                    'post_type'   => $post->post_type,
-                    'title'       => $title,
-                    'date'        => $date,
-                    'time'        => get_post_meta($pid, 'godzina', true),
-                    'time_end'    => get_post_meta($pid, 'godzina_zakonczenia', true),
-                    'lokalizacja' => get_post_meta($pid, 'lokalizacja', true),
-                    'status'      => get_post_meta($pid, 'status', true),
-                    'cena'        => get_post_meta($pid, 'cena', true),
-                    'cena_rodzaj' => get_post_meta($pid, 'cena_rodzaj', true),
-                    'prowadzacy'  => np_get_event_leader_name($pid),
-                    'stanowisko'  => get_post_meta($pid, 'stanowisko', true),
-                    'thumb'       => np_get_post_image_url($pid, [ 'zdjecie_glowne', 'zdjecie' ], 'medium_large'),
-                    'thumb_tag'   => np_get_post_image_tag($pid, [ 'zdjecie_glowne', 'zdjecie' ], 'medium_large', [ 'alt' => $title ]),
-                    'link'        => get_the_permalink($pid),
-                    'excerpt'     => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
-                    'is_active'   => $date && $date >= $today,
-                    'sort_date'   => $date ?: '9999-12-31',
-                ];
-            }
-
-            usort($data, fn($a, $b) => strcmp($a['sort_date'], $b['sort_date']));
-
-            return $data;
+                    return $this->commonRecord($post, ['zdjecie_glowne', 'zdjecie'], $title) + [
+                        'post_type'   => $post->post_type,
+                        'date'        => $date,
+                        'time'        => get_post_meta($pid, 'godzina', true),
+                        'time_end'    => get_post_meta($pid, 'godzina_zakonczenia', true),
+                        'lokalizacja' => get_post_meta($pid, 'lokalizacja', true),
+                        'status'      => get_post_meta($pid, 'status', true),
+                        'cena'        => get_post_meta($pid, 'cena', true),
+                        'cena_rodzaj' => get_post_meta($pid, 'cena_rodzaj', true),
+                        'prowadzacy'  => np_get_event_leader_name($pid),
+                        'stanowisko'  => get_post_meta($pid, 'stanowisko', true),
+                        'is_active'   => $date !== '' && $date >= $today,
+                        'sort_date'   => $date !== '' ? $date : '9999-12-31',
+                    ];
+                },
+                self::sortByDate(...),
+            );
         });
     }
 
@@ -125,44 +177,29 @@ class EventsListingService
      */
     public function getWydarzeniaData(): array
     {
-        return $this->withCache('wydarzenia', 'np_wydarzenia_listing', function (): array {
+        return $this->withCache('wydarzenia', function (): array {
             $today = current_time('Y-m-d');
-            $query = new \WP_Query([
-                'post_type'              => 'wydarzenia',
-                'posts_per_page'         => -1,
-                'post_status'            => 'publish',
-                'no_found_rows'          => true,
-                'update_post_meta_cache' => true,
-                'update_post_term_cache' => false,
-            ]);
 
-            $data = [];
-            foreach ($query->posts as $post) {
-                $pid  = $post->ID;
-                $date = get_post_meta($pid, 'data', true);
+            return $this->buildList(
+                ['post_type' => 'wydarzenia'],
+                function (\WP_Post $post) use ($today): array {
+                    $pid  = $post->ID;
+                    $date = (string) get_post_meta($pid, 'data', true);
 
-                $data[] = [
-                    'id'          => $pid,
-                    'title'       => $post->post_title,
-                    'date'        => $date,
-                    'time_start'  => get_post_meta($pid, 'godzina_rozpoczecia', true),
-                    'time_end'    => get_post_meta($pid, 'godzina_zakonczenia', true),
-                    'miasto'      => get_post_meta($pid, 'miasto', true),
-                    'lokalizacja' => get_post_meta($pid, 'lokalizacja', true),
-                    'koszt'       => get_post_meta($pid, 'koszt', true),
-                    'opis'        => wp_trim_words(get_post_meta($pid, 'opis', true) ?: $post->post_excerpt, 20),
-                    'thumb'       => np_get_post_image_url($pid, [ 'zdjecie', 'zdjecie_tla' ], 'medium_large')
-                        ?: (string) get_the_post_thumbnail_url($pid, 'medium_large'),
-                    'thumb_tag'   => np_get_post_image_tag($pid, [ 'zdjecie', 'zdjecie_tla' ], 'medium_large', [ 'alt' => $post->post_title ]),
-                    'link'        => get_the_permalink($pid),
-                    'is_upcoming' => $date && $date >= $today,
-                    'sort_date'   => $date ?: '9999-12-31',
-                ];
-            }
-
-            usort($data, fn($a, $b) => strcmp($a['sort_date'], $b['sort_date']));
-
-            return $data;
+                    return $this->commonRecord($post, ['zdjecie', 'zdjecie_tla']) + [
+                        'date'        => $date,
+                        'time_start'  => get_post_meta($pid, 'godzina_rozpoczecia', true),
+                        'time_end'    => get_post_meta($pid, 'godzina_zakonczenia', true),
+                        'miasto'      => get_post_meta($pid, 'miasto', true),
+                        'lokalizacja' => get_post_meta($pid, 'lokalizacja', true),
+                        'koszt'       => get_post_meta($pid, 'koszt', true),
+                        'opis'        => wp_trim_words((string) get_post_meta($pid, 'opis', true) ?: $post->post_excerpt, 20),
+                        'is_upcoming' => $date !== '' && $date >= $today,
+                        'sort_date'   => $date !== '' ? $date : '9999-12-31',
+                    ];
+                },
+                self::sortByDate(...),
+            );
         });
     }
 
@@ -173,36 +210,18 @@ class EventsListingService
      */
     public function getAktualnosciData(): array
     {
-        return $this->withCache('aktualnosci', 'np_aktualnosci_listing', function (): array {
-            $query = new \WP_Query([
-                'post_type'              => 'aktualnosci',
-                'posts_per_page'         => -1,
-                'post_status'            => 'publish',
-                'orderby'                => 'date',
-                'order'                  => 'DESC',
-                'no_found_rows'          => true,
-                'update_post_meta_cache' => true,
-                'update_post_term_cache' => false,
-            ]);
-
-            $data = [];
-            foreach ($query->posts as $post) {
-                $pid = $post->ID;
-
-                $data[] = [
-                    'id'        => $pid,
-                    'title'     => $post->post_title,
-                    'date'      => get_post_meta($pid, 'data_wydarzenia', true) ?: get_the_date('Y-m-d', $post),
-                    'miejsce'   => get_post_meta($pid, 'miejsce', true),
-                    'excerpt'   => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
-                    'thumb'     => np_get_post_image_url($pid, [ 'zdjecie_glowne' ], 'medium_large')
-                        ?: (string) get_the_post_thumbnail_url($pid, 'medium_large'),
-                    'thumb_tag' => np_get_post_image_tag($pid, [ 'zdjecie_glowne' ], 'medium_large', [ 'alt' => $post->post_title ]),
-                    'link'      => get_the_permalink($pid),
-                ];
-            }
-
-            return $data;
+        return $this->withCache('aktualnosci', function (): array {
+            return $this->buildList(
+                [
+                    'post_type' => 'aktualnosci',
+                    'orderby'   => 'date',
+                    'order'     => 'DESC',
+                ],
+                fn(\WP_Post $post): array => $this->commonRecord($post, ['zdjecie_glowne']) + [
+                    'date'    => get_post_meta($post->ID, 'data_wydarzenia', true) ?: get_the_date('Y-m-d', $post),
+                    'miejsce' => get_post_meta($post->ID, 'miejsce', true),
+                ],
+            );
         });
     }
 
@@ -213,37 +232,20 @@ class EventsListingService
      */
     public function getPsychoedukacjaData(): array
     {
-        return $this->withCache('psychoedukacja', 'np_psychoedukacja_listing', function (): array {
-            // update_post_term_cache: batch fetch WP tagów (get_the_tags eliminuje N+1)
-            $query = new \WP_Query([
-                'post_type'              => 'post',
-                'posts_per_page'         => -1,
-                'post_status'            => 'publish',
-                'orderby'                => 'date',
-                'order'                  => 'DESC',
-                'no_found_rows'          => true,
-                'update_post_meta_cache' => false,
-                'update_post_term_cache' => true,
-            ]);
-
-            $data = [];
-            foreach ($query->posts as $post) {
-                $pid  = $post->ID;
-                $tags = get_the_tags($pid) ?: [];
-
-                $data[] = [
-                    'id'        => $pid,
-                    'title'     => $post->post_title,
-                    'date'      => get_the_date('Y-m-d', $post),
-                    'excerpt'   => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
-                    'thumb'     => get_the_post_thumbnail_url($pid, 'medium_large'),
-                    'thumb_tag' => np_get_post_image_tag($pid, [], 'medium_large', [ 'alt' => $post->post_title ]),
-                    'link'      => get_the_permalink($pid),
-                    'tags'      => array_map(fn($t) => $t->slug, $tags),
-                ];
-            }
-
-            return $data;
+        return $this->withCache('psychoedukacja', function (): array {
+            return $this->buildList(
+                [
+                    'post_type'              => 'post',
+                    'orderby'                => 'date',
+                    'order'                  => 'DESC',
+                    'update_post_meta_cache' => false,
+                    'update_post_term_cache' => true,
+                ],
+                fn(\WP_Post $post): array => $this->commonRecord($post) + [
+                    'date' => get_the_date('Y-m-d', $post),
+                    'tags' => array_map(static fn($t) => $t->slug, get_the_tags($post->ID) ?: []),
+                ],
+            );
         });
     }
 
@@ -254,10 +256,10 @@ class EventsListingService
      */
     public function getPsychoedukacjaTags(): array
     {
-        return $this->withCache('psychoedukacja_tags', 'np_psychoedukacja_tags', function (): array {
-            $tags = get_tags([ 'hide_empty' => true, 'orderby' => 'name', 'order' => 'ASC' ]);
+        return $this->withCache('psychoedukacja_tags', function (): array {
+            $tags = get_tags(['hide_empty' => true, 'orderby' => 'name', 'order' => 'ASC']);
 
-            return array_map(fn($t) => [ 'value' => $t->slug, 'label' => $t->name ], $tags);
+            return array_map(static fn($t) => ['value' => $t->slug, 'label' => $t->name], $tags);
         });
     }
 
@@ -273,28 +275,16 @@ class EventsListingService
             return;
         }
 
-        $group = self::CACHE_GROUP;
+        $postType = get_post_type($post_id);
+        if ($postType === false) {
+            return;
+        }
 
-        switch (get_post_type($post_id)) {
-            case 'warsztaty':
-            case 'grupy-wsparcia':
-                delete_transient('np_workshops_listing');
-                wp_cache_delete('workshops', $group);
-                break;
-            case 'wydarzenia':
-                delete_transient('np_wydarzenia_listing');
-                wp_cache_delete('wydarzenia', $group);
-                break;
-            case 'aktualnosci':
-                delete_transient('np_aktualnosci_listing');
-                wp_cache_delete('aktualnosci', $group);
-                break;
-            case 'post':
-                delete_transient('np_psychoedukacja_listing');
-                delete_transient('np_psychoedukacja_tags');
-                wp_cache_delete('psychoedukacja', $group);
-                wp_cache_delete('psychoedukacja_tags', $group);
-                break;
+        foreach (self::CACHE_MAP as $cacheKey => [$transientKey, $matchPostTypes]) {
+            if (in_array($postType, $matchPostTypes, true)) {
+                delete_transient($transientKey);
+                wp_cache_delete($cacheKey, self::CACHE_GROUP);
+            }
         }
     }
 }

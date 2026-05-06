@@ -1,30 +1,20 @@
 <?php
 
 /**
- * CPT: Grupy Wsparcia
+ * CPT: Grupy wsparcia
  */
 
 if (! defined('ABSPATH')) {
     exit;
 }
 
-add_action('init', 'np_register_cpt_grupy_wsparcia');
-
-function np_register_cpt_grupy_wsparcia(): void
-{
-    register_post_type('grupy-wsparcia', [
-        'labels' => [
-            'name'          => 'Grupy wsparcia',
-            'singular_name' => 'Grupa wsparcia',
-            'add_new_item'  => 'Dodaj grupę wsparcia',
-            'edit_item'     => 'Edytuj grupę wsparcia',
-        ],
-        'public'        => true,
-        'show_in_rest'  => true,
-        'has_archive'   => false,
-        'rewrite'       => [ 'slug' => 'grupa-wsparcia' ],
-        'supports'      => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
-        'menu_icon'     => 'dashicons-heart',
-        'menu_position' => 9,
-    ]);
-}
+add_action('init', static function (): void {
+    np_register_event_cpt(
+        postType: 'grupy-wsparcia',
+        singular: 'Grupa wsparcia',
+        plural: 'Grupy wsparcia',
+        rewriteSlug: 'grupa-wsparcia',
+        menuIcon: 'dashicons-heart',
+        menuPosition: 9,
+    );
+});

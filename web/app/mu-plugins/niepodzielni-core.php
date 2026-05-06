@@ -31,6 +31,7 @@ if (! is_dir(NIEPODZIELNI_CORE_PATH)) {
 
 // 1. REJESTRACJA CPT, TAKSONOMII I METABOXÓW
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/14-cpt-psycholog.php';
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/15-event-cpt-helper.php';   // helper register_event_cpt — musi być przed 17/18/19
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/16-cpt-aktualnosci.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/17-cpt-wydarzenia.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/18-cpt-warsztaty.php';
