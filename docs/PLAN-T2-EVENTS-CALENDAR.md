@@ -29,13 +29,14 @@ Cel biznesowy: większa frekwencja na wydarzeniach + powracający users (ich kal
 
 | Decyzja | Wybór | Uzasadnienie |
 |---|---|---|
-| Co pokazuje kalendarz | Wszystkie 3 CPT razem (wydarzenia + warsztaty + grupy) | Unified view którego dziś nie ma |
-| Lokalizacja kalendarza | **Nowa strona `/kalendarz`** (template Sage) | Czystsze niż toggle na istniejącym listingu; nie psuje obecnego flow |
+| Lokalizacja kalendarza | **Toggle list/calendar na istniejących stronach** `/wydarzenia` i `/warsztaty-grupy` | Brak nowej strony do zarządzania; user trafia z menu, dostaje wybór widoku |
+| Co pokazuje kalendarz | Per strona — `/wydarzenia` pokazuje tylko CPT wydarzenia, `/warsztaty-grupy` — warsztaty + grupy razem | Spójne ze scope każdej strony |
 | Strefa czasowa | **Europe/Warsaw** w iCal `VTIMEZONE` | Czas wpisany przez admina jest w PL — klient kalendarza interpretuje poprawnie |
 | Email confirmation | **Bez magic-link**, tylko Turnstile + walidacja `is_email()` | Opt-in lekki, bez frykcji; spam blokowany przez Turnstile |
 | Cron interval | **Hourly** (WP `hourly` schedule) | Wydarzenia wieczorowe wymagają precyzji; daily zostawiał ryzyko 23h opóźnienia |
-| iCal endpoint location | `/wp-json/niepodzielni/v1/calendar/...` | Spójne z resztą REST; uniknięcie kolizji z natywnym WP `/feed/` |
-| Reminder window | T-24h (dzień wcześniej) | Zgodne z planem |
+| iCal endpoint location | `/wp-json/niepodzielni/v1/calendar/...` z query `?cpt=...` | Jeden generator, dwa filtrowane feedy per strona |
+| Reminder window | **Tylko T-24h** (dzień wcześniej) | T-2h dorzucamy jeśli się przyjmie |
+| Pole online/offline + link Zoom | **Pomijamy w MVP** | Dorzucamy gdy pojawi się potrzeba |
 
 ## Architektura
 
@@ -81,23 +82,25 @@ Cel biznesowy: większa frekwencja na wydarzeniach + powracający users (ich kal
 
 ### Frontend (theme)
 
-5. **`app/View/Composers/TemplateKalendarz.php`** — Composer dla widoku kalendarza:
-   - Konstruktor: `EventsListingService` (singleton z ServiceProvider — już zarejestrowany)
-   - `with()`: zwraca `['events' => ..., 'currentMonth' => ..., 'cpt_filters' => ...]`
-   - Parsuje `?month=YYYY-MM` z URL (lub default = bieżący miesiąc)
-   - Grupuje eventy po dacie: `[Y-m-d => [event, event, ...]]`
+5. **Rozszerzenia istniejących Composerów** — bez tworzenia nowego:
+   - `App\View\Composers\TemplateWydarzenia` — dorzuć metody pomocnicze do widoku kalendarza (`monthGrouped()`, `currentMonth()`, `webcalUrl()`)
+   - `App\View\Composers\TemplateWarsztatyGrupy` — analogicznie
+   - Każdy parsuje `?view=calendar&month=YYYY-MM` z URL (default `view=list`)
 
-6. **`resources/views/template-kalendarz.blade.php`** + **`partials/calendar-month.blade.php`**:
-   - Header: nawigacja prev/next month + filter chip'y (wszystko / wydarzenia / warsztaty / grupy)
-   - Grid 7×N (poniedziałek-niedziela), komórki dni z eventami
-   - Każdy event w komórce: kolor-kodowany dot (CPT) + tytuł (truncate) → link do single
-   - "Subskrybuj kalendarz" CTA: button z `webcal://...` URL + tooltip "skopiuj link"
-   - Mobile: collapsed list view (wszystkie wydarzenia w danym miesiącu jako pionowa lista pogrupowana po dniach)
-   - Print-friendly CSS (`@media print`)
+6. **Modyfikacje istniejących template'ów + nowy partial**:
+   - `template-wydarzenia.blade.php` — toggle `<a href="?view=list">/<a href="?view=calendar">` na górze listingu, conditional `@if($view === 'calendar') @include('partials.calendar-month', ['events' => ..., 'webcalUrl' => ...]) @else (existing list) @endif`
+   - `template-warsztaty-grupy.blade.php` — analogicznie
+   - **Nowy** `partials/calendar-month.blade.php` — uniwersalny partial parametryzowany `$events`, `$currentMonth`, `$webcalUrl`:
+     - Header: nawigacja prev/next month (linki `?view=calendar&month=YYYY-MM`)
+     - Grid 7×N (poniedziałek-niedziela), komórki dni z eventami
+     - Każdy event w komórce: kolor-kodowany dot (CPT) + tytuł (truncate) → link do single
+     - "Subskrybuj kalendarz" CTA: button z `webcalUrl` + tooltip "skopiuj link"
+     - Mobile: collapsed list view (wydarzenia w danym miesiącu jako pionowa lista pogrupowana po dniach)
+     - Print-friendly CSS (`@media print`)
 
 7. **`resources/js/components/event-calendar.js`**:
-   - Filter chips: pokazuje/ukrywa `[data-cpt-filter]` poprzez CSS class toggle
-   - Prev/next month: navigation z `?month=YYYY-MM` (server-rendered z Composera, JS robi tylko progressive enhancement — link działa bez JS)
+   - Toggle list/calendar: progressive enhancement — link `?view=calendar` działa bez JS (server-rendered), JS dodaje tylko smooth scroll
+   - Prev/next month: server-rendered linki `?view=calendar&month=YYYY-MM` — JS NIE jest wymagany do działania
    - "Subskrybuj kalendarz": copy webcal URL do schowka via Clipboard API + toast
 
 8. **`resources/js/components/event-reminder.js`** — opt-in form na single page:
@@ -143,9 +146,11 @@ UNIQUE blokuje multi-opt-in tego samego maila. `sent_at NULL` = pending; po wys�
 | `web/app/mu-plugins/niepodzielni-core/src/Calendar/templates/reminder-email.php` | Nowy template HTML |
 | `web/app/mu-plugins/niepodzielni-core/api/72-events-calendar-api.php` | Nowy: DB + REST routes |
 | `web/app/mu-plugins/niepodzielni-core/api/73-events-reminders-cron.php` | Nowy: cron schedule + handler |
-| `web/app/themes/niepodzielni-theme/app/View/Composers/TemplateKalendarz.php` | Nowy |
-| `web/app/themes/niepodzielni-theme/resources/views/template-kalendarz.blade.php` | Nowy template |
-| `web/app/themes/niepodzielni-theme/resources/views/partials/calendar-month.blade.php` | Nowy partial |
+| `web/app/themes/niepodzielni-theme/app/View/Composers/TemplateWydarzenia.php` | Rozszerz: `monthGrouped()`, `currentMonth()`, `webcalUrl()`, `view()` helpers |
+| `web/app/themes/niepodzielni-theme/app/View/Composers/TemplateWarsztatyGrupy.php` | Rozszerz: jw. |
+| `web/app/themes/niepodzielni-theme/resources/views/template-wydarzenia.blade.php` | Rozszerz: toggle list/calendar + conditional include |
+| `web/app/themes/niepodzielni-theme/resources/views/template-warsztaty-grupy.blade.php` | Rozszerz: jw. |
+| `web/app/themes/niepodzielni-theme/resources/views/partials/calendar-month.blade.php` | Nowy partial — uniwersalny |
 | `web/app/themes/niepodzielni-theme/resources/views/partials/event-reminder-form.blade.php` | Nowy partial (form opt-in) |
 | `web/app/themes/niepodzielni-theme/resources/js/components/event-calendar.js` | Nowy |
 | `web/app/themes/niepodzielni-theme/resources/js/components/event-reminder.js` | Nowy |
