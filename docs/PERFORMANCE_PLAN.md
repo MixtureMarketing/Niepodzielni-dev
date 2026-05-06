@@ -1,12 +1,15 @@
 # Plan optymalizacji wydajności — Niepodzielni
 
 **Ostatnia aktualizacja:** 2026-05-06  
+**Stack:** WordPress Bedrock, PHP 8.3, **MySQL 8.0**, Redis, nginx, Cloudflare Workers  
+**Ruch:** ~30 000 użytkowników/miesiąc → ~1 000/dzień → **~12 VU w szczycie**, spike ~35 VU
+
 **Status faz:**
-- ✅ Faza 1 — Backend/DB quick wins (wdrożone, commit `e4828ce`)
-- ✅ Faza 2a — Lazy-load ai-chat.js + Worker KV cache (wdrożone, commit `2525e7e`)
-- ⏳ Faza 0 — Baseline tooling (wymaga dostępu do VPS — instrukcja poniżej)
-- ⏳ Faza 2b — DB indeksy, warunkowy load Bookero CDN
-- ⏳ Faza 3 — Frontend critical CSS, Cloudflare Cache Rules, Workers strategic
+- ✅ Faza 1 — Backend/DB quick wins (commit `e4828ce`)
+- ✅ Faza 2a — Lazy-load ai-chat.js + Worker KV cache (commit `2525e7e`)
+- ⏳ Faza 0 — Baseline tooling (wymaga ręcznych działań na VPS — instrukcja poniżej)
+- ⏳ Faza 2b — DB indeksy, warunkowy load Bookero CDN, AVAIL_CACHE KV deploy
+- ⏳ Faza 3 — Critical CSS, Cloudflare Cache Rules, Worker embeddings KV
 
 ---
 
@@ -16,123 +19,191 @@
 
 | Plik | Zmiana | Efekt |
 |---|---|---|
-| `config/application.php` | `SAVEQUERIES`/`QM_SHOW_ALL_QUERIES` wyłączone w produkcji | Zero per-query SQL memory alloc + stack trace na każdym żądaniu |
-| `config/environments/production.php` | Stworzony plik z `SAVEQUERIES=false`, `WP_DEBUG=false` | Blokada przed przypadkowym włączeniem debug w prod |
-| `api/30-panel-psycholog.php` | `update_comment_meta_cache()` + `parent__in` batch query | 401 → ~3 queries w `np_panel_get_reviews` |
-| `api/19-ai-endpoints.php` | Transient cache 60s + `posts_per_page` 300 + `no_found_rows` | `/bot-availability` cache'owany; boundowane queries |
-| `api/15-matchmaker-shortcode.php` | `posts_per_page` 500→200 | Mniejszy scan przy ładowaniu matchmakera |
-| `api/40-opinie-api.php` | `update_comment_meta_cache()` przed pętlą ocen | Eliminacja N+1 przy przeliczaniu ratingu |
+| `config/application.php` | `SAVEQUERIES`/`QM_SHOW_ALL_QUERIES` wyłączone w produkcji | Zero per-query SQL memory alloc + stack trace |
+| `config/environments/production.php` | Nowy plik — `SAVEQUERIES=false`, `WP_DEBUG=false` | Blokada przed przypadkowym debug w prod |
+| `api/30-panel-psycholog.php` | `update_comment_meta_cache()` + `parent__in` batch | 401 → ~3 queries w `np_panel_get_reviews` |
+| `api/19-ai-endpoints.php` | Transient cache 60s + `posts_per_page=300` + `no_found_rows` | `/bot-availability` cache'owany; bounded scan |
+| `api/15-matchmaker-shortcode.php` | `posts_per_page` 500→200 | Mniejszy scan matchmaker |
+| `api/40-opinie-api.php` | `update_comment_meta_cache()` przed pętlą ocen | Eliminacja N+1 przy ratingu |
 
 ### Faza 2a — Frontend + Worker (commit `2525e7e`)
 
 | Plik | Zmiana | Efekt |
 |---|---|---|
-| `resources/js/app.js` | `import './ai-chat.js'` → `requestIdleCallback(() => import(...))` | Vite code-split; ~820 LOC JS nie blokuje renderowania strony |
-| `workers/ai-agent/src/routes/chat.ts` | KV cache 90s TTL wokół `buildAvailabilityContext()` | /bot-availability: ~200-400ms → ~1-5ms (KV edge hit) |
-| `workers/ai-agent/src/types.ts` | `AVAIL_CACHE: KVNamespace` w interfejsie `Env` | TypeScript coverage |
-| `workers/ai-agent/wrangler.toml` | `[[kv_namespaces]] AVAIL_CACHE` binding | Deklaracja bindingu dla Wrangler |
+| `resources/js/app.js` | `import` → `requestIdleCallback(() => import(...))` | Vite code-split; ~820 LOC JS poza critical path |
+| `workers/ai-agent/src/routes/chat.ts` | KV cache 90s TTL w `buildAvailabilityContext()` | `/bot-availability`: ~300ms → ~2ms (KV edge hit) |
+| `workers/ai-agent/src/types.ts` | `AVAIL_CACHE: KVNamespace` w `Env` | TypeScript coverage |
+| `workers/ai-agent/wrangler.toml` | `[[kv_namespaces]] AVAIL_CACHE` binding | Wymaga wstawienia realnych KV ID przed deployem |
+
+---
+
+## Matematyka ruchu (dlaczego te liczby VU)
+
+```
+30 000 użytkowników/miesiąc
+  ÷ 30 dni                     = 1 000 użytkowników/dzień (średnia)
+  × 80% w godzinach szczytu    =   800 sesji w 8h (9:00–17:00)
+  ÷ 8h = 100 sesji/h
+  × średnia sesja 4–5 min      = 100 × (5/60) ≈ 8–10 VU równocześnie
+
+Dodajemy 20–30% margines       → 12 VU = normalny szczyt
+Spike (social media / prasa)   → 35 VU = 3× normal (realistyczny)
+Stress test (czy serwer wytrzyma 10× peak) → 120 VU jednorazowo
+```
+
+Pliki testowe: `audit/k6/load-test.js` (strony), `audit/k6/api-test.js` (REST API).
 
 ---
 
 ## Faza 0 — Zbieranie baseline na VPS
 
-> Wykonać PRZED kolejnymi modyfikacjami kodu. Tylko read/config — żadnych zmian kodu.  
-> Strona nie ma realnego ruchu → wyniki trzeba uzupełnić symulowanym obciążeniem (patrz sekcja Load Testing).
+> Wykonać PRZED kolejnymi optymalizacjami. Uruchom load test k6 równolegle z każdym pomiarem.
 
-### 0.1 MariaDB slow query log
+### 0.1 MySQL 8.0 slow query log
 
-Połącz się z VPS. Utwórz plik `/etc/mysql/conf.d/slowlog.cnf`:
+> **Uwaga:** projekt używa **MySQL 8.0**, nie MariaDB. Składnia jest ta sama, ale plik konfiguracyjny i polecenie restart różnią się.
 
+Sprawdź ścieżkę konfigu:
+```bash
+mysql --help | grep "my.cnf"
+# Typowo: /etc/mysql/mysql.conf.d/mysqld.cnf (Ubuntu)
+#          /etc/my.cnf lub /etc/mysql/my.cnf (CentOS/RedHat)
+```
+
+Utwórz osobny plik `/etc/mysql/conf.d/slow-log.cnf` (nie nadpisuje głównego):
 ```ini
 [mysqld]
-slow_query_log          = ON
-slow_query_log_file     = /var/log/mysql/slow.log
-long_query_time         = 0.1
+slow_query_log                = ON
+slow_query_log_file           = /var/log/mysql/slow.log
+long_query_time               = 0.1
 log_queries_not_using_indexes = ON
 log_slow_admin_statements     = ON
 ```
 
-Restart MariaDB:
+Restart:
 ```bash
-systemctl restart mariadb
+systemctl restart mysql
+# Sprawdź status — MySQL 8.0 jest rygorystyczny ws. składni cnf
+systemctl status mysql
 ```
 
-Po 24h (lub po sesji load-testów) zbierz digest:
+Po sesji load-testów zbierz digest:
 ```bash
+# Opcja A — Percona Toolkit (najlepsze)
 pt-query-digest /var/log/mysql/slow.log > /tmp/slow_digest.txt
-# Lub jeśli nie ma Percona Toolkit:
+
+# Opcja B — wbudowane narzędzie MySQL
 mysqldumpslow -s t -t 30 /var/log/mysql/slow.log > /tmp/slow_digest.txt
 ```
 
-Cel: top 20 zapytań według `Query_time × Count`. Szukaj `wp_postmeta` i `wp_commentmeta` bez indeksu.
+**Cel:** Top 20 zapytań wg `Query_time × Count`. Szukaj `wp_postmeta`, `wp_commentmeta` z pełnym TABLE SCAN.
+
+### 0.1b MySQL 8.0 Performance Schema (alternatywa — bez restartu)
+
+MySQL 8.0 ma wbudowane `performance_schema` aktywne domyślnie. Daje te same dane bez zmian konfiga:
+
+```sql
+-- Włącz consumer dla top queries (jednorazowo, nie wymaga restartu)
+UPDATE performance_schema.setup_consumers
+   SET enabled = 'YES'
+ WHERE name IN ('events_statements_summary_by_digest', 'events_statements_history_long');
+
+-- Top 20 wolnych zapytań po sesji load-testów:
+SELECT
+    DIGEST_TEXT,
+    COUNT_STAR           AS count,
+    ROUND(AVG_TIMER_WAIT/1e9, 2) AS avg_ms,
+    ROUND(MAX_TIMER_WAIT/1e9, 2) AS max_ms,
+    SUM_ROWS_EXAMINED    AS rows_examined,
+    SUM_NO_INDEX_USED    AS no_index_count
+FROM performance_schema.events_statements_summary_by_digest
+WHERE SCHEMA_NAME = DATABASE()
+ORDER BY SUM_TIMER_WAIT DESC
+LIMIT 20;
+
+-- Zapytania bez indeksu (najważniejsze!):
+SELECT DIGEST_TEXT, COUNT_STAR, SUM_NO_INDEX_USED
+FROM performance_schema.events_statements_summary_by_digest
+WHERE SUM_NO_INDEX_USED > 0 AND SCHEMA_NAME = DATABASE()
+ORDER BY SUM_NO_INDEX_USED DESC LIMIT 20;
+```
+
+Podłącz się do MySQL z VPS:
+```bash
+mysql -u root -p nazwa_bazy
+# lub przez wp-cli:
+wp db query "SELECT DIGEST_TEXT, COUNT_STAR ..." --path=/var/www/html/web/wp
+```
 
 ### 0.2 PHP-FPM slowlog
 
-Edytuj `/etc/php/8.3/fpm/pool.d/www.conf` (lub odpowiedni pool):
+Edytuj `/etc/php/8.3/fpm/pool.d/www.conf`:
 ```ini
-slowlog = /var/log/php-fpm/slow.log
-request_slowlog_timeout = 500ms
-request_slowlog_trace_depth = 20
+slowlog                      = /var/log/php-fpm/slow.log
+request_slowlog_timeout      = 500ms
+request_slowlog_trace_depth  = 20
 ```
 
-Restart:
 ```bash
 systemctl restart php8.3-fpm
 ```
 
-Po sesji load-testów:
+Po load-testach:
 ```bash
 cat /var/log/php-fpm/slow.log
 ```
 
-Szukaj wywołań trwających >500ms z ich stack trace.
+Szukaj requestów >500ms ze stack trace wskazującym na konkretną funkcję WP.
 
-### 0.3 OPcache stats (one-shot, usunąć po odczycie)
+### 0.3 OPcache stats (one-shot — usunąć po odczycie)
 
-Wgraj tymczasowy plik `/var/www/html/web/app/mu-plugins/opcache-stats.php`:
-```php
+```bash
+# Wgraj tymczasowy plik na serwer
+cat > /var/www/html/web/app/mu-plugins/opcache-stats.php << 'EOF'
 <?php
-// WAŻNE: usuń ten plik po jednorazowym odczycie
-if ($_SERVER['REMOTE_ADDR'] !== '127.0.0.1') {
-    http_response_code(403);
-    exit;
-}
+if ($_SERVER['REMOTE_ADDR'] !== '127.0.0.1') { http_response_code(403); exit; }
 header('Content-Type: application/json');
 echo json_encode(opcache_get_status(false), JSON_PRETTY_PRINT);
+EOF
+
+# Odczytaj
+curl -s http://127.0.0.1/app/mu-plugins/opcache-stats.php | python3 -m json.tool \
+    | tee audit/baseline/opcache-$(date +%Y%m%d).json
+
+# USUŃ natychmiast po odczycie
+rm /var/www/html/web/app/mu-plugins/opcache-stats.php
 ```
 
-Odczytaj z serwera:
-```bash
-curl -s http://127.0.0.1/app/mu-plugins/opcache-stats.php | python3 -m json.tool
-```
-
-Kluczowe metryki:
-- `opcache_statistics.opcache_hit_rate` → cel >99%
-- `opcache_statistics.num_cached_scripts` → liczba zakeszowanych plików
+Kluczowe metryki z wyniku:
+- `opcache_statistics.opcache_hit_rate` → cel **>99%**
 - `memory_usage.used_memory_percentage` → jeśli >80%, zwiększ `opcache.memory_consumption` w `php.ini`
-
-**Usuń plik natychmiast po odczycie.**
+- `opcache_statistics.num_cached_scripts` → liczba zakeszowanych plików PHP
 
 ### 0.4 Redis stats
 
 ```bash
-redis-cli INFO stats | grep -E 'keyspace_hits|keyspace_misses|evicted_keys|connected_clients'
-redis-cli SLOWLOG GET 50
-redis-cli MEMORY STATS | grep -E 'used_memory_human|maxmemory_human|mem_fragmentation_ratio'
+redis-cli INFO stats | grep -E 'keyspace_hits|keyspace_misses|evicted_keys|connected_clients' \
+    | tee audit/baseline/redis-$(date +%Y%m%d).txt
+
+redis-cli SLOWLOG GET 50 >> audit/baseline/redis-$(date +%Y%m%d).txt
+redis-cli MEMORY STATS | grep -E 'used_memory_human|maxmemory_human|mem_fragmentation_ratio' \
+    >> audit/baseline/redis-$(date +%Y%m%d).txt
 ```
 
-Zapisz wyniki w pliku. Cel: `keyspace_hits / (keyspace_hits + keyspace_misses)` > 95%.
-
-Jeśli `evicted_keys` > 0 — Redis usuwa dane z powodu braku pamięci → zwiększ `maxmemory` w `redis.conf`.
+Policz hit ratio ręcznie:
+```
+hit_ratio = keyspace_hits / (keyspace_hits + keyspace_misses) × 100
+```
+Cel: **>95%**. Jeśli `evicted_keys > 0` — Redis usuwa dane z braku pamięci → zwiększ `maxmemory` w `redis.conf`.
 
 ### 0.5 nginx — timing w logach
 
-Sprawdź format logu w `/etc/nginx/nginx.conf` lub `/etc/nginx/conf.d/`:
+Sprawdź aktualny format:
 ```bash
 grep -r "log_format" /etc/nginx/
 ```
 
-Jeśli brak `$request_time` i `$upstream_response_time`, dodaj:
+Jeśli brak `$request_time`, dodaj w sekcji `http {}` w `/etc/nginx/nginx.conf`:
 ```nginx
 log_format timed '$remote_addr [$time_local] "$request" $status '
                  '$body_bytes_sent $request_time $upstream_response_time '
@@ -141,385 +212,291 @@ log_format timed '$remote_addr [$time_local] "$request" $status '
 access_log /var/log/nginx/access_timed.log timed;
 ```
 
-Reload nginx:
 ```bash
 nginx -t && systemctl reload nginx
 ```
 
-Po load-testach agreguj wyniki:
+Agreguj po load-testach (kolumny: URL, request_time):
 ```bash
-# Top 20 wolnych ścieżek wg mediany request_time
+# Top 20 wolnych ścieżek wg mediany
 awk '{print $7, $9}' /var/log/nginx/access_timed.log \
-  | sort | awk '{sum[$1]+=$2; cnt[$1]++} END {for(k in sum) print sum[k]/cnt[k], k}' \
-  | sort -rn | head -20
+  | sort | awk '{sum[$1]+=$2; n[$1]++} END {for(k in sum) printf "%.3f %s\n", sum[k]/n[k], k}' \
+  | sort -rn | head -20 \
+  | tee audit/baseline/nginx-timing-$(date +%Y%m%d).txt
 ```
 
-### 0.6 Xhprof / Tideways (tymczasowo, 24-48h)
+### 0.6 Xhprof / Tideways (tymczasowo, 24–48h)
 
+Instalacja na VPS:
 ```bash
-# PHP 8.x — tideways-xhprof jest nowszą wersją
 pecl install tideways_xhprof
-# Dodaj do /etc/php/8.3/fpm/conf.d/20-tideways.ini:
-# extension=tideways_xhprof.so
-# tideways_xhprof.clock_use_rdtsc=0
+echo "extension=tideways_xhprof.so" > /etc/php/8.3/fpm/conf.d/99-tideways.ini
+echo "tideways_xhprof.clock_use_rdtsc=0" >> /etc/php/8.3/fpm/conf.d/99-tideways.ini
 systemctl restart php8.3-fpm
 ```
 
-Trigger przez cookie (nie spowalnia normalnych requestów):
+Trigger przez cookie — wklej do `web/app/mu-plugins/xhprof-trigger.php` (usuń po zebraniu danych):
 ```php
-// Dodaj do wp-config.php lub mu-plugin tymczasowego:
-if (isset($_COOKIE['xhprof_enabled'])) {
-    tideways_xhprof_enable(TIDEWAYS_XHPROF_FLAGS_MEMORY | TIDEWAYS_XHPROF_FLAGS_CPU);
-    register_shutdown_function(function() {
-        $data = tideways_xhprof_disable();
-        $dir  = '/tmp/xhprof/';
-        @mkdir($dir);
-        file_put_contents($dir . uniqid() . '.xhprof', serialize($data));
-    });
-}
+<?php
+// TYMCZASOWY — USUŃ PO ZEBRANIU DANYCH
+if (!function_exists('tideways_xhprof_enable')) return;
+if (empty($_COOKIE['xhprof_on'])) return;
+tideways_xhprof_enable(TIDEWAYS_XHPROF_FLAGS_MEMORY | TIDEWAYS_XHPROF_FLAGS_CPU);
+register_shutdown_function(function () {
+    $data = tideways_xhprof_disable();
+    @mkdir('/tmp/xhprof');
+    file_put_contents('/tmp/xhprof/' . uniqid() . '.xhprof', serialize($data));
+});
 ```
 
-Endpointy do profilowania (ustaw ciasteczko `xhprof_enabled=1` w przeglądarce):
-1. `admin-ajax.php?action=np_panel_get_reviews` — test N+1 fix
-2. `wp-json/niepodzielni/v1/bot-availability` — test transient cache
-3. `/` (front page)
-4. `/psycholodzy/` (listing)
+Ustaw ciasteczko `xhprof_on=1` w przeglądarce, odwiedź:
+1. `admin-ajax.php?action=np_panel_get_reviews`
+2. `wp-json/niepodzielni/v1/bot-availability`
+3. `/psycholodzy/`
+4. `/`
 
-Wizualizacja flamegraph: [https://github.com/brendangregg/FlameGraph](https://github.com/brendangregg/FlameGraph) lub XHProf UI.
+Wygeneruj flamegraph:
+```bash
+git clone https://github.com/brendangregg/FlameGraph /tmp/FlameGraph
+php /tmp/xhprof_ui/utils/xhprof_runs.php   # lub własny renderer
+```
 
-**Usuń rozszerzenie i konfigurację po zebraniu danych.**
+**Po zebraniu danych:** usuń `xhprof-trigger.php`, usuń `99-tideways.ini`, `systemctl restart php8.3-fpm`.
 
-### 0.7 Query Monitor eksport
+### 0.7 DISABLE_WP_CRON — wymagana zmiana na VPS
 
-Na środowisku staging (lub z IP admina na prodzie) zainstaluj plugin Query Monitor, odwiedź:
-- `/` (front page)
-- `/psycholodzy/` (listing)
-- `/psycholog/{slug}/` (single psycholog)
-
-Eksportuj panel "Queries" do CSV. Cel: ≤40 queries na front page, ≤25 na single.
-
-### 0.8 DISABLE_WP_CRON — wymagana zmiana env
-
-Dodaj do pliku `.env` na VPS:
+Dodaj do `/var/www/html/.env`:
 ```
 DISABLE_WP_CRON=true
 ```
 
-Dodaj system cron (crontab root):
-```bash
-crontab -e
-# Dodaj linię:
+Dodaj do crontab root (`crontab -e`):
+```cron
 * * * * * /usr/local/bin/wp --path=/var/www/html/web/wp cron event run --due-now --quiet 2>&1 | logger -t wp-cron
 ```
 
-Sprawdź ścieżkę WP CLI:
+Sprawdź ścieżkę WP-CLI:
 ```bash
-which wp
-# Jeśli brak: curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp
+which wp || (curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+    && chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp)
 ```
 
-Efekt: eliminuje loopback HTTP request na każdej wizycie anonimowego użytkownika.
+**Efekt:** eliminuje loopback HTTP request na każdej wizycie anonimowej (WordPress bez tej flagi robi `/wp-cron.php` fetch przy każdym pageview).
 
 ---
 
-## Load Testing — symulacja ruchu (strona testowa bez realnego trafficu)
+## Load Testing — symulacja ruchu
 
-Ponieważ strona jest środowiskiem testowym bez realnego ruchu, wszystkie baseline'y muszą być zbierane podczas symulowanego obciążenia.
+Strona ma ~30k użytkowników/miesiąc ale jest środowiskiem testowym — baseline trzeba zebrać pod symulowanym obciążeniem.
 
-### Narzędzie: k6 (rekomendowane)
+### Instalacja k6
 
 ```bash
-# Instalacja na VPS lub lokalnie
+# Ubuntu/Debian
 apt install gnupg2 -y
-gpg -k
 gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
     --keyserver hkp://keyserver.ubuntu.com:80 \
     --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
 echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
     | tee /etc/apt/sources.list.d/k6.list
 apt update && apt install k6
+
+# Lub bezpośrednio z GitHub releases (bez apt):
+curl -sL https://github.com/grafana/k6/releases/latest/download/k6-linux-amd64.tar.gz \
+    | tar -xz && mv k6-*/k6 /usr/local/bin/
 ```
 
-### Scenariusze testów
-
-Zapisz jako `audit/k6/load-test.js`:
-
-```javascript
-import http from 'k6/http';
-import { sleep, check } from 'k6';
-
-// Realistyczny profil ruchu dla fundacji NGO
-export const options = {
-    scenarios: {
-        // Scenariusz 1: normalny ruch (20 VU przez 5 minut)
-        normal: {
-            executor: 'constant-vus',
-            vus: 20,
-            duration: '5m',
-            tags: { scenario: 'normal' },
-        },
-        // Scenariusz 2: spike (80 VU przez 2 minuty — symuluje kampanię social media)
-        spike: {
-            executor: 'ramping-vus',
-            startVUs: 0,
-            stages: [
-                { duration: '30s', target: 80 },
-                { duration: '2m',  target: 80 },
-                { duration: '30s', target: 0 },
-            ],
-            startTime: '6m',
-            tags: { scenario: 'spike' },
-        },
-    },
-    thresholds: {
-        http_req_duration: ['p(95)<2000'],   // 95% żądań poniżej 2s
-        http_req_failed:   ['rate<0.01'],    // <1% błędów
-    },
-};
-
-const BASE = 'https://niepodzielni-dev-01.mixturemarketing.pl';
-
-export default function () {
-    // Strony z największym ruchem (szacunkowy rozkład)
-    const pages = [
-        { url: `${BASE}/`,              weight: 30 },
-        { url: `${BASE}/psycholodzy/`,  weight: 25 },
-        { url: `${BASE}/o-nas/`,        weight: 10 },
-        { url: `${BASE}/kontakt/`,      weight: 10 },
-    ];
-
-    // Ważone losowanie strony
-    const rand = Math.random() * 100;
-    let cumulative = 0;
-    let target = pages[0].url;
-    for (const p of pages) {
-        cumulative += p.weight;
-        if (rand <= cumulative) { target = p.url; break; }
-    }
-
-    const res = http.get(target, {
-        headers: { 'Accept-Encoding': 'gzip, deflate, br' },
-    });
-
-    check(res, {
-        'status 200': r => r.status === 200,
-        'TTFB <500ms': r => r.timings.waiting < 500,
-    });
-
-    sleep(Math.random() * 3 + 1); // 1-4s między żądaniami (realistyczny użytkownik)
-}
-```
-
-Uruchomienie:
-```bash
-k6 run audit/k6/load-test.js --out json=audit/results/k6-$(date +%Y%m%d-%H%M).json
-```
-
-### Scenariusz: REST API (bot-availability)
-
-```javascript
-// audit/k6/api-test.js
-import http from 'k6/http';
-import { check } from 'k6';
-
-export const options = {
-    vus: 10,
-    duration: '2m',
-};
-
-export default function () {
-    const res = http.get(
-        'https://niepodzielni-dev-01.mixturemarketing.pl/wp-json/niepodzielni/v1/bot-availability?consult_type=pelno&days=14',
-        { headers: { 'X-API-Key': __ENV.BOT_TOKEN } },
-    );
-    check(res, { 'status 200': r => r.status === 200 });
-}
-```
+### Uruchomienie testów
 
 ```bash
-k6 run -e BOT_TOKEN=xxx audit/k6/api-test.js
+# Test podstawowy (strony HTML) — 12 VU = realny szczyt
+k6 run audit/k6/load-test.js \
+    -e BASE_URL=https://niepodzielni-dev-01.mixturemarketing.pl \
+    --out json=audit/results/k6-pages-$(date +%Y%m%d-%H%M).json
+
+# Test REST API (/bot-availability)
+k6 run audit/k6/api-test.js \
+    -e BASE_URL=https://niepodzielni-dev-01.mixturemarketing.pl \
+    -e BOT_TOKEN=TWOJ_TOKEN \
+    --out json=audit/results/k6-api-$(date +%Y%m%d-%H%M).json
 ```
 
-### Alternatywa: wrk (prostszy, bez scenariuszy)
+Przed uruchomieniem testów uzupełnij w `audit/k6/load-test.js` slugi psychologów w tablicy `SINGLES` (linie z komentarzem).
+
+### Alternatywa — wrk (prostszy, bez scenariuszy)
 
 ```bash
-# Instalacja
 apt install wrk
 
-# Baseline front page (8 wątków, 50 połączeń, 60 sekund)
-wrk -t8 -c50 -d60s --latency https://niepodzielni-dev-01.mixturemarketing.pl/ \
-    > audit/results/wrk-frontpage-$(date +%Y%m%d).txt
+# Front page — 4 wątki, 12 połączeń (= normal peak), 60 sekund
+wrk -t4 -c12 -d60s --latency \
+    https://niepodzielni-dev-01.mixturemarketing.pl/ \
+    | tee audit/results/wrk-front-$(date +%Y%m%d).txt
 
-# Benchmark REST endpoint (10 wątków, 30 połączeń)
-wrk -t10 -c30 -d30s --latency \
+# Listing psychologów
+wrk -t4 -c12 -d60s --latency \
+    https://niepodzielni-dev-01.mixturemarketing.pl/psycholodzy/ \
+    | tee audit/results/wrk-listing-$(date +%Y%m%d).txt
+
+# REST API /bot-availability (wymaga tokenu w Lua skrypcie lub nagłówku)
+wrk -t4 -c10 -d30s --latency \
     -H "X-API-Key: TWOJ_TOKEN" \
     "https://niepodzielni-dev-01.mixturemarketing.pl/wp-json/niepodzielni/v1/bot-availability?consult_type=pelno&days=14" \
-    > audit/results/wrk-bot-api-$(date +%Y%m%d).txt
+    | tee audit/results/wrk-bot-api-$(date +%Y%m%d).txt
 ```
 
 ---
 
-## Faza 2b — Pozostałe do wdrożenia (wymaga dostępu VPS lub więcej planowania)
+## Faza 2b — Do wdrożenia po zebraniu baseline
+
+### AVAIL_CACHE KV — wstawienie realnych ID
+
+Przed deployem Workera:
+```bash
+cd workers/ai-agent
+
+wrangler kv:namespace create AVAIL_CACHE
+# → Skopiuj zwrócone id
+
+wrangler kv:namespace create AVAIL_CACHE --preview
+# → Skopiuj zwrócone preview_id
+```
+
+Edytuj `workers/ai-agent/wrangler.toml` — zamień placeholder'y:
+```toml
+[[kv_namespaces]]
+binding    = "AVAIL_CACHE"
+id         = "WKLEJ_ID_Z_POWYŻEJ"
+preview_id = "WKLEJ_PREVIEW_ID_Z_POWYŻEJ"
+```
 
 ### DB indeksy na wp_postmeta i wp_commentmeta
 
-> Wykonać po backup bazy! Na stronie testowej możesz zrobić to bezpośrednio.
+> Wykonaj po backup bazy. MySQL 8.0 na stronie testowej — ryzyko minimalne.
 
 ```sql
--- Sprawdź hot keys przed dodaniem indeksu (wyniki z slow log powiedzą które są najgorętsze)
+-- Sprawdź aktualną strukturę
+SHOW INDEX FROM wp_postmeta;
+SHOW INDEX FROM wp_commentmeta;
+
+-- Hot keys (porównaj z wynikami slow log / performance_schema)
 SELECT meta_key, COUNT(*) AS c
 FROM wp_postmeta
-GROUP BY meta_key
-ORDER BY c DESC
-LIMIT 30;
+GROUP BY meta_key ORDER BY c DESC LIMIT 30;
 
--- Composite index dla kluczy Bookero (używanych w matchmaker + sync)
-ALTER TABLE wp_postmeta
-    ADD INDEX IF NOT EXISTS idx_postmeta_key_val (meta_key(50), meta_value(20));
+-- Dodaj indeksy (MySQL 8.0: CREATE INDEX IF NOT EXISTS zamiast ALTER TABLE)
+CREATE INDEX IF NOT EXISTS idx_postmeta_key_val
+    ON wp_postmeta (meta_key(50), meta_value(20));
 
--- Index dla commentmeta (opinie + panel)
-ALTER TABLE wp_commentmeta
-    ADD INDEX IF NOT EXISTS idx_commentmeta_key (meta_key(50));
+CREATE INDEX IF NOT EXISTS idx_commentmeta_key
+    ON wp_commentmeta (meta_key(50));
+
+-- Przelicz statystyki
+ANALYZE TABLE wp_postmeta;
+ANALYZE TABLE wp_commentmeta;
+
+-- Weryfikacja (powinno pokazać: type=ref, key=idx_postmeta_key_val)
+EXPLAIN SELECT * FROM wp_postmeta
+WHERE meta_key = 'bookero_id_niski' AND meta_value > '';
 ```
 
-Sprawdź efekt (po `ANALYZE TABLE`):
-```sql
-EXPLAIN SELECT * FROM wp_postmeta WHERE meta_key = 'bookero_id_niski';
--- Powinien pokazać 'Using index' zamiast 'Using where'
-```
+**Uwaga MySQL 8.0:** `ALTER TABLE ... ADD INDEX IF NOT EXISTS` **nie istnieje** w MySQL 8.0 (to składnia MariaDB). Używaj `CREATE INDEX IF NOT EXISTS ... ON tabela (...)`.
 
 ### Warunkowy load Bookero CDN
 
-Sprawdź w jaki sposób skrypt Bookero jest enqueue'owany:
+Sprawdź jak script jest enqueue'owany:
 ```bash
 grep -rn "bookero\|cdn.bookero" \
-    /var/www/html/web/app/themes/niepodzielni-theme/app/ \
-    /var/www/html/web/app/mu-plugins/ \
+    web/app/themes/niepodzielni-theme/app/ \
+    web/app/mu-plugins/ \
     --include="*.php"
 ```
 
-Cel: skrypt Bookero (~1.1 MB) powinien ładować się tylko na stronach z widgetem rezerwacji (single psycholog, strony z shortcode `[bookero]`), nie globalnie.
-
-Przykładowy fix w `setup.php`:
+Cel: `cdn.bookero.pl` (~1.1 MB JS) tylko na stronach z widgetem rezerwacji:
 ```php
-// było:
-wp_enqueue_script('bookero', 'https://cdn.bookero.pl/plugin/...');
-
-// fix — tylko na stronach z widgetem:
+// w setup.php lub podobnym
 if (is_singular('psycholog') || has_shortcode(get_post()->post_content ?? '', 'bookero')) {
-    wp_enqueue_script('bookero', 'https://cdn.bookero.pl/plugin/...');
+    wp_enqueue_script('bookero', 'https://cdn.bookero.pl/plugin/...', [], null, true);
 }
 ```
 
-### AVAIL_CACHE KV — tworzenie namespace przed deployem Workera
-
-```bash
-# W katalogu workers/ai-agent/
-wrangler kv:namespace create AVAIL_CACHE
-# → zwróci: id = "xxxxx"
-
-wrangler kv:namespace create AVAIL_CACHE --preview
-# → zwróci: preview_id = "yyyyy"
-```
-
-Wstaw wygenerowane ID do `wrangler.toml` (linie z `REPLACE_WITH_KV_NAMESPACE_ID`).
-
 ---
 
-## Faza 3 — Strategic (sprint 3, po potwierdzeniu wyników fazy 1-2)
+## Faza 3 — Strategic (po potwierdzeniu wyników fazy 1–2)
 
-### 3.1 Critical CSS per template
+### 3.1 Cloudflare Cache Rules — full-page cache (największy ROI)
 
-Używając Vite plugin lub `critters`:
+W Cloudflare Dashboard → `niepodzielni.pl` → **Rules → Cache Rules**:
+
+**Reguła 1: Cache anonimowych stron**
+```
+Nazwa: Cache anonymous pages
+Warunek (wszystkie muszą być spełnione):
+  - URI Path nie pasuje do: /wp-admin* /wp-login* /wp-json* /admin-ajax*
+  - Cookie nie zawiera: wordpress_logged_in_  wp-settings-
+Akcja:
+  - Cache Level: Cache Everything
+  - Edge TTL: 1 hour
+  - Browser TTL: 5 minutes
+```
+
+**Reguła 2: Bypass dla zalogowanych**
+```
+Nazwa: Bypass for logged-in users
+Warunek: Cookie zawiera: wordpress_logged_in_
+Akcja: Bypass Cache
+```
+
+**Efekt przy 30k/mies:** TTFB dla ~95% ruchu (anonimowi) spada z 300–800ms → 5–30ms (edge node CF).  
+To najważniejsza optymalizacja dla Core Web Vitals i Google ranking.
+
+### 3.2 Critical CSS per template
+
 ```bash
 npm install -D critters
 ```
 
-Konfiguracja w `vite.config.js`:
-```js
-import Critters from 'critters';
-// inline CSS powyżej fold dla każdego szablonu
-```
+Inline CSS powyżej fold per template w Vite build — eliminuje render-blocking CSS, LCP spada o 200–500ms.
 
-Efekt: eliminuje render-blocking CSS — LCP może spaść o 200-500ms.
-
-### 3.2 Cloudflare Cache Rules — full-page cache
-
-W Cloudflare Dashboard → `niepodzielni.pl` → **Cache Rules**:
-
-```
-Reguła: "Cache anonymous pages"
-Warunek: 
-  - Request path nie zawiera wp-admin, wp-login, wp-json
-  - Brak ciasteczek: wordpress_logged_in_*, wp-settings-*
-Akcja: Cache Everything, TTL: 3600s (1h)
-```
-
-```
-Reguła: "Bypass cache for logged-in users"  
-Warunek: Cookie matches wordpress_logged_in_*
-Akcja: Bypass Cache
-```
-
-Efekt: TTFB dla anonimowych użytkowników spada z ~300-800ms → ~5-30ms (Cloudflare edge).
-
-### 3.3 Worker KV cache dla embeddingów
-
-W `workers/ai-agent/src/embed.ts` — cache SHA-256 query → wektor:
+### 3.3 Worker KV cache dla embeddingów (embed.ts)
 
 ```typescript
-const queryHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-const hashHex   = [...new Uint8Array(queryHash)].map(b => b.toString(16).padStart(2,'0')).join('');
-const kvKey     = `embed:${hashHex}`;
+// SHA-256(query) → 7-dniowy cache embeddingu
+const hashHex = [...new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+)].map(b => b.toString(16).padStart(2,'0')).join('');
 
-// Sprawdź cache
+const kvKey  = `embed:${hashHex}`;
 const cached = await env.EMBED_CACHE?.get(kvKey, 'arrayBuffer');
 if (cached) return new Float32Array(cached);
 
-// Generuj nowy embedding
-const vector = await /* fetch from AI */ ...;
-
-// Zapisz do KV z TTL 7 dni
+const vector = /* ...wywołanie AI embedding... */;
 await env.EMBED_CACHE?.put(kvKey, new Float32Array(vector).buffer, { expirationTtl: 604800 });
 ```
 
-Wymaga nowego KV namespace `EMBED_CACHE` w `wrangler.toml`.
-
-Efekt: powtarzające się zapytania (depresja, lęki, stres — top 10 fraz) → ~0ms zamiast ~100-200ms na generowanie embeddingu.
+Dodaj KV namespace `EMBED_CACHE` do `wrangler.toml`. Powtarzające się frazy (depresja, lęki, stres) → ~0ms zamiast ~100–200ms.
 
 ### 3.4 Usunięcie legacy Vectorize indexes
 
-Po potwierdzeniu że `VECTORIZE_KNOWLEDGE` działa poprawnie:
+Po potwierdzeniu że `VECTORIZE_KNOWLEDGE` działa:
 ```bash
-# Usuń stare indeksy (oszczędność kosztów + uproszczenie kodu)
+cd workers/ai-agent
 wrangler vectorize delete psycholodzy
 wrangler vectorize delete faq
 ```
 
-Usuń też z `wrangler.toml`:
-```toml
-# Do usunięcia:
-# [[vectorize]]
-# binding = "VECTORIZE_PSY"
-# ...
-# [[vectorize]]
-# binding = "VECTORIZE_FAQ"
-# ...
-```
+Usuń też binding'i z `wrangler.toml` i `Env` interface.
 
-### 3.5 Monitoring — Grafana + Prometheus (opcjonalnie)
-
-Jeśli po loadtestach pojawią się systematyczne bottlenecki:
+### 3.5 Monitoring — mysqld_exporter + Grafana Cloud
 
 ```bash
-# Exportery
-apt install prometheus-node-exporter    # CPU, RAM, disk, network
-# mysqld_exporter — metryki MariaDB
-# php-fpm_exporter — metryki PHP-FPM  
-# redis_exporter — metryki Redis
+# mysqld_exporter dla MySQL 8.0
+wget https://github.com/prometheus/mysqld_exporter/releases/latest/download/mysqld_exporter-linux-amd64.tar.gz
+# Konfiguracja: /etc/mysql-exporter.cnf z [client] user/password
 ```
 
-Grafana Cloud ma free tier (10k metrics/month) — wystarczy na małą stronę.
+Grafana Cloud free tier (10k metrics/month) wystarczy dla tej skali.  
+Stack: `node_exporter` + `mysqld_exporter` + `php-fpm_exporter` + `redis_exporter`.
 
 ---
 
@@ -527,50 +504,57 @@ Grafana Cloud ma free tier (10k metrics/month) — wystarczy na małą stronę.
 
 | Metryka | Narzędzie | Baseline | Target |
 |---|---|---|---|
-| DB queries / `np_panel_get_reviews` | Query Monitor | ~401 | ≤5 ✅ wdrożone |
+| DB queries / `np_panel_get_reviews` | Query Monitor | ~401 | **≤5 ✅** |
+| `/bot-availability` latencja (cold) | nginx `$request_time` | ~300ms | **<5ms z KV ✅** |
 | DB queries / front page | Query Monitor | ? | ≤40 |
-| TTFB p50 / listing | nginx logs + wrk | ? | <200ms |
-| `/bot-availability` latencja | nginx `$request_time` | ~200-400ms | <5ms z KV ✅ wdrożone |
+| TTFB p50 / listing (bez CF cache) | nginx logs + wrk | ? | <400ms |
+| TTFB p50 / front (z CF cache) | Cloudflare Analytics | ? | <30ms |
 | OPcache hit ratio | opcache_get_status | ? | >99% |
-| Redis hit ratio | redis-cli INFO | ? | >95% |
-| JS transferred / front page | Lighthouse | ? | <120 KB compressed |
-| AI Worker `/chat` p95 | wrangler tail | ? | <2s |
-| TTFB anonimowy / front | Cloudflare Analytics | ? | <30ms (z CF cache) |
+| Redis hit ratio | `redis-cli INFO` | ? | >95% |
+| JS transferred / front page | Lighthouse | ? | <120 KB gzip |
+| AI Worker `/chat` p95 | `wrangler tail` | ? | <2s |
+| Core Web Vitals LCP | PageSpeed Insights | ? | <2.5s |
 
 ---
 
-## Kolejność realizacji (rekomendowana)
+## Kolejność realizacji
 
 ```
-[ZROBIONE] Faza 1  — Backend DB quick wins
-[ZROBIONE] Faza 2a — Lazy-load ai-chat + Worker KV cache
+✅ Faza 1  — Backend DB quick wins
+✅ Faza 2a — Lazy-load ai-chat + Worker KV cache
 
-[DO ZROBIENIA na VPS]
-  1. Włącz MariaDB slow log + PHP-FPM slowlog
-  2. Uruchom k6 load test (10-20 VU, 5-10 minut)
-  3. Zbierz baseline: OPcache, Redis, nginx timings
-  4. Uruchom Xhprof tymczasowo (24h), zbierz flame graphs
-  5. DISABLE_WP_CRON=true w .env + system cron
+⏳ Działania na VPS (Faza 0):
+   1. MySQL slow log — /etc/mysql/conf.d/slow-log.cnf + restart mysql
+   2. PHP-FPM slowlog — request_slowlog_timeout=500ms + restart php8.3-fpm
+   3. DISABLE_WP_CRON=true w .env + system cron (crontab root)
+   4. nginx timing format — dodaj $request_time do log_format
+   5. Uruchom k6: audit/k6/load-test.js (12 VU, 5 min)
+   6. Zbierz MySQL Performance Schema query digest
+   7. Zbierz OPcache stats (one-shot script, usunąć po odczycie)
+   8. Zbierz Redis INFO stats
+   9. Opcjonalnie: Xhprof/Tideways (24h, usunąć po zebraniu)
 
-[Faza 2b — po baseline]
-  6. Utwórz KV namespace AVAIL_CACHE + wstaw ID do wrangler.toml
-  7. DB indeksy (po backup)
-  8. Warunkowy load Bookero CDN
+⏳ Faza 2b (po baseline, ~sprint 2):
+  10. wrangler kv:namespace create AVAIL_CACHE → wstaw ID do wrangler.toml
+  11. DB indeksy: CREATE INDEX IF NOT EXISTS na wp_postmeta + wp_commentmeta
+  12. Warunkowy load Bookero CDN (tylko single psycholog)
 
-[Faza 3 — po potwierdzeniu wyników]
-  9. Critical CSS
-  10. Cloudflare Cache Rules (full-page cache)
-  11. Worker KV cache dla embeddingów
-  12. Usuń legacy Vectorize indexes
+⏳ Faza 3 (po wynikach, ~sprint 3):
+  13. Cloudflare Cache Rules — full-page cache anonimowych (największy ROI)
+  14. Critical CSS inline (critters)
+  15. Worker KV cache dla embeddingów
+  16. Usuń legacy Vectorize indexes (psycholodzy, faq)
 ```
 
 ---
 
 ## Linki i zasoby
 
+- [MySQL 8.0 — slow query log](https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html)
+- [MySQL 8.0 — Performance Schema statement digests](https://dev.mysql.com/doc/refman/8.0/en/performance-schema-statement-digests.html)
 - [Percona Toolkit — pt-query-digest](https://www.percona.com/doc/percona-toolkit/LATEST/pt-query-digest.html)
 - [k6 dokumentacja](https://k6.io/docs/)
-- [Tideways XHProf](https://github.com/tideways/php-xhprof-extension)
+- [Tideways XHProf dla PHP 8.x](https://github.com/tideways/php-xhprof-extension)
 - [Cloudflare Cache Rules](https://developers.cloudflare.com/cache/how-to/cache-rules/)
-- [Wrangler KV](https://developers.cloudflare.com/workers/wrangler/commands/#kv)
+- [Wrangler KV commands](https://developers.cloudflare.com/workers/wrangler/commands/#kv)
 - [FlameGraph](https://github.com/brendangregg/FlameGraph)
