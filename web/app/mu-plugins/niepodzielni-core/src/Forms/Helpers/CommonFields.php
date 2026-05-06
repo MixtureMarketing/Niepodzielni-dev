@@ -18,7 +18,7 @@ class CommonFields
             'type'         => 'text',
             'required'     => true,
             'max_length'   => 50,
-            'pattern'      => '^[\p{L}\s\'-]+$',
+            'pattern'      => '^[\p{L}\'\-][\p{L}\s\'\-]*$',
             'custom_error' => 'Imię może zawierać tylko litery, spacje, apostrofy i myślniki.',
             'sanitize'     => 'sanitize_text_field',
         ], $overrides);
@@ -31,7 +31,7 @@ class CommonFields
             'type'         => 'text',
             'required'     => true,
             'max_length'   => 50,
-            'pattern'      => '^[\p{L}\s\'-]+$',
+            'pattern'      => '^[\p{L}\'\-][\p{L}\s\'\-]*$',
             'custom_error' => 'Nazwisko może zawierać tylko litery, spacje, apostrofy i myślniki.',
             'sanitize'     => 'sanitize_text_field',
         ], $overrides);
@@ -44,7 +44,7 @@ class CommonFields
             'type'         => 'text',
             'required'     => true,
             'max_length'   => 100,
-            'pattern'      => '^[\p{L}\s\'-]+$',
+            'pattern'      => '^[\p{L}\'\-][\p{L}\s\'\-]*$',
             'custom_error' => 'Pole może zawierać tylko litery, spacje, apostrofy i myślniki.',
             'sanitize'     => 'sanitize_text_field',
         ], $overrides);
@@ -98,11 +98,13 @@ class CommonFields
     public static function miasto(array $overrides = []): array
     {
         return array_merge([
-            'label'      => 'Miasto',
-            'type'       => 'text',
-            'required'   => true,
-            'max_length' => 100,
-            'sanitize'   => 'sanitize_text_field',
+            'label'        => 'Miasto',
+            'type'         => 'text',
+            'required'     => true,
+            'max_length'   => 100,
+            'pattern'      => '^[\p{L}\'\-][\p{L}\s\'\-\.]*$',
+            'custom_error' => 'Nazwa miasta może zawierać tylko litery, spacje i myślniki.',
+            'sanitize'     => 'sanitize_text_field',
         ], $overrides);
     }
 

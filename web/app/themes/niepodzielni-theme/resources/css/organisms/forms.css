@@ -185,12 +185,13 @@
 /* ── Pole telefonu ────────────────────────────────────── */
 .form-field__phone-wrapper {
     display: flex;
+    flex-wrap: nowrap;
     gap: 8px;
     align-items: stretch;
 }
 
 .form-field__phone-wrapper [data-phone-input] {
-    flex: 1;
+    flex: 1 1 0;
     min-width: 0;
 }
 
@@ -198,6 +199,8 @@
 .prefix-select {
     position: relative;
     flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .prefix-select__trigger {
@@ -205,17 +208,19 @@
     align-items: center;
     gap: 6px;
     padding: 12px 10px;
-    min-width: 100px;
-    height: 100%;
+    min-width: 108px;
+    flex: 1;
+    /* Identyczne obramowanie/tło/font co form-field__input */
     background: var(--mix-color-background-light);
     border: 1.5px solid var(--mix-color-border-grey);
     border-radius: var(--mix-radius-small);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-family: var(--mix-font-family-primary);
     color: var(--mix-color-text-dark);
     cursor: pointer;
     white-space: nowrap;
     transition: border-color var(--mix-transition-fast), box-shadow var(--mix-transition-fast);
+    box-sizing: border-box;
 }
 
 .prefix-select__trigger:focus,

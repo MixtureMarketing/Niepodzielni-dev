@@ -34,8 +34,8 @@
                     autocomplete="given-name"
                     maxlength="50"
                     placeholder="Jan"
-                    pattern="^[\p{L}\s\x27-]+$"
-                    error-pattern="Imię może zawierać tylko litery, spacje i myślniki."
+                    data-mask="no-digits"
+                    data-error-no-digits="Imię nie może zawierać cyfr."
                 />
 
                 <x-forms.input
@@ -45,8 +45,8 @@
                     autocomplete="family-name"
                     maxlength="50"
                     placeholder="Kowalski"
-                    pattern="^[\p{L}\s\x27-]+$"
-                    error-pattern="Nazwisko może zawierać tylko litery, spacje i myślniki."
+                    data-mask="no-digits"
+                    data-error-no-digits="Nazwisko nie może zawierać cyfr."
                 />
             </div>
 

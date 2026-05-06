@@ -89,10 +89,12 @@ class NiepodzielniForms {
                 labelEl.textContent = label;
             }
 
-            // Zaktualizuj minlength/maxlength pola telefonu
+            // Zaktualizuj minlength/maxlength i placeholder pola telefonu
             if (phoneInput) {
                 phoneInput.minLength = min;
                 phoneInput.maxLength = max;
+                const ph = li.dataset.placeholder;
+                if (ph) phoneInput.placeholder = ph;
                 // Przytnij wartość jeśli przekracza nowe max
                 if (phoneInput.value.length > max) {
                     phoneInput.value = phoneInput.value.substring(0, max);
@@ -203,6 +205,16 @@ class NiepodzielniForms {
         if (mask === 'phone') {
             const max = field.maxLength > 0 ? field.maxLength : 15;
             field.value = val.replace(/\D/g, '').substring(0, max);
+        }
+
+        if (mask === 'no-digits') {
+            const cleaned = val.replace(/[0-9]/g, '');
+            if (cleaned !== val) {
+                field.value = cleaned;
+                field.setCustomValidity(field.dataset.errorNoDigits ?? 'To pole nie może zawierać cyfr.');
+            } else {
+                field.setCustomValidity('');
+            }
         }
     }
 

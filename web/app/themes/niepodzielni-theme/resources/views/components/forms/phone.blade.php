@@ -12,7 +12,8 @@
 
 @php
     $initPrefix = $valuePrefix ?? array_key_first($prefixes) ?? '+48';
-    $initMeta   = $prefixes[$initPrefix] ?? ['iso' => 'pl', 'label' => '', 'min' => 7, 'max' => 15];
+    $initMeta   = $prefixes[$initPrefix] ?? ['iso' => 'pl', 'label' => '', 'min' => 7, 'max' => 15, 'placeholder' => ''];
+    $initPlaceholder = $placeholder ?? $initMeta['placeholder'] ?? '';
 @endphp
 
 <div class="form-field">
@@ -70,6 +71,7 @@
                         data-label="{{ $meta['label'] }}"
                         data-min="{{ $meta['min'] }}"
                         data-max="{{ $meta['max'] }}"
+                        data-placeholder="{{ $meta['placeholder'] ?? '' }}"
                         tabindex="-1"
                     >
                         <span class="fi fi-{{ $meta['iso'] }}"></span>
@@ -92,7 +94,7 @@
             minlength="{{ $initMeta['min'] }}"
             maxlength="{{ $initMeta['max'] }}"
             @if($required) required @endif
-            @if($placeholder) placeholder="{{ $placeholder }}" @endif
+            @if($initPlaceholder) placeholder="{{ $initPlaceholder }}" @endif
             data-phone-input
             {{ $attributes }}
         >
