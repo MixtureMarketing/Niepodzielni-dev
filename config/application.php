@@ -220,8 +220,12 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', $webroot_dir . '/wp/');
 }
 
-define('QM_ENABLE_CAPSULE', true);
-if (! defined('SAVEQUERIES')) {
-    define('SAVEQUERIES', true);
+// Query Monitor + SAVEQUERIES są włączone tylko poza produkcją.
+// Na produkcji: ustaw SAVEQUERIES=false w config/environments/production.php
+if (WP_ENV !== 'production') {
+    define('QM_ENABLE_CAPSULE', true);
+    define('QM_SHOW_ALL_QUERIES', true);
+    if (! defined('SAVEQUERIES')) {
+        define('SAVEQUERIES', true);
+    }
 }
-define('QM_SHOW_ALL_QUERIES', true); // To pozwoli crawlerowi "widzieć" SQL i RAM

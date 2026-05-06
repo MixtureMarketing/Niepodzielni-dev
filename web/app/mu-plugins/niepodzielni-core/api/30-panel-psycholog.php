@@ -239,15 +239,36 @@ function np_ajax_panel_get_reviews(): void
         'number'  => 100,
     ]);
 
+    // Wstępnie załaduj meta wszystkich komentarzy jednym zapytaniem (eliminuje N+1)
+    $comment_ids = array_map(fn($c) => (int) $c->comment_ID, $comments);
+    if ($comment_ids) {
+        update_comment_meta_cache($comment_ids);
+    }
+
+    // Pobierz WSZYSTKIE odpowiedzi jednym zapytaniem zamiast 1 per komentarz
+    $replies_map = [];
+    if ($comment_ids) {
+        $all_replies = get_comments([
+            'parent__in' => $comment_ids,
+            'status'     => 'approve',
+            'number'     => 500,
+            'orderby'    => 'comment_date',
+            'order'      => 'ASC',
+        ]);
+        foreach ($all_replies as $reply) {
+            $parent_id = (int) $reply->comment_parent;
+            if (! isset($replies_map[$parent_id])) {
+                $replies_map[$parent_id] = $reply; // tylko pierwsza odpowiedź
+            }
+        }
+    }
+
     $data = [];
     foreach ($comments as $c) {
-        $id      = (int) $c->comment_ID;
-        $rating  = (int) get_comment_meta($id, '_rating', true);
+        $id       = (int) $c->comment_ID;
+        $rating   = (int) get_comment_meta($id, '_rating', true);
         $verified = (bool) get_comment_meta($id, '_verified_visit', true);
-
-        // Pierwsza odpowiedź psychologa (child comment)
-        $replies = get_comments(['parent' => $id, 'status' => 'approve', 'number' => 1]);
-        $reply   = $replies[0] ?? null;
+        $reply    = $replies_map[$id] ?? null;
 
         $data[] = [
             'id'             => $id,

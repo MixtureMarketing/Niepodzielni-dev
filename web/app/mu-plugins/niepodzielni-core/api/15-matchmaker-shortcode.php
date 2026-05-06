@@ -56,7 +56,7 @@ function np_matchmaker_build_data(): array
     // Jeden WP_Query dla wszystkich + bulk meta cache → zero N+1.
     $query = new WP_Query([
         'post_type'              => 'psycholog',
-        'posts_per_page'         => 500,
+        'posts_per_page'         => 200,
         'post_status'            => 'publish',
         'orderby'                => 'title',
         'order'                  => 'ASC',
