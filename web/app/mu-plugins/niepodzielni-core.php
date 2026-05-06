@@ -83,8 +83,8 @@ if (defined('WP_CLI') && WP_CLI) {
     \WP_CLI::add_command(
         'niepodzielni import-psychomapa',
         new \Niepodzielni\Psychomapa\ImportPsychomapyCommand(
-            new \Niepodzielni\Psychomapa\GeocodingService()
-        )
+            new \Niepodzielni\Psychomapa\GeocodingService(),
+        ),
     );
 }
 

@@ -67,7 +67,7 @@ function np_psychomapa_endpoint(): void
         WHERE p.post_type   = 'osrodek_pomocy'
           AND p.post_status = 'publish'
         GROUP BY p.ID, p.post_title, p.post_name",
-        ARRAY_A
+        ARRAY_A,
     );
 
     if (empty($posts)) {
@@ -90,9 +90,9 @@ function np_psychomapa_endpoint(): void
             JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
             WHERE tr.object_id IN ({$placeholders})
               AND tt.taxonomy IN ('rodzaj-pomocy', 'grupa-docelowa')",
-            ...$postIds
+            ...$postIds,
         ),
-        ARRAY_A
+        ARRAY_A,
     );
 
     // Indeksuj termy per post_id i taksonomia
@@ -138,8 +138,8 @@ function np_psychomapa_endpoint(): void
 // ─── Inwalidacja cache ────────────────────────────────────────────────────────
 
 add_action('save_post_osrodek_pomocy', 'np_psychomapa_clear_cache');
-add_action('delete_post',              'np_psychomapa_maybe_clear_cache');
-add_action('trashed_post',             'np_psychomapa_maybe_clear_cache');
+add_action('delete_post', 'np_psychomapa_maybe_clear_cache');
+add_action('trashed_post', 'np_psychomapa_maybe_clear_cache');
 
 function np_psychomapa_clear_cache(): void
 {

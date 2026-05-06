@@ -60,7 +60,7 @@ class GeocodingService
                 'timeout'    => 10,
                 'user-agent' => self::USER_AGENT,
                 'headers'    => ['Accept-Language' => 'pl'],
-            ]
+            ],
         );
 
         if (is_wp_error($response)) {
@@ -185,7 +185,7 @@ class GeocodingService
         return trim(preg_replace(
             '/^(ul\.|ulica|al\.|aleja|aleje|os\.|osiedle|pl\.|plac|skwer|rondo|bulwar|droga|trakt|szosa)\s+/iu',
             '',
-            trim($street)
+            trim($street),
         ));
     }
 }

@@ -47,7 +47,7 @@ class ContactForm extends BaseFormHandler
             ],
             'wiadomosc'           => CommonFields::wiadomosc(),
             'zgoda'               => CommonFields::zgoda(
-                'Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z Polityką prywatności.'
+                'Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z Polityką prywatności.',
             ),
         ];
     }

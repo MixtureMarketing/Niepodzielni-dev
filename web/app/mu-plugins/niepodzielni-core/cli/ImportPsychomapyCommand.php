@@ -32,7 +32,7 @@ class ImportPsychomapyCommand
         'nr_mieszkania'             => 'np_nr_mieszkania',
         'numer_telefonu'            => 'np_telefon',
         'numer_telefonu_dodatkowy'  => 'np_telefon_2',
-        'numer_telefonu_dodatkowy_2'=> 'np_telefon_3',
+        'numer_telefonu_dodatkowy_2' => 'np_telefon_3',
         'e_mail'                    => 'np_email',
         'strona'                    => 'np_www',
         'facebook'                  => 'np_facebook',
@@ -159,7 +159,7 @@ class ImportPsychomapyCommand
 
         \WP_CLI::success(
             "Import zakończony. Wierszy: {$count} | "
-            . "Dodano: {$created} | Zaktualizowano: {$updated} | Błędy: {$errors}"
+            . "Dodano: {$created} | Zaktualizowano: {$updated} | Błędy: {$errors}",
         );
     }
 
@@ -175,8 +175,8 @@ class ImportPsychomapyCommand
                 "SELECT ID FROM {$wpdb->posts}
                  WHERE post_title = %s AND post_type = 'osrodek_pomocy'
                  LIMIT 1",
-                $title
-            )
+                $title,
+            ),
         );
 
         if ($existing) {
@@ -212,7 +212,7 @@ class ImportPsychomapyCommand
         return trim(preg_replace(
             '/^(ul\.|ulica|al\.|aleja|aleje|os\.|osiedle|pl\.|plac|skwer|rondo|bulwar|droga|trakt|szosa)\s+/iu',
             '',
-            trim($street)
+            trim($street),
         ));
     }
 
@@ -235,8 +235,8 @@ class ImportPsychomapyCommand
 
         $terms = array_values(
             array_filter(
-                array_map('trim', explode(',', $raw))
-            )
+                array_map('trim', explode(',', $raw)),
+            ),
         );
 
         if (empty($terms)) {
@@ -259,7 +259,7 @@ class ImportPsychomapyCommand
         $rewritten = str_replace(
             'https://niepodzielni.com',
             'https://media.niepodzielni.com',
-            $logoUrl
+            $logoUrl,
         );
 
         $url = esc_url_raw($rewritten);
@@ -295,7 +295,7 @@ class ImportPsychomapyCommand
     {
         $ulica       = $data['ulica']       ?? '';
         $nrDomu      = $data['nr_domu']     ?? '';
-        $kodPocztowy = $data['kod_pocztowy']?? '';
+        $kodPocztowy = $data['kod_pocztowy'] ?? '';
         $miasto      = $data['miasto']      ?? '';
 
         $street  = trim(self::normalizeStreet($ulica) . ' ' . $nrDomu);
@@ -321,9 +321,9 @@ class ImportPsychomapyCommand
         $coords = $this->geocoder->geocodeAddress($address);
 
         if ($coords !== null) {
-            update_post_meta($postId, 'lat',  $coords['lat']);
+            update_post_meta($postId, 'lat', $coords['lat']);
             update_post_meta($postId, '_lat', $coords['lat']);
-            update_post_meta($postId, 'lng',  $coords['lng']);
+            update_post_meta($postId, 'lng', $coords['lng']);
             update_post_meta($postId, '_lng', $coords['lng']);
             \WP_CLI::line("    ✓ {$coords['lat']}, {$coords['lng']}");
         } else {
