@@ -67,6 +67,9 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/8-login-page.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/9-psycholog-role.php';                // rola WP psycholog + redirecty
 require_once NIEPODZIELNI_CORE_PATH . 'admin/10-psycholog-admin-cols.php';         // kolumna "Konto" na liście
 require_once NIEPODZIELNI_CORE_PATH . 'admin/11-psycholog-account-metabox.php';    // metabox "Stwórz konto"
+require_once NIEPODZIELNI_CORE_PATH . 'admin/12-cookie-hardening.php';             // Secure/HttpOnly/SameSite cookies + krótszy session
+require_once NIEPODZIELNI_CORE_PATH . 'admin/13-login-throttle.php';               // brute-force protection na logowanie
+require_once NIEPODZIELNI_CORE_PATH . 'admin/16-security-headers.php';             // Referrer/Permissions/CSP-Report-Only
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';

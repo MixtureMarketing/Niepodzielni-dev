@@ -19,5 +19,10 @@ Config::define('DISALLOW_INDEXING', true);
 
 ini_set('display_errors', '1');
 
+// Lokalny dev często działa po HTTP — wyłączamy wymuszenie SSL aby nie blokować
+// admina/logowania (`FORCE_SSL_ADMIN`/`FORCE_SSL_LOGIN` są domyślnie włączone w application.php).
+Config::define('FORCE_SSL_ADMIN', false);
+Config::define('FORCE_SSL_LOGIN', false);
+
 // Enable plugin and theme updates and installation from the admin
 Config::define('DISALLOW_FILE_MODS', false);
