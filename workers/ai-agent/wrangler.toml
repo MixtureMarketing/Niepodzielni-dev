@@ -20,6 +20,11 @@ index_name = "faq"
 binding = "VECTORIZE_KNOWLEDGE"
 index_name = "niepodzielni-knowledge"
 
+[[kv_namespaces]]
+binding  = "AVAIL_CACHE"
+id       = "REPLACE_WITH_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_KV_NAMESPACE_PREVIEW_ID"
+
 [vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
 CHAT_MODEL       = "openai/gpt-4o-mini"
