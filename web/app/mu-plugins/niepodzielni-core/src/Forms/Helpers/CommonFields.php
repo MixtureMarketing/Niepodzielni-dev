@@ -11,6 +11,10 @@ namespace Niepodzielni\Forms\Helpers;
  */
 class CommonFields
 {
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function imie(array $overrides = []): array
     {
         return array_merge([
@@ -24,6 +28,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function nazwisko(array $overrides = []): array
     {
         return array_merge([
@@ -37,6 +45,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function imieNazwisko(array $overrides = []): array
     {
         return array_merge([
@@ -50,6 +62,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function email(array $overrides = []): array
     {
         return array_merge([
@@ -60,6 +76,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function telefon(string $prefixField = 'telefon_prefix', array $overrides = []): array
     {
         return array_merge([
@@ -73,6 +93,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function telefonPrefix(array $overrides = []): array
     {
         return array_merge([
@@ -83,6 +107,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function kodPocztowy(array $overrides = []): array
     {
         return array_merge([
@@ -95,6 +123,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function miasto(array $overrides = []): array
     {
         return array_merge([
@@ -108,6 +140,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function ulica(array $overrides = []): array
     {
         return array_merge([
@@ -119,6 +155,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function wiadomosc(array $overrides = []): array
     {
         return array_merge([
@@ -130,6 +170,11 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, string> $options
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
     public static function temat(array $options = [], array $overrides = []): array
     {
         return array_merge([
@@ -140,6 +185,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function zgoda(string $label = 'Wyrażam zgodę na przetwarzanie danych osobowych.', array $overrides = []): array
     {
         return array_merge([
@@ -149,6 +198,10 @@ class CommonFields
         ], $overrides);
     }
 
+    /**
+     * @param  array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     public static function firma(array $overrides = []): array
     {
         return array_merge([
