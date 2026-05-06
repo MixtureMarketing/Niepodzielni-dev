@@ -52,9 +52,9 @@ function np_verify_turnstile(string $token, string $remoteIp = ''): bool
         ? (string) NP_CF_TURNSTILE_SECRET
         : (string) get_option('np_cf_turnstile_secret', '');
 
-    // Jeśli sekret nie jest skonfigurowany — przepuść (tryb deweloperski)
+    // Na produkcji brak sekretu = blokuj; lokalnie/staging = przepuść
     if (! $secret) {
-        return true;
+        return ! (defined('WP_ENV') && WP_ENV === 'production');
     }
 
     $body = ['secret' => $secret, 'response' => $token];

@@ -1,0 +1,88 @@
+---
+- name: Add an Apt signing key, uses whichever key is at the URL
+  ansible.builtin.apt_key:
+    url: "https://mariadb.org/mariadb_release_signing_key.asc"
+    state: present
+
+- name: Add MariaDB PPA
+  apt_repository:
+    repo: "{{ mariadb_ppa }}"
+    update_cache: yes
+  register: result
+  until: result is success
+  retries: 3
+  delay: 5
+
+- name: Install MySQL client
+  ansible.builtin.apt:
+    name: "{{ mariadb_client_package }}"
+    state: "{{ mariadb_client_package_state | default(apt_package_state) }}"
+    update_cache: true
+
+- block:
+  - name: Install MySQL server
+    ansible.builtin.apt:
+      name: "{{ mariadb_server_package }}"
+      state: "{{ mariadb_server_package_state | default(apt_package_state) }}"
+      cache_valid_time: "{{ apt_cache_valid_time }}"
+
+  - name: Disable MariaDB binary logging
+    template:
+      src: disable-binary-logging.cnf
+      dest: /etc/mysql/conf.d
+      owner: root
+      group: root
+      mode: '0644'
+    when: mysql_binary_logging_disabled | bool
+    notify: restart mysql server
+
+  - name: Copy .my.cnf file with root password credentials.
+    template:
+      src: my.cnf.j2
+      dest: ~/.my.cnf
+      owner: root
+      group: root
+      mode: '0600'
+
+  - name: Copy server config file with MariaDB optimisations.
+    template:
+      src: 50-server.cnf.j2
+      dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+      mode: '0644'
+    notify: restart mysql server
+
+  - name: Set root user password
+    mysql_user:
+      name: root
+      host: "{{ item }}"
+      password: "{{ mysql_root_password }}"
+      check_implicit_admin: yes
+      column_case_sensitive: no
+      state: present
+      login_unix_socket: /var/run/mysqld/mysqld.sock
+    no_log: true
+    loop:
+      - "{{ inventory_hostname }}"
+      - 127.0.0.1
+      - ::1
+      - localhost
+
+  - name: Delete anonymous MySQL server users
+    mysql_user:
+      name: ""
+      host: "{{ item }}"
+      state: absent
+      column_case_sensitive: no
+    no_log: true
+    loop:
+      - localhost
+      - "{{ inventory_hostname }}"
+      - "{{ ansible_hostname }}"
+
+  - name: Remove the test database
+    mysql_db:
+      name: test
+      state: absent
+    no_log: true
+
+  when:  (wordpress_sites.items() | count) > (sites_using_remote_db | count)

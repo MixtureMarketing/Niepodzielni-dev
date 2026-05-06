@@ -1,0 +1,11 @@
+---
+- name: Run Acorn optimize
+  command: wp acorn optimize
+  args:
+    chdir: "{{ deploy_helper.new_release_path }}"
+
+- name: Enable Redis object cache drop-in
+  command: wp redis enable --force
+  args:
+    chdir: "{{ deploy_helper.new_release_path }}"
+  ignore_errors: yes

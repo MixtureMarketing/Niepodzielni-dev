@@ -181,7 +181,10 @@ function stripHtml(html) {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         listTarget.style.opacity = '1';
-                        listTarget.querySelectorAll('.psy-card-item').forEach((el, i) => setTimeout(() => el.classList.add('is-visible'), i * 50));
+                        listTarget.querySelectorAll('.psy-card-item').forEach((el, i) => {
+                            el.style.setProperty('--stagger', i * 50 + 'ms');
+                            el.classList.add('is-visible');
+                        });
                     });
                 });
                 renderPagination(filteredData.length);

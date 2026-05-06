@@ -90,10 +90,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // MutationObserver — reinit po zmianach DOM
     let mutationTimeout;
-    new MutationObserver(() => {
+    const domObserver = new MutationObserver(() => {
         clearTimeout(mutationTimeout);
         mutationTimeout = setTimeout(initDynamicContent, 150);
-    }).observe(document.body, { childList: true, subtree: true });
+    });
+    domObserver.observe(document.body, { childList: true, subtree: true });
 
     // Reinit po kliknięciu zakładki Elementor
     let reinitTimeout;

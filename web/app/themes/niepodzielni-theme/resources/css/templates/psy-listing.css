@@ -92,7 +92,7 @@
 
 /* Cards */
 .psy-list-grid { display: flex; flex-direction: column; gap: 35px; }
-.psy-card-item { display: flex; background: #fff; border-radius: 30px; border: 1px solid #EAEAEA; overflow: hidden; transition: all 0.4s; opacity: 0; transform: translateY(20px); min-height: 420px; }
+.psy-card-item { display: flex; background: #fff; border-radius: 30px; border: 1px solid #EAEAEA; overflow: hidden; transition: opacity 0.4s ease, transform 0.4s ease; transition-delay: var(--stagger, 0ms); opacity: 0; transform: translateY(20px); min-height: 420px; }
 .psy-card-item.is-visible { opacity: 1; transform: translateY(0); }
 .psy-card-photo-wrapper { flex: 0 0 300px; background: #f9f9f9; border-right: 1px solid #f0f0f0; }
 .psy-card-photo-wrapper img { width: 100%; height: 100%; object-fit: cover; }

@@ -167,8 +167,9 @@ function np_reviews_verify_turnstile(string $token, string $remoteIp = ''): bool
     if (! $secret) {
         $secret = (string) get_option('np_cf_turnstile_secret', '');
     }
+    // Na produkcji brak sekretu = blokuj; lokalnie/staging = przepuść
     if (! $secret) {
-        return true; // tryb deweloperski
+        return ! (defined('WP_ENV') && WP_ENV === 'production');
     }
 
     $body = ['secret' => $secret, 'response' => $token];
@@ -274,12 +275,13 @@ function np_reviews_notify_psychologist(int $postId, int $commentId, string $aut
         return;
     }
 
-    $siteName  = get_bloginfo('name');
-    $postTitle = $post->post_title;
+    $siteName  = esc_html(get_bloginfo('name'));
+    $postTitle = esc_html($post->post_title);
+    $authorName_safe = esc_html($author->display_name);
     $stars     = str_repeat('★', $rating) . str_repeat('☆', 5 - $rating);
-    $adminLink = admin_url("edit-comments.php?p={$postId}&type=review");
+    $adminLink = esc_url(admin_url("edit-comments.php?p={$postId}&type=review"));
 
-    $body = "<p>Hej {$author->display_name},</p>"
+    $body = "<p>Hej {$authorName_safe},</p>"
           . "<p>Dodano nową opinię do Twojego profilu <strong>{$postTitle}</strong>.</p>"
           . "<table cellpadding=\"8\" style=\"border-collapse:collapse;border:1px solid #eee;\">"
           . "<tr><th style=\"background:#f6f6f6;text-align:left\">Od</th><td>" . esc_html($authorName) . "</td></tr>"

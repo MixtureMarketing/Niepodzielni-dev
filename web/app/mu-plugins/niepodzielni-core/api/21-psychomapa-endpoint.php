@@ -41,6 +41,7 @@ function np_psychomapa_endpoint(): void
 
     $cached = wp_cache_get($cacheKey, $cacheGroup);
     if ($cached !== false) {
+        header('Cache-Control: public, max-age=3600, s-maxage=21600');
         wp_send_json($cached);
         return;
     }
@@ -130,6 +131,7 @@ function np_psychomapa_endpoint(): void
 
     wp_cache_set($cacheKey, $data, $cacheGroup, 6 * HOUR_IN_SECONDS);
 
+    header('Cache-Control: public, max-age=3600, s-maxage=21600');
     wp_send_json($data);
 }
 

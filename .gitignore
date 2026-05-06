@@ -45,3 +45,8 @@ wp-cli.phar
 crawler.php
 full_performance_report.csv
 web/carbon-fields/
+
+# Trellis
+trellis/.vault_pass
+trellis/vendor/
+trellis/*.retry

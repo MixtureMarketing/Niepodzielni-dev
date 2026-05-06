@@ -52,6 +52,11 @@
 
   /* === KOLORY DODATKOWE === */
   --mix-color-primary-light: #e6f9ef;
+  --mix-color-brand-primary-10: rgba(1, 190, 74, 0.10);
+  --mix-color-brand-primary-20: rgba(1, 190, 74, 0.20);
+  --mix-color-brand-primary-25: rgba(1, 190, 74, 0.25);
+  --mix-color-brand-secondary-06: rgba(21, 0, 187, 0.06);
+  --mix-color-brand-secondary-15: rgba(21, 0, 187, 0.15);
 
   /* === PRZEJŚCIA === */
   --mix-transition-fast: 0.25s ease-in-out;

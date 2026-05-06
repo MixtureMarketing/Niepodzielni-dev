@@ -1,0 +1,45 @@
+name: Deploy to production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan 185.201.113.217 >> ~/.ssh/known_hosts
+
+      - name: Write vault password
+        run: echo "${{ secrets.ANSIBLE_VAULT_PASS }}" > trellis/.vault_pass
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Ansible
+        run: pip install ansible>=2.10.0
+
+      - name: Install Ansible Galaxy roles
+        working-directory: trellis
+        run: ansible-galaxy install -r galaxy.yml -p vendor/roles --force
+
+      - name: Deploy
+        working-directory: trellis
+        run: |
+          ansible-playbook deploy.yml \
+            -e env=production \
+            --vault-password-file .vault_pass

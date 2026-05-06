@@ -129,6 +129,9 @@
 }
 
 /* ZAKŁADKI */
+.psy-tab-content          { display: none !important; }
+.psy-tab-content.is-active { display: block !important; }
+
 .psy-tabs-nav {
     display: flex;
     justify-content: center;

@@ -221,7 +221,4 @@ if (!defined('ABSPATH')) {
 }
 
 define('QM_ENABLE_CAPSULE', true);
-if (! defined('SAVEQUERIES')) {
-    define('SAVEQUERIES', true);
-}
-define('QM_SHOW_ALL_QUERIES', true); // To pozwoli crawlerowi "widzieć" SQL i RAM
+// SAVEQUERIES i QM_SHOW_ALL_QUERIES są włączane tylko w środowisku development (patrz config/environments/development.php)

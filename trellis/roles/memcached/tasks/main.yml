@@ -1,0 +1,22 @@
+---
+- name: Install memcached
+  apt:
+    name: "{{ item.key }}"
+    state: "{{ item.value }}"
+    cache_valid_time: "{{ apt_cache_valid_time }}"
+  loop: "{{ memcached_packages |dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Copy the client configuration file
+  template:
+    src: memcached.conf.j2
+    dest: /etc/memcached.conf
+    mode: '0644'
+  notify: restart memcached
+
+- name: Start the memcached service
+  service:
+    name: memcached
+    state: started
+    enabled: yes

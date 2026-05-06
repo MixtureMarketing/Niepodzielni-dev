@@ -9,6 +9,7 @@ use Roots\WPConfig\Config;
 use function Env\env;
 
 Config::define('SAVEQUERIES', true);
+Config::define('QM_SHOW_ALL_QUERIES', true);
 Config::define('WP_DEBUG', true);
 Config::define('WP_DEBUG_DISPLAY', true);
 Config::define('WP_DEBUG_LOG', env('WP_DEBUG_LOG') ?? true);

@@ -1,0 +1,31 @@
+# Documentation: https://roots.io/trellis/docs/remote-server-setup/
+# `wordpress_sites` options: https://roots.io/trellis/docs/wordpress-sites
+# Define accompanying passwords/secrets in group_vars/production/vault.yml
+
+wordpress_sites:
+  new.niepodzielni.com:
+    site_hosts:
+      - canonical: new.niepodzielni.com
+        redirects:
+          - www.new.niepodzielni.com
+    local_path: ../Niepodzielni-dev # path targeting local Bedrock site directory (relative to Ansible root)
+    repo: git@github.com:MixtureMarketing/Niepodzielni-dev.git
+    branch: main
+    multisite:
+      enabled: false
+    ssl:
+      enabled: true
+      provider: letsencrypt
+    cache:
+      enabled: true
+    object_cache:
+      enabled: true
+      provider: redis
+    xmlrpc:
+      enabled: false
+    php_fpm_pm: dynamic
+    php_fpm_pm_max_children: 15
+    php_fpm_pm_start_servers: 3
+    php_fpm_pm_min_spare_servers: 2
+    php_fpm_pm_max_spare_servers: 5
+    php_fpm_pm_max_requests: 500

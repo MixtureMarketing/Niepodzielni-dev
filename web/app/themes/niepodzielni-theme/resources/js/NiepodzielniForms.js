@@ -295,11 +295,15 @@ class NiepodzielniForms {
         try {
             const payload = this.#collectFormData(form);
 
+            const submitCtrl = new AbortController();
+            const submitTimeout = setTimeout(() => submitCtrl.abort(), 15000);
             const response = await fetch(`${this.#apiBase}/${formId}/submit`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': this.#getNonce() },
                 body:    JSON.stringify(payload),
+                signal:  submitCtrl.signal,
             });
+            clearTimeout(submitTimeout);
 
             const result = await response.json();
 
@@ -377,11 +381,15 @@ class NiepodzielniForms {
             otpBtn.textContent = 'Weryfikacja…';
 
             try {
+                const otpCtrl = new AbortController();
+                const otpTimeout = setTimeout(() => otpCtrl.abort(), 15000);
                 const res  = await fetch(`${this.#apiBase}/${formId}/verify`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': this.#getNonce() },
                     body:    JSON.stringify({ submission_id: submissionId, otp_code: otpInput.value }),
+                    signal:  otpCtrl.signal,
                 });
+                clearTimeout(otpTimeout);
                 const data = await res.json();
 
                 if (data.status === 'success') {

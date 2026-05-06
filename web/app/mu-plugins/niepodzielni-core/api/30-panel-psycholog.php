@@ -239,6 +239,9 @@ function np_ajax_panel_get_reviews(): void
         'number'  => 100,
     ]);
 
+    // Batch-load comment meta — eliminuje N+1 queries
+    update_comment_meta_cache(array_column((array) $comments, 'comment_ID'));
+
     $data = [];
     foreach ($comments as $c) {
         $id      = (int) $c->comment_ID;
