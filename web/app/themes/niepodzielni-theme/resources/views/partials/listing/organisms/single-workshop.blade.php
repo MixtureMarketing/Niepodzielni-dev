@@ -272,46 +272,9 @@
   @endif
 
   {{-- 5. BOOKERO --}}
-  @php
-    $zapisy_off    = ($m['status'] ?? '') === 'Zapisy zakończone';
-    $calendar_html = (!$zapisy_off && $m['id_uslugi']) ? do_shortcode('[bookero_kalendarz]') : '';
-  @endphp
-  @if($m['id_uslugi'] || $zapisy_off)
-  <div id="bookero" class="nsingle-bookero">
-    @if($zapisy_off)
-      <div class="nsingle-zapisy-zakonczone">
-        <p class="nsingle-zapisy-zakonczone__icon">🔒</p>
-        <p class="nsingle-zapisy-zakonczone__title">Zapisy zakończone</p>
-        <p class="nsingle-zapisy-zakonczone__desc">Rejestracja na to wydarzenie jest już zamknięta.</p>
-      </div>
-    @else
-      {!! $calendar_html !!}
-      {{-- JS fallback: gdy Bookero widget nie wyrenderuje treści po 8s --}}
-      <div id="bookero-fallback" class="nsingle-zapisy-zakonczone" style="display:none;">
-        <p class="nsingle-zapisy-zakonczone__icon">🔒</p>
-        <p class="nsingle-zapisy-zakonczone__title">Zapisy zakończone</p>
-        <p class="nsingle-zapisy-zakonczone__desc">Rejestracja na to wydarzenie jest już zamknięta.</p>
-      </div>
-      <script>
-      (function() {
-        var TIMEOUT = 8000;
-        function checkBookero() {
-          var plugin  = document.getElementById('bookero-plugin');
-          var wrapper = document.getElementById('bookero_wrapper');
-          var fallback = document.getElementById('bookero-fallback');
-          if (!fallback) return;
-          // Widget wyrenderował się poprawnie jeśli bookero-plugin istnieje i ma treść
-          var hasContent = plugin && plugin.innerText && plugin.innerText.trim().length > 10;
-          if (!hasContent) {
-            if (wrapper) wrapper.style.display = 'none';
-            fallback.style.display = 'block';
-          }
-        }
-        setTimeout(checkBookero, TIMEOUT);
-      })();
-      </script>
-    @endif
-  </div>
-  @endif
+  @include('partials.listing.molecules.bookero-block', [
+    'id_uslugi'  => $m['id_uslugi'],
+    'zapisy_off' => ($m['status'] ?? '') === 'Zapisy zakończone',
+  ])
 
 </div>{{-- /.nsingle-wrap --}}
