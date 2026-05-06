@@ -1,4 +1,18 @@
 ---
+- name: Composer install — theme (Sage/Acorn deps)
+  command: composer install --no-dev --optimize-autoloader --no-interaction
+  args:
+    chdir: "{{ deploy_helper.new_release_path }}/web/app/themes/niepodzielni-theme"
+  environment:
+    COMPOSER_ALLOW_SUPERUSER: "1"
+
+- name: Link theme build assets (shared/theme-build → public/build)
+  file:
+    src: "{{ deploy_helper.shared_path }}/theme-build"
+    dest: "{{ deploy_helper.new_release_path }}/web/app/themes/niepodzielni-theme/public/build"
+    state: link
+    force: yes
+
 - name: Run Acorn optimize
   command: wp acorn optimize
   args:
