@@ -159,6 +159,11 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script('sage/countup.js', Vite::asset('resources/js/components/countup.js'), [], null, true);
     }
 
+    // Calendar view — toggle list/calendar na /wydarzenia i /warsztaty-grupy
+    if (is_page_template(['template-wydarzenia.blade.php', 'template-warsztaty-grupy.blade.php'])) {
+        wp_enqueue_script('sage/event-calendar.js', Vite::asset('resources/js/components/event-calendar.js'), [], null, true);
+    }
+
     // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS
     $panel_templates = [
         'template-panel-dashboard.blade.php',

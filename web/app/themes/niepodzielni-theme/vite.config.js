@@ -34,6 +34,7 @@ export default defineConfig({
         'resources/js/crisis-hide.js',
         'resources/js/crisis-map.js',
         'resources/js/components/countup.js',
+        'resources/js/components/event-calendar.js',
       ],
       refresh: true,
     }),
