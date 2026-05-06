@@ -36,7 +36,7 @@ add_action('set_logged_in_cookie', static function (
     int $expiration,
     int $user_id,
     string $scheme,
-    string $token = ''
+    string $token = '',
 ): void {
     if (headers_sent()) {
         return;
@@ -76,7 +76,7 @@ add_action('set_auth_cookie', static function (
     int $expiration,
     int $user_id,
     string $scheme,
-    string $token = ''
+    string $token = '',
 ): void {
     if (headers_sent()) {
         return;

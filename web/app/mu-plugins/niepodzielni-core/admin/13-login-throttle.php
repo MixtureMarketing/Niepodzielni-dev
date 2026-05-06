@@ -39,7 +39,7 @@ function np_login_keys(string $ip): array
     $hash = substr(hash('sha256', $ip), 0, 16);
     return [
         'attempts' => 'np_login_attempts_' . $hash,
-        'lockout'  => 'np_login_lockout_'  . $hash,
+        'lockout'  => 'np_login_lockout_' . $hash,
     ];
 }
 
@@ -67,7 +67,7 @@ add_action('wp_login_failed', static function (string $username): void {
     $attempts++;
 
     if ($attempts >= NP_LOGIN_MAX_ATTEMPTS) {
-        set_transient($keys['lockout'],  1,        NP_LOGIN_LOCKOUT);
+        set_transient($keys['lockout'], 1, NP_LOGIN_LOCKOUT);
         delete_transient($keys['attempts']);
 
         // Hook dla audit-log mu-plugina (Etap 5).
