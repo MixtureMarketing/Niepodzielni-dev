@@ -36,7 +36,6 @@ require_once NIEPODZIELNI_CORE_PATH . 'cpt/16-cpt-aktualnosci.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/17-cpt-wydarzenia.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/18-cpt-warsztaty.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/19-cpt-grupy-wsparcia.php';
-require_once NIEPODZIELNI_CORE_PATH . 'cpt/20-cpt-metaboxes.php'; // fallback gdy brak CF
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/21-carbon-fields.php'; // Carbon Fields (główny)
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-zgloszenia.php';    // CPT: Zgłoszenia (Forms)
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-osrodki.php';       // Psychomapa: CPT + taksonomie
