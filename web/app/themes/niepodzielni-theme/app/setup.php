@@ -154,6 +154,11 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script('sage/crisis-map.js', Vite::asset('resources/js/crisis-map.js'), ['leaflet'], null, true);
     }
 
+    // Wall of impact — countup animation na stronach z partialem partials.wall-of-impact
+    if (is_front_page() || is_page_template('template-o-nas.blade.php')) {
+        wp_enqueue_script('sage/countup.js', Vite::asset('resources/js/components/countup.js'), [], null, true);
+    }
+
     // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS
     $panel_templates = [
         'template-panel-dashboard.blade.php',

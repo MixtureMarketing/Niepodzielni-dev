@@ -16,6 +16,7 @@
 @import './molecules/tags.css';
 @import './molecules/faq.css';
 @import './molecules/checklist.css';
+@import './molecules/wall-of-impact.css';
 
 /* Organisms */
 @import './organisms/header.css';

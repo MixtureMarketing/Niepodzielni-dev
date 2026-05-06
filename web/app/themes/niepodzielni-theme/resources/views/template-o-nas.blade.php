@@ -117,5 +117,7 @@
         </div>
     </section>
 
+    @include('partials.wall-of-impact')
+
 </div>
 @endsection

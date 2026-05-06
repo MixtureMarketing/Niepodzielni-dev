@@ -33,6 +33,7 @@ export default defineConfig({
         'resources/js/psychomapa.js',
         'resources/js/crisis-hide.js',
         'resources/js/crisis-map.js',
+        'resources/js/components/countup.js',
       ],
       refresh: true,
     }),
