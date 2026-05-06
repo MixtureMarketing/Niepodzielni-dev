@@ -1,13 +1,17 @@
-import type { Env, SyncPayload } from '../types';
+import type { Env } from '../types';
 import { embed, buildText } from '../embed';
+import { requireHeaderSecret } from '../auth';
+import { parseJsonBody } from '../jsonBody';
+import { validateSyncPayload } from '../schemas';
 
 export async function handleSync(request: Request, env: Env): Promise<Response> {
-    const secret = request.headers.get('X-Worker-Secret');
-    if (secret !== env.WORKER_SECRET) {
-        return new Response('Unauthorized', { status: 401 });
-    }
+    const unauth = requireHeaderSecret(request, 'X-Worker-Secret', env.WORKER_SECRET);
+    if (unauth) return unauth;
 
-    const payload = await request.json<SyncPayload>();
+    const parsed = await parseJsonBody(request, validateSyncPayload, 512 * 1024);
+    if (!parsed.ok) return parsed.response;
+    const payload = parsed.value;
+
     const { id, type, title, url, status } = payload;
     const photo_url = payload.photo_url ?? '';
 

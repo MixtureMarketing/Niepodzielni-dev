@@ -1,15 +1,29 @@
 import type { Env } from '../types';
 import { embed } from '../embed';
+import { requireBearer } from '../auth';
+import { rateLimit } from '../rateLimit';
+import { validateSearchQuery } from '../schemas';
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 export async function handleSearch(request: Request, env: Env): Promise<Response> {
-    const url   = new URL(request.url);
-    const query = url.searchParams.get('q')?.trim();
-    const type  = url.searchParams.get('type'); // opcjonalny filtr: psycholog, article, faq…
+    const unauth = requireBearer(request, env.NP_AI_BOT_TOKEN);
+    if (unauth) return unauth;
 
-    if (!query || query.length < 2) {
-        return new Response(JSON.stringify({ results: [] }), {
-            headers: { 'Content-Type': 'application/json' },
+    const limited = await rateLimit(request, env, { bucket: 'search', limit: 60, windowSec: 60 });
+    if (limited) return limited;
+
+    const requestUrl = new URL(request.url);
+    const validated  = validateSearchQuery(requestUrl);
+    if (!validated.ok) {
+        return new Response(JSON.stringify({ error: 'invalid_query', details: validated.error }), {
+            status: 400, headers: JSON_HEADERS,
         });
+    }
+    const { query, type } = validated.value;
+
+    if (query.length < 2) {
+        return new Response(JSON.stringify({ results: [] }), { headers: JSON_HEADERS });
     }
 
     const vector = await embed(env, query);
@@ -42,7 +56,5 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
          .sort((a, b) => ((b.score as number) ?? 0) - ((a.score as number) ?? 0));
     }
 
-    return new Response(JSON.stringify({ results }), {
-        headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ results }), { headers: JSON_HEADERS });
 }
