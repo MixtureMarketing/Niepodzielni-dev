@@ -246,34 +246,35 @@ class SharedCalendarService
 
     /**
      * Zwraca daty z danego miesiąca dla psychologa.
-     * Jeśli slots puste — fallback na nearestTerm (psycholog niezsynch. przez cron).
+     * Zawsze dołącza nearestTerm jeśli wypada w tym miesiącu — spójne z workerHasDateViaFallback
+     * w getDateSlots(), które obsługuje datę z nearestTerm niezależnie od zawartości slots.
+     *
+     * Przypadek brzegowy: removeDateFromSlots() może usunąć datę ze slots gdy API chwilowo
+     * zwróci puste godziny, ale nearestTerm pozostaje niezmieniony. Bez tego scalenia
+     * data znikałaby z kalendarza mimo że nadal jest dostępna (np. po odświeżeniu API).
      *
      * @return string[]
      */
     private function filterDatesForMonth(WorkerRecord $worker, string $yearMonth): array
     {
-        $filtered = array_filter(
+        $filtered = array_values(array_filter(
             $worker->slots,
             static fn(string $d) => str_starts_with($d, $yearMonth),
-        );
+        ));
 
-        if (! empty($filtered)) {
-            return array_values($filtered);
+        // Zawsze dołącz nearestTerm jeśli wypada w tym miesiącu i nie ma go już w slots.
+        // Lustrzane odbicie workerHasDateViaFallback() z getDateSlots().
+        if ($worker->nearestTerm !== '') {
+            $sortable = np_get_sortable_date($worker->nearestTerm);
+            if ($sortable !== '99999999') {
+                $dateYmd = substr($sortable, 0, 4) . '-' . substr($sortable, 4, 2) . '-' . substr($sortable, 6, 2);
+                if (str_starts_with($dateYmd, $yearMonth) && ! in_array($dateYmd, $filtered, true)) {
+                    $filtered[] = $dateYmd;
+                }
+            }
         }
 
-        // Fallback: nearestTerm jako jedyna data (gdy cron jeszcze nie wypełnił slots)
-        if ($worker->nearestTerm === '') {
-            return [];
-        }
-
-        $sortable = np_get_sortable_date($worker->nearestTerm);
-        if ($sortable === '99999999') {
-            return [];
-        }
-
-        $dateYmd = substr($sortable, 0, 4) . '-' . substr($sortable, 4, 2) . '-' . substr($sortable, 6, 2);
-
-        return str_starts_with($dateYmd, $yearMonth) ? [ $dateYmd ] : [];
+        return $filtered;
     }
 
     // ─── Prywatne — godziny ───────────────────────────────────────────────────────
