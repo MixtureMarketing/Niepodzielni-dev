@@ -447,9 +447,10 @@
     box-sizing: border-box;
     font-family: inherit;
 }
-.bk-sc__form-input:focus {
+.bk-sc__form-input:focus-visible {
     outline: none;
     border-color: var(--mix-color-brand-secondary);
+    box-shadow: 0 0 0 3px rgba(21, 0, 187, 0.25);
 }
 .bk-sc__form-input::placeholder { color: var(--mix-color-background-grey-medium); }
 

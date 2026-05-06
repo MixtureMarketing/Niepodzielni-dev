@@ -8,7 +8,7 @@
   --mix-color-text-dark: #323232;
   --mix-color-text-base: #323232;
   --mix-color-text-interactive: #323232;
-  --mix-color-text-subtle: #828282;
+  --mix-color-text-subtle: #767676;
   --mix-color-text-light: #ffffff;
   
   /* === TŁA I POWIERZCHNIE === */
@@ -49,6 +49,9 @@
   /* === CIENIE === */
   --mix-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.05);
   --mix-shadow-header: 0 2px 10px rgba(0,0,0,0.05);
+
+  /* === DOSTĘPNOŚĆ === */
+  --mix-focus-ring: 0 0 0 3px rgba(1, 190, 74, 0.45);
 
   /* === KOLORY DODATKOWE === */
   --mix-color-primary-light: #e6f9ef;
