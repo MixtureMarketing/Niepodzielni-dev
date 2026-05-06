@@ -95,6 +95,52 @@ function np_register_settings(): void
             'Klucz Bearer do API Bookero dla konta niskopłatnego',
         );
     }, 'niepodzielni-settings', 'np_bookero_section');
+
+    // ─── Donations / Stripe ──────────────────────────────────────────────────
+    register_setting('np_settings_group', 'np_stripe_publishable_key', ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_stripe_secret_key',      ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_stripe_webhook_secret',  ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_fundacja_krs',           ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_fundacja_name',          ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_pit_season_active',      ['sanitize_callback' => 'rest_sanitize_boolean', 'default' => false]);
+
+    add_settings_section('np_donations_section', 'Darowizny i Stripe', function () {
+        echo '<p>Klucze testowe Stripe (<code>pk_test_</code>, <code>sk_test_</code>, <code>whsec_</code>) lub produkcyjne. ';
+        echo 'Wartości z <code>.env</code> mają priorytet (NP_STRIPE_*).</p>';
+    }, 'niepodzielni-settings');
+
+    add_settings_field('np_stripe_publishable_key', 'Publishable Key', function () use ($env_field) {
+        $env_field('', 'np_stripe_publishable_key', 'NP_STRIPE_PUBLISHABLE_KEY',
+            'pk_test_… (sandbox) lub pk_live_… (produkcja).');
+    }, 'niepodzielni-settings', 'np_donations_section');
+
+    add_settings_field('np_stripe_secret_key', 'Secret Key', function () use ($env_field) {
+        $env_field('', 'np_stripe_secret_key', 'NP_STRIPE_SECRET_KEY',
+            'sk_test_… lub sk_live_… — używany serwerowo, nigdy w przeglądarce.');
+    }, 'niepodzielni-settings', 'np_donations_section');
+
+    add_settings_field('np_stripe_webhook_secret', 'Webhook Signing Secret', function () use ($env_field) {
+        $env_field('', 'np_stripe_webhook_secret', 'NP_STRIPE_WEBHOOK_SECRET',
+            'whsec_… — z Stripe Dashboard → Developers → Webhooks.');
+    }, 'niepodzielni-settings', 'np_donations_section');
+
+    add_settings_field('np_fundacja_krs', 'KRS Fundacji', function () use ($env_field) {
+        $env_field('', 'np_fundacja_krs', 'NP_FUNDACJA_KRS',
+            'Numer KRS używany w generatorze PDF dla 1,5% PIT.');
+    }, 'niepodzielni-settings', 'np_donations_section');
+
+    add_settings_field('np_fundacja_name', 'Nazwa Fundacji', function () {
+        $val = get_option('np_fundacja_name', 'Fundacja Niepodzielni');
+        echo '<input type="text" name="np_fundacja_name" value="' . esc_attr($val) . '" class="regular-text">';
+        echo '<p class="description">Wyświetlana w PDF i w emailach z podziękowaniem.</p>';
+    }, 'niepodzielni-settings', 'np_donations_section');
+
+    add_settings_field('np_pit_season_active', 'Sezon PIT — sticky CTA', function () {
+        $val = (bool) get_option('np_pit_season_active', false);
+        echo '<label><input type="checkbox" name="np_pit_season_active" value="1" ' . checked($val, true, false) . '> ';
+        echo 'Pokazuj sticky CTA „Przekaż 1,5%" w stopce</label>';
+        echo '<p class="description">Włącz w sezonie PIT (luty–kwiecień). Wyłącz po 30 kwietnia.</p>';
+    }, 'niepodzielni-settings', 'np_donations_section');
 }
 
 function np_render_settings_page(): void
