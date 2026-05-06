@@ -42,9 +42,8 @@ class PsychologistListingService
         }
 
         $all_psy_data = [];
-        $meta_id_key  = ($rodzaj === 'nisko') ? 'bookero_id_niski' : 'bookero_id_pelny';
-        $db_type      = ($rodzaj === 'nisko') ? 'niskoplatny' : 'pelnoplatny';
-        $meta_termin  = np_bk_meta_key($db_type);
+        $meta_id_key  = np_bk_id_meta_key($rodzaj);
+        $meta_termin  = np_bk_meta_key($rodzaj);
         $meta_stawka  = ($rodzaj === 'nisko') ? 'stawka_niskoplatna' : 'stawka_wysokoplatna';
 
         $flagMap = np_get_flag_map();

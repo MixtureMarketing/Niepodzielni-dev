@@ -76,7 +76,7 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
     $end_date = gmdate('Y-m-d', strtotime("+{$days} days", strtotime($today)));
 
     $slots_key = $typ === 'nisko' ? 'bookero_slots_nisko' : 'bookero_slots_pelno';
-    $id_key    = $typ === 'nisko' ? 'bookero_id_niski' : 'bookero_id_pelny';
+    $id_key    = np_bk_id_meta_key($typ);
 
     // Zbierz wszystkich psychologów z tym typem konta
     $psycholodzy = get_posts([
@@ -227,9 +227,7 @@ function np_ai_rest_clear_cb(\WP_REST_Request $request): \WP_REST_Response
     delete_transient($repo->configCacheKey('pelnoplatny'));
 
     // Wyczyść listing cache żeby pokazać aktualne dane
-    if (class_exists('App\Services\PsychologistListingService')) {
-        \App\Services\PsychologistListingService::clearCache();
-    }
+    np_clear_psy_listing_cache();
 
     // Wyczyść shared calendar month transients (5 min TTL) — zawierają stary service_id per worker
     foreach (['nisko', 'pelnoplatny'] as $t) {

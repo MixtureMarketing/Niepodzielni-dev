@@ -108,10 +108,8 @@ function np_ajax_panel_save_profile(): void
         update_post_meta($post_id, '_tryb_konsultacji_info', 'field_complex');
     }
 
-    // Inwaliduj cache listingu psychologów (jeśli istnieje)
-    if (class_exists('App\\Services\\PsychologistListingService')) {
-        \App\Services\PsychologistListingService::clearCache();
-    }
+    // Inwaliduj cache listingu psychologów (jeśli theme go rejestruje)
+    np_clear_psy_listing_cache();
 
     wp_send_json_success([
         'message' => 'Profil zapisany.',
@@ -162,9 +160,7 @@ function np_ajax_panel_save_taxonomies(): void
         wp_set_object_terms($post_id, $valid_slugs, $taxonomy, false);
     }
 
-    if (class_exists('App\\Services\\PsychologistListingService')) {
-        \App\Services\PsychologistListingService::clearCache();
-    }
+    np_clear_psy_listing_cache();
 
     wp_send_json_success([
         'message' => 'Taksonomie zapisane.',
@@ -208,9 +204,7 @@ function np_ajax_panel_upload_photo(): void
     // Ustaw jako featured image
     set_post_thumbnail($post_id, $attachment_id);
 
-    if (class_exists('App\\Services\\PsychologistListingService')) {
-        \App\Services\PsychologistListingService::clearCache();
-    }
+    np_clear_psy_listing_cache();
 
     $url = wp_get_attachment_image_url($attachment_id, 'medium_large');
 
