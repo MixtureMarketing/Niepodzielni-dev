@@ -7,6 +7,8 @@
 @php
     $cfSiteKey = $siteKey
         ?? (defined('NP_CF_TURNSTILE_SITE_KEY') ? NP_CF_TURNSTILE_SITE_KEY : get_option('np_cf_turnstile_site_key', ''));
+    
+    $prefixes = \Niepodzielni\Forms\Helpers\PhonePrefixes::getAll();
 @endphp
 
 <div class="contact-form-wrapper">
@@ -32,27 +34,61 @@
                     autocomplete="given-name"
                     maxlength="50"
                     placeholder="Jan"
+                    pattern="^[\p{L}\s\x27-]+$"
+                    error-pattern="Imię może zawierać tylko litery, spacje i myślniki."
                 />
 
                 <x-forms.input
                     name="nazwisko"
                     label="Nazwisko"
-                    :required="false"
+                    :required="true"
                     autocomplete="family-name"
                     maxlength="50"
                     placeholder="Kowalski"
+                    pattern="^[\p{L}\s\x27-]+$"
+                    error-pattern="Nazwisko może zawierać tylko litery, spacje i myślniki."
                 />
             </div>
 
             <div class="form-row">
                 <x-forms.input
+                    name="kod_pocztowy"
+                    label="Kod pocztowy"
+                    :required="true"
+                    placeholder="00-000"
+                    data-mask="00-000"
+                    pattern="^[0-9]{2}-[0-9]{3}$"
+                    error-pattern="Podaj kod w formacie 00-000."
+                />
+
+                <x-forms.input
+                    name="miasto"
+                    label="Miasto"
+                    :required="true"
+                    autocomplete="address-level2"
+                    maxlength="100"
+                    placeholder="Poznań"
+                />
+            </div>
+
+            <x-forms.input
+                name="ulica"
+                label="Ulica i numer"
+                :required="true"
+                autocomplete="address-line1"
+                maxlength="150"
+                placeholder="ul. Zeylanda 9/3"
+            />
+
+            <div class="form-row">
+                <x-forms.phone
                     name="telefon"
+                    prefix-name="telefon_prefix"
                     label="Numer telefonu"
-                    type="tel"
-                    :required="false"
-                    autocomplete="tel"
-                    maxlength="20"
-                    placeholder="+48 123 456 789"
+                    :required="true"
+                    placeholder="123456789"
+                    :prefixes="$prefixes"
+                    value-prefix="+48"
                 />
 
                 <x-forms.input
@@ -64,6 +100,20 @@
                     placeholder="jan@przykład.pl"
                 />
             </div>
+
+            <x-forms.select
+                name="temat"
+                label="Temat wiadomości"
+                :required="true"
+                :options="['ogolne' => 'Ogólne zapytania', 'wspolpraca' => 'Współpraca', 'pomoc' => 'Pomoc psychologiczna']"
+            />
+
+            <x-forms.radio
+                name="preferowany_kontakt"
+                label="Preferowany sposób kontaktu"
+                :required="true"
+                :options="['email' => 'E-mail', 'telefon' => 'Telefon']"
+            />
 
             <x-forms.textarea
                 name="wiadomosc"

@@ -16,6 +16,10 @@ class NiepodzielniForms {
         document.querySelectorAll('[data-niepodzielni-form]').forEach(form => {
             this.#bindForm(form);
         });
+
+        document.querySelectorAll('[data-prefix-select]').forEach(widget => {
+            this.#initPrefixSelect(widget);
+        });
     }
 
     // ── Podpięcie formularza ──────────────────────────────────────────────────
@@ -24,10 +28,12 @@ class NiepodzielniForms {
         const formId = form.dataset.niepodzielniForm;
         if (! formId) return;
 
-        // Walidacja inline przy opuszczeniu pola i w trakcie wpisywania
         form.querySelectorAll('input, textarea, select').forEach(field => {
             field.addEventListener('blur',  () => this.#validateField(field));
-            field.addEventListener('input', () => this.#clearFieldError(field));
+            field.addEventListener('input', () => {
+                this.#applyMask(field);
+                this.#clearFieldError(field);
+            });
             field.addEventListener('change', () => this.#validateField(field));
         });
 
@@ -37,9 +43,175 @@ class NiepodzielniForms {
         });
     }
 
+    // ── Custom prefix select ──────────────────────────────────────────────────
+
+    #initPrefixSelect(widget) {
+        const trigger   = widget.querySelector('[data-prefix-trigger]');
+        const dropdown  = widget.querySelector('[data-prefix-dropdown]');
+        const search    = widget.querySelector('[data-prefix-search]');
+        const list      = widget.querySelector('[data-prefix-list]');
+        const hidden    = widget.querySelector('[data-prefix-input]');
+        const flagEl    = widget.querySelector('[data-prefix-flag]');
+        const labelEl   = widget.querySelector('[data-prefix-label]');
+
+        if (! trigger || ! dropdown) return;
+
+        // Powiąż wejście telefonu z tym widgetem
+        const phoneInput = widget.closest('.form-field__phone-wrapper')
+                               ?.querySelector('[data-phone-input]');
+
+        const open = () => {
+            dropdown.hidden = false;
+            trigger.setAttribute('aria-expanded', 'true');
+            search?.focus();
+        };
+
+        const close = () => {
+            dropdown.hidden = true;
+            trigger.setAttribute('aria-expanded', 'false');
+            if (search) search.value = '';
+            this.#filterOptions(list, '');
+        };
+
+        const selectOption = (li) => {
+            const val   = li.dataset.value;
+            const iso   = li.dataset.iso;
+            const min   = parseInt(li.dataset.min, 10);
+            const max   = parseInt(li.dataset.max, 10);
+            const label = li.dataset.value; // e.g. "+48"
+
+            hidden.value = val;
+
+            if (flagEl) {
+                flagEl.className = `fi fi-${iso}`;
+            }
+            if (labelEl) {
+                labelEl.textContent = label;
+            }
+
+            // Zaktualizuj minlength/maxlength pola telefonu
+            if (phoneInput) {
+                phoneInput.minLength = min;
+                phoneInput.maxLength = max;
+                // Przytnij wartość jeśli przekracza nowe max
+                if (phoneInput.value.length > max) {
+                    phoneInput.value = phoneInput.value.substring(0, max);
+                }
+                // Wyczyść błąd walidacji przy zmianie prefiksu
+                this.#clearFieldError(phoneInput);
+            }
+
+            list.querySelectorAll('.prefix-select__option').forEach(opt => {
+                opt.classList.toggle('is-selected', opt === li);
+                opt.setAttribute('aria-selected', String(opt === li));
+            });
+
+            close();
+            trigger.focus();
+        };
+
+        // Toggle
+        trigger.addEventListener('click', () => {
+            dropdown.hidden ? open() : close();
+        });
+
+        // Zamknij po kliknięciu poza widgetem
+        document.addEventListener('click', (e) => {
+            if (! widget.contains(e.target)) close();
+        });
+
+        // Zamknij po Escape
+        widget.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { close(); trigger.focus(); }
+        });
+
+        // Wyszukiwarka
+        search?.addEventListener('input', () => {
+            this.#filterOptions(list, search.value);
+        });
+
+        // Wybór opcji kliknięciem
+        list.addEventListener('click', (e) => {
+            const li = e.target.closest('.prefix-select__option');
+            if (li && ! li.hidden) selectOption(li);
+        });
+
+        // Nawigacja klawiaturą w liście
+        list.addEventListener('keydown', (e) => {
+            const visible  = [...list.querySelectorAll('.prefix-select__option:not([hidden])')];
+            const focused  = list.querySelector('.prefix-select__option.is-focused');
+            const idx      = visible.indexOf(focused);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = visible[idx + 1] ?? visible[0];
+                this.#focusOption(list, next);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = visible[idx - 1] ?? visible[visible.length - 1];
+                this.#focusOption(list, prev);
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (focused) selectOption(focused);
+            }
+        });
+
+        // Obsługa Tab w search → przenieś focus na listę
+        search?.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const first = list.querySelector('.prefix-select__option:not([hidden])');
+                if (first) this.#focusOption(list, first);
+            }
+        });
+    }
+
+    #filterOptions(list, query) {
+        const q = query.toLowerCase().trim();
+        list.querySelectorAll('.prefix-select__option').forEach(li => {
+            const label = (li.dataset.label ?? '').toLowerCase();
+            const code  = (li.dataset.value ?? '').toLowerCase();
+            li.hidden   = q !== '' && ! label.includes(q) && ! code.includes(q);
+            li.classList.remove('is-focused');
+        });
+    }
+
+    #focusOption(list, li) {
+        list.querySelectorAll('.prefix-select__option').forEach(o => o.classList.remove('is-focused'));
+        if (li) {
+            li.classList.add('is-focused');
+            li.focus();
+        }
+    }
+
+    // ── Maski ─────────────────────────────────────────────────────────────────
+
+    #applyMask(field) {
+        const mask = field.dataset.mask;
+        if (! mask) return;
+
+        let val = field.value;
+
+        if (mask === '00-000') {
+            val = val.replace(/\D/g, '').substring(0, 5);
+            if (val.length > 2) {
+                val = val.substring(0, 2) + '-' + val.substring(2);
+            }
+            field.value = val;
+        }
+
+        if (mask === 'phone') {
+            const max = field.maxLength > 0 ? field.maxLength : 15;
+            field.value = val.replace(/\D/g, '').substring(0, max);
+        }
+    }
+
     // ── Walidacja HTML5 ───────────────────────────────────────────────────────
 
     #validateField(field) {
+        // Pomijaj ukryte inputy (np. [data-prefix-input])
+        if (field.type === 'hidden') return true;
+
         const wrapper  = field.closest('.form-field');
         const errorEl  = wrapper?.querySelector('.field-error');
         const isValid  = field.checkValidity();
@@ -65,25 +237,24 @@ class NiepodzielniForms {
 
     #getValidityMessage(field) {
         const { validity } = field;
-        if (validity.valueMissing)   return 'To pole jest wymagane.';
-        if (validity.typeMismatch)   return field.type === 'email' ? 'Podaj prawidłowy adres e-mail.' : 'Nieprawidłowa wartość.';
-        if (validity.tooLong)        return `Maksymalnie ${field.maxLength} znaków.`;
-        if (validity.tooShort)       return `Minimum ${field.minLength} znaków.`;
+        if (validity.valueMissing)    return 'To pole jest wymagane.';
+        if (validity.typeMismatch)    return field.type === 'email' ? 'Podaj prawidłowy adres e-mail.' : 'Nieprawidłowa wartość.';
+        if (validity.tooLong)         return `Maksymalnie ${field.maxLength} znaków.`;
+        if (validity.tooShort)        return `Minimum ${field.minLength} cyfr.`;
         if (validity.patternMismatch) return field.dataset.errorPattern ?? 'Nieprawidłowy format.';
-        if (validity.rangeOverflow)  return `Maksymalna wartość: ${field.max}.`;
-        if (validity.rangeUnderflow) return `Minimalna wartość: ${field.min}.`;
+        if (validity.rangeOverflow)   return `Maksymalna wartość: ${field.max}.`;
+        if (validity.rangeUnderflow)  return `Minimalna wartość: ${field.min}.`;
         return field.validationMessage || 'Nieprawidłowa wartość.';
     }
 
     // ── Submit formularza ─────────────────────────────────────────────────────
 
     async #handleSubmit(form, formId) {
-        // Wyczyść poprzednie błędy ogólne
         this.#clearGeneralError(form);
 
-        // Waliduj wszystkie pola
         let isValid = true;
         form.querySelectorAll('input, textarea, select').forEach(field => {
+            if (field.type === 'hidden') return;
             if (! this.#validateField(field)) isValid = false;
         });
 
@@ -111,7 +282,6 @@ class NiepodzielniForms {
             } else if (result.status === 'requires_verification') {
                 this.#showVerificationStep(form, formId, result.submission_id, result.message);
             } else {
-                // Błędy walidacji z serwera
                 if (result.errors && typeof result.errors === 'object') {
                     this.#applyServerErrors(form, result.errors);
                 } else {
@@ -130,7 +300,6 @@ class NiepodzielniForms {
     // ── Krok weryfikacji OTP ──────────────────────────────────────────────────
 
     #showVerificationStep(form, formId, submissionId, hint) {
-        // Ukryj główne pola
         const fieldsWrapper = form.querySelector('.form-fields');
         if (fieldsWrapper) {
             fieldsWrapper.hidden = true;
@@ -138,10 +307,7 @@ class NiepodzielniForms {
             form.querySelectorAll('.form-field, [type="submit"]').forEach(el => { el.hidden = true; });
         }
 
-        // Ukryj CF Turnstile
         form.querySelector('.cf-turnstile')?.closest('.form-field, div')?.setAttribute('hidden', '');
-
-        // Usuń ewentualny poprzedni krok OTP
         form.querySelector('.form-otp-section')?.remove();
 
         const section = document.createElement('div');
@@ -216,21 +382,19 @@ class NiepodzielniForms {
     // ── Helpers UI ────────────────────────────────────────────────────────────
 
     #collectFormData(form) {
-        const data       = {};
-        const formData   = new FormData(form);
+        const data     = {};
+        const formData = new FormData(form);
 
         for (const [key, value] of formData.entries()) {
             data[key] = value;
         }
 
-        // Checkboxy nie zaznaczone nie trafiają do FormData — dodaj jawnie jako false
         form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             if (! (cb.name in data)) {
                 data[cb.name] = false;
             }
         });
 
-        // Dołącz URL strony źródłowej
         data['_source_url'] = window.location.href;
 
         return data;
@@ -276,9 +440,9 @@ class NiepodzielniForms {
     #setLoading(form, btn, loading) {
         form.classList.toggle('is-loading', loading);
         if (btn) {
-            btn.disabled                   = loading;
-            btn.dataset.originalText     ??= btn.textContent;
-            btn.textContent                = loading ? 'Wysyłanie…' : btn.dataset.originalText;
+            btn.disabled               = loading;
+            btn.dataset.originalText ??= btn.textContent;
+            btn.textContent            = loading ? 'Wysyłanie…' : btn.dataset.originalText;
         }
     }
 

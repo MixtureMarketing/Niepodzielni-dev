@@ -87,6 +87,29 @@
     min-height: 120px;
 }
 
+/* ── Radio ───────────────────────────────────────────── */
+.form-field__radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.form-field__radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.form-field__radio {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--mix-color-brand-primary);
+    cursor: pointer;
+}
+
 /* ── Checkbox ─────────────────────────────────────────── */
 .form-field--checkbox {
     flex-direction: column;
@@ -157,6 +180,156 @@
 .is-loading [type="submit"] {
     opacity: 0.7;
     pointer-events: none;
+}
+
+/* ── Pole telefonu ────────────────────────────────────── */
+.form-field__phone-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.form-field__phone-wrapper [data-phone-input] {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ── Prefix select (custom dropdown) ─────────────────── */
+.prefix-select {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.prefix-select__trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 10px;
+    min-width: 100px;
+    height: 100%;
+    background: var(--mix-color-background-light);
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    font-size: 0.95rem;
+    font-family: var(--mix-font-family-primary);
+    color: var(--mix-color-text-dark);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color var(--mix-transition-fast), box-shadow var(--mix-transition-fast);
+}
+
+.prefix-select__trigger:focus,
+.prefix-select__trigger[aria-expanded="true"] {
+    border-color: var(--mix-color-brand-primary);
+    box-shadow: 0 0 0 3px rgba(1, 190, 74, 0.15);
+    outline: none;
+}
+
+.prefix-select__chevron {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: #828282;
+    transition: transform 0.15s ease;
+}
+
+.prefix-select__trigger[aria-expanded="true"] .prefix-select__chevron {
+    transform: rotate(180deg);
+}
+
+.prefix-select__code {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.prefix-select__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 200;
+    width: 280px;
+    background: #fff;
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.prefix-select__search-wrap {
+    padding: 8px;
+    border-bottom: 1px solid var(--mix-color-border-grey);
+}
+
+.prefix-select__search {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    font-family: var(--mix-font-family-primary);
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.prefix-select__search:focus {
+    border-color: var(--mix-color-brand-primary);
+}
+
+.prefix-select__list {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    max-height: 240px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.prefix-select__option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--mix-color-text-dark);
+    transition: background 0.1s;
+}
+
+.prefix-select__option:hover,
+.prefix-select__option:focus,
+.prefix-select__option.is-focused {
+    background: var(--mix-color-background-grey-light, #f5f5f5);
+    outline: none;
+}
+
+.prefix-select__option.is-selected {
+    background: rgba(1, 190, 74, 0.08);
+    font-weight: 500;
+}
+
+.prefix-select__option-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.prefix-select__option-code {
+    color: #828282;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.prefix-select__option[hidden] {
+    display: none;
+}
+
+/* Flag icon sizing inside dropdown */
+.prefix-select .fi {
+    flex-shrink: 0;
+    width: 20px;
+    height: 15px;
+    border-radius: 2px;
+    background-size: cover;
 }
 
 /* ── OTP ──────────────────────────────────────────────── */

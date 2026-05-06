@@ -11,6 +11,12 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// ─── Manualne ładowanie klas (wymagane jeśli autoloader nie został odświeżony) ──
+require_once dirname(__DIR__) . '/src/Forms/Helpers/PhonePrefixes.php';
+require_once dirname(__DIR__) . '/src/Forms/Helpers/CommonFields.php';
+require_once dirname(__DIR__) . '/src/Forms/BaseFormHandler.php';
+require_once dirname(__DIR__) . '/src/Forms/ContactForm.php';
+
 // ─── Rejestr formularzy ───────────────────────────────────────────────────────
 
 /**
@@ -246,6 +252,11 @@ function np_forms_enqueue_assets(): void
 
     if (! file_exists($jsPath)) {
         return;
+    }
+
+    // flag-icons — wymagane przez custom prefix dropdown w polu telefonu
+    if (! wp_style_is('flag-icons', 'enqueued')) {
+        wp_enqueue_style('flag-icons', 'https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css', [], null);
     }
 
     wp_enqueue_script(

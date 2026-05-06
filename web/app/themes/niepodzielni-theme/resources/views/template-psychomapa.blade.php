@@ -20,9 +20,9 @@
 
 <script data-cfasync="false">
 window.npPsychomapa = {
-    apiUrl: @json($api_url),
-    rodzajeTerms: @json($rodzaje_data),
-    grupyTerms: @json($grupy_data)
+    apiUrl: {!! json_encode($api_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!},
+    rodzajeTerms: {!! json_encode($rodzaje_data, JSON_UNESCAPED_UNICODE) !!},
+    grupyTerms: {!! json_encode($grupy_data, JSON_UNESCAPED_UNICODE) !!}
 };
 </script>
 

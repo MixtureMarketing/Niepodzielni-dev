@@ -22,14 +22,8 @@ abstract class BaseFormHandler
     /**
      * Zwraca konfigurację pól formularza.
      *
-     * Format jednego pola:
-     * [
-     *   'label'      => 'Imię i nazwisko',
-     *   'type'       => 'text' | 'email' | 'textarea' | 'checkbox',
-     *   'required'   => true,
-     *   'max_length' => 255,
-     *   'sanitize'   => 'sanitize_text_field', // nazwa funkcji WP lub callable
-     * ]
+     * Obsługiwane typy: text, email, tel, textarea, select, radio, checkbox
+     * Opcje dla select/radio: ['value' => 'Label'] lub ['value' => ['iso'=>..., 'label'=>..., ...]]
      *
      * @return array<string, array<string, mixed>>
      */
@@ -54,7 +48,7 @@ abstract class BaseFormHandler
             $type     = $config['type']  ?? 'text';
             $required = $config['required'] ?? false;
 
-            // Checkbox: wartość "on", "1", true lub dowolna truthy
+            // ── Checkbox ──
             if ($type === 'checkbox') {
                 $sanitized[$name] = ! empty($value);
                 if ($required && ! $sanitized[$name]) {
@@ -63,37 +57,88 @@ abstract class BaseFormHandler
                 continue;
             }
 
+            // ── Select / Radio ──
+            if ($type === 'select' || $type === 'radio') {
+                $value = is_string($value) ? trim($value) : '';
+
+                if ($required && $value === '') {
+                    $errors[$name]    = "Pole \"{$label}\" jest wymagane.";
+                    $sanitized[$name] = '';
+                    continue;
+                }
+
+                if ($value !== '') {
+                    $allowed = array_keys((array) ($config['options'] ?? []));
+                    if (! in_array($value, $allowed, true)) {
+                        $errors[$name] = "Pole \"{$label}\" zawiera niedozwoloną wartość.";
+                    }
+                }
+
+                $sanitized[$name] = sanitize_text_field($value);
+                continue;
+            }
+
+            // ── Pozostałe typy ──
             $value = is_string($value) ? trim($value) : '';
 
             if ($required && $value === '') {
-                $errors[$name] = "Pole \"{$label}\" jest wymagane.";
+                $errors[$name]    = "Pole \"{$label}\" jest wymagane.";
                 $sanitized[$name] = '';
                 continue;
             }
 
             // Sanityzacja
-            $sanitizeFn = $config['sanitize'] ?? 'sanitize_text_field';
+            $sanitizeFn       = $config['sanitize'] ?? 'sanitize_text_field';
             $sanitized[$name] = is_callable($sanitizeFn) ? $sanitizeFn($value) : sanitize_text_field($value);
 
-            // Walidacja typu
+            // Walidacja e-mail
             if ($type === 'email' && $value !== '') {
                 if (! is_email($sanitized[$name])) {
                     $errors[$name] = "Pole \"{$label}\" musi być prawidłowym adresem e-mail.";
                 }
             }
 
-            // Maksymalna długość
+            // Maksymalna długość znakowa
             if (isset($config['max_length']) && mb_strlen((string) $sanitized[$name]) > (int) $config['max_length']) {
                 $errors[$name] = "Pole \"{$label}\" może mieć maksymalnie {$config['max_length']} znaków.";
             }
 
-            // Wzorzec regex (opcjonalny)
-            if (isset($config['pattern']) && $value !== '' && ! preg_match('/' . $config['pattern'] . '/', (string) $sanitized[$name])) {
-                $errors[$name] = $config['pattern_message'] ?? "Pole \"{$label}\" ma nieprawidłowy format.";
+            // Minimalna długość znakowa
+            if (isset($config['min_length']) && $value !== '' && mb_strlen((string) $sanitized[$name]) < (int) $config['min_length']) {
+                $errors[$name] = "Pole \"{$label}\" musi mieć co najmniej {$config['min_length']} znaków.";
+            }
+
+            // Wzorzec regex
+            if (! empty($config['pattern']) && $value !== '') {
+                $pattern = (string) $config['pattern'];
+                $regex   = (str_starts_with($pattern, '/')) ? $pattern : '/' . $pattern . '/u';
+
+                if (! preg_match($regex, $value)) {
+                    $errors[$name] = $config['custom_error'] ?? $config['pattern_message'] ?? "Pole \"{$label}\" ma nieprawidłowy format.";
+                }
             }
         }
 
+        // ── Walidacja powiązana (np. telefon ↔ prefix) ──
+        $relatedErrors = $this->validateRelated($sanitized, $data);
+        foreach ($relatedErrors as $field => $message) {
+            $errors[$field] ??= $message;
+        }
+
         return ['errors' => $errors, 'sanitized' => $sanitized];
+    }
+
+    /**
+     * Walidacja relacji między polami (np. długość numeru telefonu względem kierunkowego).
+     * Klasy potomne mogą nadpisać tę metodę.
+     *
+     * @param  array<string, mixed>  $sanitized
+     * @param  array<string, mixed>  $raw
+     * @return array<string, string>  Tablica błędów: ['pole' => 'komunikat']
+     */
+    protected function validateRelated(array $sanitized, array $raw): array
+    {
+        return [];
     }
 
     // ─── Zapis do bazy ────────────────────────────────────────────────────────
@@ -153,16 +198,18 @@ abstract class BaseFormHandler
             return;
         }
 
-        $siteName  = get_bloginfo('name');
+        $siteName   = get_bloginfo('name');
         $adminEmail = $this->adminEmail ?: get_option('admin_email');
         $userEmail  = (string) get_post_meta($submissionId, '_user_email', true);
         $sourceUrl  = (string) get_post_meta($submissionId, '_source_url', true);
+
+        $htmlFilter = static fn(): string => 'text/html';
 
         // ── Mail do admina ──
         $adminBody  = "<p>Nowe zgłoszenie z formularza <strong>{$this->getFormId()}</strong> na stronie {$siteName}.</p>";
         $adminBody .= '<table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;">';
         foreach ($formData as $key => $val) {
-            $display = is_bool($val) ? ($val ? 'Tak' : 'Nie') : esc_html((string) $val);
+            $display    = is_bool($val) ? ($val ? 'Tak' : 'Nie') : esc_html((string) $val);
             $adminBody .= '<tr><th style="text-align:left;background:#f0f0f0;">' . esc_html(ucfirst(str_replace('_', ' ', $key))) . '</th><td>' . $display . '</td></tr>';
         }
         if ($sourceUrl) {
@@ -170,8 +217,7 @@ abstract class BaseFormHandler
         }
         $adminBody .= '</table>';
 
-        add_filter('wp_mail_content_type', static fn() => 'text/html');
-
+        add_filter('wp_mail_content_type', $htmlFilter);
         wp_mail(
             $adminEmail,
             "[{$siteName}] Nowe zgłoszenie — {$this->getFormId()}",
@@ -188,7 +234,7 @@ abstract class BaseFormHandler
             );
         }
 
-        remove_filter('wp_mail_content_type', static fn() => 'text/html');
+        remove_filter('wp_mail_content_type', $htmlFilter);
     }
 
     /**
@@ -220,18 +266,19 @@ abstract class BaseFormHandler
         update_post_meta($submissionId, '_otp_hash', $hash);
         update_post_meta($submissionId, '_otp_expires_at', (string) $expires);
 
-        $siteName = get_bloginfo('name');
-        $body     = "<p>Twój kod weryfikacyjny dla {$siteName}:</p>"
-                  . "<h2 style=\"letter-spacing:8px;font-size:32px;\">{$code}</h2>"
-                  . "<p>Kod jest ważny przez 15 minut.</p>";
+        $siteName   = get_bloginfo('name');
+        $body       = "<p>Twój kod weryfikacyjny dla {$siteName}:</p>"
+                    . "<h2 style=\"letter-spacing:8px;font-size:32px;\">{$code}</h2>"
+                    . "<p>Kod jest ważny przez 15 minut.</p>";
 
-        add_filter('wp_mail_content_type', static fn() => 'text/html');
+        $htmlFilter = static fn(): string => 'text/html';
+        add_filter('wp_mail_content_type', $htmlFilter);
         $sent = wp_mail(
             $userEmail,
             "[{$siteName}] Kod weryfikacyjny",
             $body,
         );
-        remove_filter('wp_mail_content_type', static fn() => 'text/html');
+        remove_filter('wp_mail_content_type', $htmlFilter);
 
         return $sent;
     }

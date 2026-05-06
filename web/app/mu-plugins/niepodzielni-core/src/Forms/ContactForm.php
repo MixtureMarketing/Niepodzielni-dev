@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Niepodzielni\Forms;
 
+use Niepodzielni\Forms\Helpers\CommonFields;
+use Niepodzielni\Forms\Helpers\PhonePrefixes;
+
 /**
- * Formularz kontaktowy — przykładowa implementacja BaseFormHandler.
- *
- * Pola: imie, email, wiadomosc, zgoda (RODO).
- * Weryfikacja OTP wyłączona; zapis do DB i mail do admina włączone.
+ * Formularz kontaktowy — testuje pełny zakres pól frameworka.
  */
 class ContactForm extends BaseFormHandler
 {
@@ -24,46 +24,65 @@ class ContactForm extends BaseFormHandler
     protected function getFields(): array
     {
         return [
-            'imie' => [
-                'label'      => 'Imię',
-                'type'       => 'text',
-                'required'   => true,
-                'max_length' => 50,
-                'sanitize'   => 'sanitize_text_field',
-            ],
-            'nazwisko' => [
-                'label'      => 'Nazwisko',
-                'type'       => 'text',
-                'required'   => false,
-                'max_length' => 50,
-                'sanitize'   => 'sanitize_text_field',
-            ],
-            'telefon' => [
-                'label'      => 'Numer telefonu',
-                'type'       => 'tel',
-                'required'   => false,
-                'max_length' => 20,
-                'sanitize'   => 'sanitize_text_field',
-            ],
-            'email' => [
-                'label'    => 'Adres e-mail',
-                'type'     => 'email',
+            'imie'                => CommonFields::imie(),
+            'nazwisko'            => CommonFields::nazwisko(),
+            'kod_pocztowy'        => CommonFields::kodPocztowy(),
+            'miasto'              => CommonFields::miasto(),
+            'ulica'               => CommonFields::ulica(),
+            'telefon_prefix'      => CommonFields::telefonPrefix(),
+            'telefon'             => CommonFields::telefon(),
+            'email'               => CommonFields::email(),
+            'temat'               => CommonFields::temat([
+                'ogolne'     => 'Ogólne zapytania',
+                'wspolpraca' => 'Współpraca',
+                'pomoc'      => 'Pomoc psychologiczna',
+            ]),
+            'preferowany_kontakt' => [
+                'label'    => 'Preferowany kontakt',
+                'type'     => 'radio',
                 'required' => true,
-                'sanitize' => 'sanitize_email',
+                'options'  => [
+                    'email'   => 'E-mail',
+                    'telefon' => 'Telefon',
+                ],
             ],
-            'wiadomosc' => [
-                'label'      => 'Wiadomość',
-                'type'       => 'textarea',
-                'required'   => true,
-                'max_length' => 2000,
-                'sanitize'   => 'sanitize_textarea_field',
-            ],
-            'zgoda' => [
-                'label'    => 'Wyrażam zgodę na przetwarzanie danych osobowych',
-                'type'     => 'checkbox',
-                'required' => true,
-            ],
+            'wiadomosc'           => CommonFields::wiadomosc(),
+            'zgoda'               => CommonFields::zgoda(
+                'Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z Polityką prywatności.'
+            ),
         ];
+    }
+
+    /**
+     * Walidacja relacyjna: długość numeru telefonu zależna od wybranego kierunkowego.
+     */
+    protected function validateRelated(array $sanitized, array $raw): array
+    {
+        $errors = [];
+
+        $prefix = (string) ($sanitized['telefon_prefix'] ?? '');
+        $phone  = (string) ($sanitized['telefon'] ?? '');
+
+        if ($prefix === '' || $phone === '') {
+            return $errors;
+        }
+
+        $prefixes = PhonePrefixes::getAll();
+        if (! isset($prefixes[$prefix])) {
+            return $errors;
+        }
+
+        $len = mb_strlen($phone);
+        $min = $prefixes[$prefix]['min'];
+        $max = $prefixes[$prefix]['max'];
+
+        if ($len < $min || $len > $max) {
+            $errors['telefon'] = $min === $max
+                ? "Dla kierunkowego {$prefix} numer telefonu musi mieć dokładnie {$min} cyfr."
+                : "Dla kierunkowego {$prefix} numer telefonu musi mieć od {$min} do {$max} cyfr.";
+        }
+
+        return $errors;
     }
 
     protected function getUserConfirmationBody(array $formData, string $siteName): string
