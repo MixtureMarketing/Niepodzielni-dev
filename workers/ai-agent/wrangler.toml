@@ -5,25 +5,61 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 preview_urls = false
 
+# ── Sekrety (NIGDY tutaj — używaj `wrangler secret put <NAME>`): ────────────
+#   CF_AIG_TOKEN     — Cloudflare AI Gateway bearer token
+#   WORKER_SECRET    — wspólny sekret WP↔Worker dla /sync (X-Worker-Secret)
+#   WP_BOT_TOKEN     — token do REST API WP (X-API-Key) dla /bot-feedback
+#   NP_AI_BOT_TOKEN  — Bearer token używany przez WP front do uwierzytelniania
+#                      requestów `/chat`, `/search`, `/feedback` (musi być
+#                      identyczny z `NP_AI_BOT_TOKEN` w `.env` WP)
+# Patrz: docs/security-runbook.md → "Rotacja sekretów Worker".
+
 [ai]
 binding = "AI"
 
+# ── Rate limiting (KV-backed counter). Utwórz namespace komendą: ────────────
+#   wrangler kv:namespace create RATE_LIMIT
+# i wklej `id`/`preview_id` poniżej.
+# [[kv_namespaces]]
+# binding     = "RATE_LIMIT"
+# id          = "<production-namespace-id>"
+# preview_id  = "<preview-namespace-id>"
+
 [[vectorize]]
-binding = "VECTORIZE_PSY"
+binding    = "VECTORIZE_PSY"
 index_name = "psycholodzy"
 
 [[vectorize]]
-binding = "VECTORIZE_FAQ"
+binding    = "VECTORIZE_FAQ"
 index_name = "faq"
 
 [[vectorize]]
-binding = "VECTORIZE_KNOWLEDGE"
+binding    = "VECTORIZE_KNOWLEDGE"
 index_name = "niepodzielni-knowledge"
 
+# ── Wartości jawne (bez sekretów). `GATEWAY_BASE_URL` zawiera account_id, ale
+#    sam URL bez `CF_AIG_TOKEN` nie pozwala na wywołanie. Zostaje w `vars`. ──
 [vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
 CHAT_MODEL       = "openai/gpt-4o-mini"
 EMBED_MODEL      = "@cf/baai/bge-m3"
 WP_API_URL       = "https://dev.niepodzielni.com/wp-json/niepodzielni/v1"
-# Stary tymczasowy tunel (trycloudflare): wygasł — zastąpiony stałym dev.niepodzielni.com
-# Produkcja: https://niepodzielni-dev-01.mixturemarketing.pl/wp-json/niepodzielni/v1
+
+# ── Środowiska. Wdrażaj produkcję komendą: `wrangler deploy --env production` ─
+[env.production]
+name = "niepodzielni-ai-agent-production"
+
+[env.production.vars]
+GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
+CHAT_MODEL       = "openai/gpt-4o-mini"
+EMBED_MODEL      = "@cf/baai/bge-m3"
+WP_API_URL       = "https://niepodzielni.pl/wp-json/niepodzielni/v1"
+
+[env.staging]
+name = "niepodzielni-ai-agent-staging"
+
+[env.staging.vars]
+GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
+CHAT_MODEL       = "openai/gpt-4o-mini"
+EMBED_MODEL      = "@cf/baai/bge-m3"
+WP_API_URL       = "https://dev.niepodzielni.com/wp-json/niepodzielni/v1"
