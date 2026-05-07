@@ -22,6 +22,13 @@
             Domyślnie wszystkie zgody są wyłączone — wybierz, na co się zgadzasz. Niezbędne pliki cookie
             (logowanie, sesja, zabezpieczenia) działają zawsze. Szczegóły w
             <a href="/polityka-prywatnosci/">polityce prywatności</a>.
+            <button
+                type="button"
+                class="np-consent__manage-trigger"
+                data-consent-show-manage
+                aria-controls="np-consent-manage"
+                aria-expanded="false"
+            >Zarządzaj zgodami</button>
         </p>
 
         <div class="np-consent__actions">
@@ -38,14 +45,6 @@
                 data-consent-reject-all
             >
                 Tylko niezbędne
-            </button>
-            <button
-                type="button"
-                class="np-consent__btn np-consent__btn--ghost"
-                data-consent-show-manage
-                aria-controls="np-consent-manage"
-            >
-                Zarządzaj zgodami
             </button>
         </div>
 

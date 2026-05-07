@@ -1,7 +1,7 @@
 /**
  * Consent Mode v2 — banner CMP.
- * Styl celowo minimalny: utrzymuje JS bundle <5KB gz i łatwo skaluje
- * do brand-tokens (var(--np-...)) gdy tylko w atoms/variables.css się pojawią.
+ * Brand tokens: zielony (--mix-color-brand-primary) + granat (--mix-color-brand-secondary).
+ * Styl utrzymuje JS bundle <5KB gz; kolory/promienie z atoms/variables.css.
  */
 
 .np-consent {
@@ -10,10 +10,10 @@
     z-index: 9000;
     max-width: 720px;
     margin-inline: auto;
-    background: #ffffff;
-    color: #111827;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    background: var(--mix-color-background-light);
+    color: var(--mix-color-text-dark);
+    border: 1px solid var(--mix-color-border-light);
+    border-radius: var(--mix-radius-sm);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     padding: 1.25rem 1.25rem 1rem;
     font-size: 0.95rem;
@@ -26,16 +26,36 @@
 
 .np-consent__title {
     font-size: 1.1rem;
-    font-weight: 700;
+    font-weight: var(--mix-font-weight-bold);
+    color: var(--mix-color-brand-secondary);
     margin: 0 0 0.5rem;
 }
 
 .np-consent__desc {
     margin: 0 0 0.875rem;
+    color: var(--mix-color-text-dark);
 }
 
 .np-consent__desc a {
+    color: var(--mix-color-brand-secondary);
     text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.np-consent__manage-trigger {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--mix-color-brand-secondary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.np-consent__manage-trigger:hover,
+.np-consent__manage-trigger:focus-visible {
+    filter: brightness(1.15);
 }
 
 .np-consent__actions {
@@ -47,50 +67,46 @@
 .np-consent__btn {
     appearance: none;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: var(--mix-radius-xs);
     padding: 0.55rem 0.95rem;
-    font-weight: 600;
+    font-weight: var(--mix-font-weight-semibold);
     cursor: pointer;
     line-height: 1.2;
     font: inherit;
+    transition: background var(--mix-transition-fast), color var(--mix-transition-fast), filter var(--mix-transition-fast);
 }
 
 .np-consent__btn--primary {
-    background: #111827;
-    color: #ffffff;
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+    border: none;
 }
 
 .np-consent__btn--primary:hover,
 .np-consent__btn--primary:focus-visible {
-    background: #000000;
+    filter: brightness(0.92);
 }
 
 .np-consent__btn--secondary {
-    background: #ffffff;
-    color: #111827;
-    border-color: #d1d5db;
+    background: transparent;
+    color: var(--mix-color-brand-primary);
+    border: 1.5px solid var(--mix-color-brand-primary);
 }
 
 .np-consent__btn--secondary:hover,
 .np-consent__btn--secondary:focus-visible {
-    background: #f3f4f6;
-}
-
-.np-consent__btn--ghost {
-    background: transparent;
-    color: #374151;
-    text-decoration: underline;
-    padding-inline: 0.25rem;
+    background: var(--mix-color-brand-primary);
+    color: #fff;
 }
 
 .np-consent__btn:focus-visible {
-    outline: 2px solid #2563eb;
+    outline: 3px solid var(--mix-color-brand-secondary);
     outline-offset: 2px;
 }
 
 .np-consent__manage {
     margin-top: 1rem;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--mix-color-border-light);
     padding-top: 0.875rem;
 }
 
@@ -102,13 +118,21 @@
     border: 0;
     padding: 0;
     margin: 0 0 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+@media (min-width: 600px) {
+    .np-consent__group {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
 }
 
 .np-consent__legend {
-    font-weight: 600;
+    font-weight: var(--mix-font-weight-semibold);
+    color: var(--mix-color-brand-secondary);
     margin-bottom: 0.25rem;
     padding: 0;
 }
@@ -118,8 +142,8 @@
     align-items: flex-start;
     gap: 0.625rem;
     padding: 0.5rem;
-    border-radius: 8px;
-    background: #f9fafb;
+    border-radius: var(--mix-radius-xs);
+    background: var(--mix-color-background-grey-light);
     cursor: pointer;
 }
 
@@ -128,13 +152,14 @@
     width: 1rem;
     height: 1rem;
     flex-shrink: 0;
+    accent-color: var(--mix-color-brand-primary);
 }
 
 .np-consent__hint {
     display: block;
     font-size: 0.85rem;
-    color: #4b5563;
-    font-weight: 400;
+    color: var(--mix-color-text-muted);
+    font-weight: var(--mix-font-weight-regular);
 }
 
 .np-consent__manage-actions {
@@ -148,7 +173,14 @@
         padding: 1rem;
     }
 
-    .np-consent__actions .np-consent__btn {
+    .np-consent__actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .np-consent__btn {
+        padding: 0.85rem 1rem;
+        min-height: 44px;
         flex: 1 1 auto;
     }
 }
