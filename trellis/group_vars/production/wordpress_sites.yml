@@ -47,6 +47,7 @@ wordpress_sites:
       bookero_api_key_nisko: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_api_key_nisko'] }}"
       bookero_cal_id_pelny: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_cal_id_pelny'] }}"
       bookero_cal_id_nisko: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_cal_id_nisko'] }}"
+      np_discord_webhook_url: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_discord_webhook_url'] | default('') }}"
 
   # Staging vhost na tym samym VPS produkcyjnym — gałąź `dev` deployowana przez
   # .github/workflows/dev-deploy.yml. Cache wyłączony żeby zmiany widać od razu.
@@ -91,3 +92,4 @@ wordpress_sites:
       bookero_api_key_nisko: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['bookero_api_key_nisko'] }}"
       bookero_cal_id_pelny: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['bookero_cal_id_pelny'] }}"
       bookero_cal_id_nisko: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['bookero_cal_id_nisko'] }}"
+      np_discord_webhook_url: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_discord_webhook_url'] | default('') }}"
