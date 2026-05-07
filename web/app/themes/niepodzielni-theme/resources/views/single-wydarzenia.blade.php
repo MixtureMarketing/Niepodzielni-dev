@@ -159,44 +159,10 @@
         @endif
       </div>
 
-      @php
-        $wyd_status    = get_post_meta($post_id, 'status', true);
-        $zapisy_off    = $wyd_status === 'Zapisy zakończone';
-        $calendar_html = (!$zapisy_off && $m['id_uslugi']) ? do_shortcode('[bookero_kalendarz]') : '';
-      @endphp
-      @if($m['id_uslugi'] || $zapisy_off)
-      <div id="bookero">
-        @if($zapisy_off)
-          <div class="nsingle-zapisy-zakonczone">
-            <p class="nsingle-zapisy-zakonczone__icon">🔒</p>
-            <p class="nsingle-zapisy-zakonczone__title">Zapisy zakończone</p>
-            <p class="nsingle-zapisy-zakonczone__desc">Rejestracja na to wydarzenie jest już zamknięta.</p>
-          </div>
-        @else
-          {!! $calendar_html !!}
-          <div id="bookero-fallback" class="nsingle-zapisy-zakonczone" style="display:none;">
-            <p class="nsingle-zapisy-zakonczone__icon">🔒</p>
-            <p class="nsingle-zapisy-zakonczone__title">Zapisy zakończone</p>
-            <p class="nsingle-zapisy-zakonczone__desc">Rejestracja na to wydarzenie jest już zamknięta.</p>
-          </div>
-          <script>
-          (function() {
-            setTimeout(function() {
-              var plugin  = document.getElementById('bookero-plugin');
-              var wrapper = document.getElementById('bookero_wrapper');
-              var fallback = document.getElementById('bookero-fallback');
-              if (!fallback) return;
-              var hasContent = plugin && plugin.innerText && plugin.innerText.trim().length > 10;
-              if (!hasContent) {
-                if (wrapper) wrapper.style.display = 'none';
-                fallback.style.display = 'block';
-              }
-            }, 8000);
-          })();
-          </script>
-        @endif
-      </div>
-      @endif
+      @include('partials.listing.molecules.bookero-block', [
+        'id_uslugi'  => $m['id_uslugi'],
+        'zapisy_off' => get_post_meta($post_id, 'status', true) === 'Zapisy zakończone',
+      ])
 
     </div>
   </div>

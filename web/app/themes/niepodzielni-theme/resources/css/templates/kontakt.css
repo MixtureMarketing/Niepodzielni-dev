@@ -144,9 +144,10 @@
     transition: border-color .25s;
     box-sizing: border-box;
 }
-.kontakt-form__field input:focus,
-.kontakt-form__field textarea:focus {
+.kontakt-form__field input:focus-visible,
+.kontakt-form__field textarea:focus-visible {
     border-bottom-color: var(--mix-color-brand-primary);
+    box-shadow: var(--mix-focus-ring);
 }
 .kontakt-form__field textarea {
     background: #F9F8F6;

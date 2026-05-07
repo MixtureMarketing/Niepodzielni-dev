@@ -183,6 +183,11 @@ Config::define('DISALLOW_FILE_EDIT', true);
 // Disable plugin and theme updates and installation from the admin
 Config::define('DISALLOW_FILE_MODS', true);
 
+// Force HTTPS for the admin and login. Override w `config/environments/development.php`
+// (lokalny dev na HTTP).
+Config::define('FORCE_SSL_ADMIN', true);
+Config::define('FORCE_SSL_LOGIN', true);
+
 // Limit the number of post revisions
 Config::define('WP_POST_REVISIONS', env('WP_POST_REVISIONS') ?? true);
 
@@ -220,5 +225,12 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', $webroot_dir . '/wp/');
 }
 
-define('QM_ENABLE_CAPSULE', true);
-// SAVEQUERIES i QM_SHOW_ALL_QUERIES są włączane tylko w środowisku development (patrz config/environments/development.php)
+// Query Monitor + SAVEQUERIES są włączone tylko poza produkcją.
+// Na produkcji: SAVEQUERIES=false ustawione w config/environments/production.php (PR #7).
+if (WP_ENV !== 'production') {
+    define('QM_ENABLE_CAPSULE', true);
+    define('QM_SHOW_ALL_QUERIES', true);
+    if (! defined('SAVEQUERIES')) {
+        define('SAVEQUERIES', true);
+    }
+}

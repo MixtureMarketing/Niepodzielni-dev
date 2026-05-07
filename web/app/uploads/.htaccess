@@ -1,0 +1,27 @@
+# Apache hardening dla `wp-content/uploads`.  Trellis (nginx) blokuje
+# wykonanie PHP w `wordpress-site.conf.j2` (`/uploads/.*\.php$ deny all`),
+# ten plik chroni hosty Apache (lokalny dev, alternatywni hosting).
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|phar|pl|py|cgi|sh|exe)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+# Apache 2.2
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|phar|pl|py|cgi|sh|exe)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# Wyłącz auto-indexing — żaden klient nie potrzebuje listy plików.
+Options -Indexes
+
+# X-Content-Type-Options dla mediów: zapobiega MIME sniffingowi w przeglądarkach,
+# które obejdą tym wymóg `Content-Type` (Edge, niektóre wersje Safari).
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

@@ -5,27 +5,116 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 preview_urls = false
 
+# ── Sekrety (NIGDY tutaj — używaj `wrangler secret put <NAME>`): ────────────
+#   CF_AIG_TOKEN     — Cloudflare AI Gateway bearer token
+#   WORKER_SECRET    — wspólny sekret WP↔Worker dla /sync (X-Worker-Secret)
+#   WP_BOT_TOKEN     — token do REST API WP (X-API-Key) dla /bot-feedback
+#   NP_AI_BOT_TOKEN  — Bearer token używany przez WP front do uwierzytelniania
+#                      requestów `/chat`, `/search`, `/feedback` (musi być
+#                      identyczny z `NP_AI_BOT_TOKEN` w `.env` WP)
+# Patrz: docs/security-runbook.md → "Rotacja sekretów Worker".
+
 [ai]
 binding = "AI"
 
+# ── Rate limiting (KV-backed counter). Top-level binding nie jest dziedziczony
+#    przez `--env` deploys; każdy env (production/staging) deklaruje własny KV
+#    namespace poniżej. `wrangler kv namespace create RATE_LIMIT --env <env>`.
+
 [[vectorize]]
-binding = "VECTORIZE_PSY"
+binding    = "VECTORIZE_PSY"
 index_name = "psycholodzy"
 
 [[vectorize]]
-binding = "VECTORIZE_FAQ"
+binding    = "VECTORIZE_FAQ"
 index_name = "faq"
 
 [[vectorize]]
-binding = "VECTORIZE_KNOWLEDGE"
+binding    = "VECTORIZE_KNOWLEDGE"
 index_name = "niepodzielni-knowledge"
 
+# ── AVAIL_CACHE (PR #5): KV cache dla buildAvailabilityContext (TTL 90s).
+#    Top-level — używane przez `wrangler deploy` bez --env (legacy default).
+#    Dla --env production/staging powtórzone w env blocks poniżej.
+[[kv_namespaces]]
+binding = "AVAIL_CACHE"
+id      = "3a8699757cf64581b9b6b958bf436a5b"
+
+# ── Wartości jawne (bez sekretów). `GATEWAY_BASE_URL` zawiera account_id, ale
+#    sam URL bez `CF_AIG_TOKEN` nie pozwala na wywołanie. Zostaje w `vars`. ──
 [vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
 CHAT_MODEL       = "openai/gpt-4o-mini"
 EMBED_MODEL      = "@cf/baai/bge-m3"
 WP_API_URL       = "https://dev.niepodzielni.com/wp-json/niepodzielni/v1"
+# WP_CRISIS_URL (PR #6) — endpoint Crisis Hub, link w SSE event przy detekcji kryzysu.
 WP_CRISIS_URL    = "https://dev.niepodzielni.com/pomoc-w-kryzysie/"
-# Stary tymczasowy tunel (trycloudflare): wygasł — zastąpiony stałym dev.niepodzielni.com
-# Produkcja: https://niepodzielni-dev-01.mixturemarketing.pl/wp-json/niepodzielni/v1
-# Produkcja crisis URL: https://niepodzielni.com/pomoc-w-kryzysie/
+
+# ── Środowiska. Wdrażaj produkcję komendą: `wrangler deploy --env production` ─
+# UWAGA: env.* nie dziedziczą top-level [ai], [[vectorize]], [[kv_namespaces]].
+# Każde środowisko musi powtórzyć wszystkie używane bindings.
+[env.production]
+name = "niepodzielni-ai-agent-production"
+
+[env.production.ai]
+binding = "AI"
+
+[[env.production.vectorize]]
+binding    = "VECTORIZE_PSY"
+index_name = "psycholodzy"
+
+[[env.production.vectorize]]
+binding    = "VECTORIZE_FAQ"
+index_name = "faq"
+
+[[env.production.vectorize]]
+binding    = "VECTORIZE_KNOWLEDGE"
+index_name = "niepodzielni-knowledge"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMIT"
+id      = "4f9d83208b804a709cb273d8dbcf46aa"
+
+[[env.production.kv_namespaces]]
+binding = "AVAIL_CACHE"
+id      = "4201695d4dfe41e6a38a8ebe15d62372"
+
+[env.production.vars]
+GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
+CHAT_MODEL       = "openai/gpt-4o-mini"
+EMBED_MODEL      = "@cf/baai/bge-m3"
+WP_API_URL       = "https://niepodzielni.pl/wp-json/niepodzielni/v1"
+WP_CRISIS_URL    = "https://niepodzielni.pl/pomoc-w-kryzysie/"
+
+[env.staging]
+name = "niepodzielni-ai-agent-staging"
+
+[env.staging.ai]
+binding = "AI"
+
+[[env.staging.vectorize]]
+binding    = "VECTORIZE_PSY"
+index_name = "psycholodzy"
+
+[[env.staging.vectorize]]
+binding    = "VECTORIZE_FAQ"
+index_name = "faq"
+
+[[env.staging.vectorize]]
+binding    = "VECTORIZE_KNOWLEDGE"
+index_name = "niepodzielni-knowledge"
+
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMIT"
+id      = "a987aa1e6f0d48f3b4f55cf068dd9b79"
+
+[[env.staging.kv_namespaces]]
+binding = "AVAIL_CACHE"
+id      = "ed309d95c1f84d1682dc2a8d79ca8d58"
+
+[env.staging.vars]
+GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
+CHAT_MODEL       = "openai/gpt-4o-mini"
+EMBED_MODEL      = "@cf/baai/bge-m3"
+WP_API_URL       = "https://dev.niepodzielni.com/wp-json/niepodzielni/v1"
+WP_CRISIS_URL    = "https://dev.niepodzielni.com/pomoc-w-kryzysie/"

@@ -68,9 +68,9 @@
     box-sizing: border-box;
 }
 
-.form-field__input:focus {
+.form-field__input:focus-visible {
     border-color: var(--mix-color-brand-primary);
-    box-shadow: 0 0 0 3px rgba(1, 190, 74, 0.15);
+    box-shadow: var(--mix-focus-ring);
 }
 
 .form-field__input.is-invalid {

@@ -71,20 +71,30 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
     $typ  = $request->get_param('consult_type');
     $days = (int) $request->get_param('days');
 
+    // Cache 60s — endpoint wywoływany przez AI Worker na każdym żądaniu czatu
+    $cache_key = "np_bot_avail_{$typ}_{$days}";
+    $cached    = get_transient($cache_key);
+    if ($cached !== false) {
+        return new \WP_REST_Response($cached, 200);
+    }
+
     // Pobierz daty z zakresu today → today+days
     $today    = current_time('Y-m-d');
     $end_date = gmdate('Y-m-d', strtotime("+{$days} days", strtotime($today)));
 
     $slots_key = $typ === 'nisko' ? 'bookero_slots_nisko' : 'bookero_slots_pelno';
-    $id_key    = $typ === 'nisko' ? 'bookero_id_niski' : 'bookero_id_pelny';
+    $id_key    = np_bk_id_meta_key($typ);
 
-    // Zbierz wszystkich psychologów z tym typem konta
+    // Zbierz psychologów z tym typem konta (limit 300 — wystarczy dla realnej bazy)
     $psycholodzy = get_posts([
-        'post_type'      => 'psycholog',
-        'post_status'    => 'publish',
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'meta_query'     => [[
+        'post_type'              => 'psycholog',
+        'post_status'            => 'publish',
+        'posts_per_page'         => 300,
+        'fields'                 => 'ids',
+        'no_found_rows'          => true,
+        'update_post_meta_cache' => true,
+        'update_post_term_cache' => false,
+        'meta_query'             => [[
             'key'     => $id_key,
             'compare' => 'EXISTS',
         ]],
@@ -146,7 +156,10 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
         ];
     }
 
-    return new \WP_REST_Response(['slots' => $result], 200);
+    $response = ['slots' => $result];
+    set_transient($cache_key, $response, 60);
+
+    return new \WP_REST_Response($response, 200);
 }
 
 /**
@@ -162,11 +175,14 @@ function np_ai_rest_bookero_status(): \WP_REST_Response
     $last_cron      = (int) get_option('np_bookero_last_cron_run', 0);
 
     $psycholodzy = get_posts([
-        'post_type'      => 'psycholog',
-        'post_status'    => 'publish',
-        'posts_per_page' => -1,
-        'fields'         => 'ids',
-        'meta_query'     => [[
+        'post_type'              => 'psycholog',
+        'post_status'            => 'publish',
+        'posts_per_page'         => 300,
+        'fields'                 => 'ids',
+        'no_found_rows'          => true,
+        'update_post_meta_cache' => true,
+        'update_post_term_cache' => false,
+        'meta_query'             => [[
             'key'     => 'bookero_id_niski',
             'compare' => 'EXISTS',
         ]],
@@ -221,15 +237,20 @@ function np_ai_rest_clear_cb(\WP_REST_Request $request): \WP_REST_Response
     delete_transient(BOOKERO_LOCKOUT_KEY);
     delete_option('np_bookero_lockout_since');
 
+    // Wyczyść cache bot-availability (był ustawiony na 60s, ale CB reset sugeruje nowe dane)
+    foreach (['pelno', 'nisko'] as $t) {
+        for ($d = 1; $d <= 30; $d++) {
+            delete_transient("np_bot_avail_{$t}_{$d}");
+        }
+    }
+
     // Wyczyść cache konfiguracji konta (24h TTL) — wymusza ponowne pobranie /init z mapą workerów
     $repo = new \Niepodzielni\Bookero\PsychologistRepository();
     delete_transient($repo->configCacheKey('nisko'));
     delete_transient($repo->configCacheKey('pelnoplatny'));
 
     // Wyczyść listing cache żeby pokazać aktualne dane
-    if (class_exists('App\Services\PsychologistListingService')) {
-        \App\Services\PsychologistListingService::clearCache();
-    }
+    np_clear_psy_listing_cache();
 
     // Wyczyść shared calendar month transients (5 min TTL) — zawierają stary service_id per worker
     foreach (['nisko', 'pelnoplatny'] as $t) {

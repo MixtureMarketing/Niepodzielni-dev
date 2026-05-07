@@ -14,6 +14,11 @@ wordpress_sites:
     ssl:
       enabled: true
       provider: letsencrypt
+      # HSTS — 2 lata, włączając subdomeny + zgłoszenie do listy preload przeglądarek.
+      # Patrz https://hstspreload.org/ przed pierwszym rolloutem (proces nieodwracalny przez ~6 mies.).
+      hsts_max_age: 63072000
+      hsts_include_subdomains: true
+      hsts_preload: true
     cache:
       enabled: true
     object_cache:
@@ -42,3 +47,47 @@ wordpress_sites:
       bookero_api_key_nisko: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_api_key_nisko'] }}"
       bookero_cal_id_pelny: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_cal_id_pelny'] }}"
       bookero_cal_id_nisko: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['bookero_cal_id_nisko'] }}"
+
+  # Staging vhost na tym samym VPS produkcyjnym — gałąź `dev` deployowana przez
+  # .github/workflows/dev-deploy.yml. Cache wyłączony żeby zmiany widać od razu.
+  # Wymaga DNS A-rekord dev.niepodzielni.com → 185.201.113.217 i osobnych
+  # vault_wordpress_sites['dev.niepodzielni.com'] entries przed pierwszym deployem.
+  dev.niepodzielni.com:
+    site_hosts:
+      - canonical: dev.niepodzielni.com
+    local_path: ../Niepodzielni-dev
+    repo: git@github.com:MixtureMarketing/Niepodzielni-dev.git
+    branch: dev
+    multisite:
+      enabled: false
+    ssl:
+      enabled: true
+      provider: letsencrypt
+    cache:
+      enabled: false
+    object_cache:
+      enabled: true
+      provider: redis
+    xmlrpc:
+      enabled: false
+    php_fpm_pm: dynamic
+    php_fpm_pm_max_children: 5
+    php_fpm_pm_start_servers: 2
+    php_fpm_pm_min_spare_servers: 1
+    php_fpm_pm_max_spare_servers: 3
+    php_fpm_pm_max_requests: 500
+    shared_children:
+      - path: web/app/themes/niepodzielni-theme/public/build
+        src: theme-build
+    env:
+      redis_host: "127.0.0.1"
+      redis_port: "6379"
+      np_ai_worker_url: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_ai_worker_url'] }}"
+      np_ai_worker_secret: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_ai_worker_secret'] }}"
+      np_ai_bot_token: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_ai_bot_token'] }}"
+      np_cf_turnstile_secret: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_cf_turnstile_secret'] }}"
+      np_cf_turnstile_site_key: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_cf_turnstile_site_key'] }}"
+      bookero_api_key_pelny: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['bookero_api_key_pelny'] }}"
+      bookero_api_key_nisko: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['bookero_api_key_nisko'] }}"
+      bookero_cal_id_pelny: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['bookero_cal_id_pelny'] }}"
+      bookero_cal_id_nisko: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['bookero_cal_id_nisko'] }}"

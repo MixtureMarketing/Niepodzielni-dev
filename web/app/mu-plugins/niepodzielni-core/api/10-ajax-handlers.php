@@ -8,30 +8,6 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-// ─── Whitelist walidacja parametru $typ ──────────────────────────────────────
-
-/**
- * Sprawdza czy $typ należy do dozwolonych wartości.
- * Wywołuj we wszystkich handlerach przyjmujących $typ z zewnątrz.
- *
- * Akceptowane warianty:
- *   pelno:  'pelno', 'pelnoplatny', 'pelnoplatne'  — data-typ="pelno" z Blade templates
- *   nisko:  'nisko', 'niskoplatny', 'niskoplatne'
- */
-function np_bookero_is_valid_typ(string $typ): bool
-{
-    return in_array($typ, [ 'pelno', 'pelnoplatny', 'pelnoplatne', 'nisko', 'niskoplatny', 'niskoplatne' ], true);
-}
-
-/**
- * Zwraca true jeśli $typ to wariant niskopłatny.
- * Centralny punkt decyzji — używaj zamiast inline in_array().
- */
-function np_bookero_is_nisko_typ(string $typ): bool
-{
-    return in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
-}
-
 // ─── Real-time ingest: przechwycony getMonth z bookero-init.js ───────────────
 // Gdy calendar widget ładuje miesiąc, JS interceptor wzywa tę akcję
 // z najbliższą dostępną datą — zero dodatkowych requestów do Bookero.
@@ -66,8 +42,8 @@ function np_ajax_bk_ingest_month(): void
     // Ustal typ konta (pelnoplatny / nisko) na podstawie hasha kalendarza
     $cal_id_nisko = np_bookero_cal_id_for('nisko');
     $typ          = ($cal_hash === $cal_id_nisko) ? 'nisko' : 'pelnoplatny';
-    $meta_key     = ($typ === 'nisko') ? 'najblizszy_termin_niskoplatny' : 'najblizszy_termin_pelnoplatny';
-    $worker_meta  = ($typ === 'nisko') ? 'bookero_id_niski' : 'bookero_id_pelny';
+    $meta_key     = np_bk_meta_key($typ);
+    $worker_meta  = np_bk_id_meta_key($typ);
 
     // Znajdź psychologa po worker ID
     $posts = get_posts([
@@ -308,15 +284,6 @@ function np_ajax_bk_get_shared_month(): void
     wp_send_json_success(np_bookero_shared_calendar_service()->buildMonthData($typ, $plus_months));
 }
 
-/**
- * @deprecated  Pozostawiona dla kompatybilności wstecznej — używaj SharedCalendarService::buildMonthData().
- *              Wewnętrznie deleguje do nowego serwisu (transient cache jest wspólny).
- */
-function np_bk_build_month_data(string $typ, int $plus_months): array
-{
-    return np_bookero_shared_calendar_service()->buildMonthData($typ, $plus_months);
-}
-
 // ─── Shared Calendar: sloty dla konkretnego dnia ─────────────────────────────
 
 add_action('wp_ajax_bk_get_date_slots', 'np_ajax_bk_get_date_slots');
@@ -375,7 +342,7 @@ function np_ajax_bk_verify_hour(): void
 
     // Batch lookup: worker_id → post_id (1 zapytanie zamiast N)
     // $meta_bk_key pochodzi z whitelisty $typ — ale całe zapytanie chroni $wpdb->prepare().
-    $meta_bk_key  = np_bookero_is_nisko_typ($typ) ? 'bookero_id_niski' : 'bookero_id_pelny';
+    $meta_bk_key  = np_bk_id_meta_key($typ);
     global $wpdb;
     $placeholders = implode(',', array_fill(0, count($bookero_ids), '%s'));
     $rows         = $wpdb->get_results(

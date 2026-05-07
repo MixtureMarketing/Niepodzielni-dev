@@ -4,11 +4,19 @@ on:
   push:
     branches: [main]
 
+# Anuluje równoległe deploye na tej samej gałęzi.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Build & Deploy
     runs-on: ubuntu-24.04
     environment: production
+
+    env:
+      PRODUCTION_HOST: 185.201.113.217
 
     steps:
       - name: Checkout
@@ -29,22 +37,25 @@ jobs:
         working-directory: web/app/themes/niepodzielni-theme
         run: npm run build
 
-      - name: Set up SSH key
+      # Klucz SSH ładowany do agenta tylko na czas joba — nigdy nie ląduje na dysku.
+      # known_hosts dodawane przez ssh-keyscan (chroni przed MITM podczas pierwszego deployu).
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Trust production host
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan 185.201.113.217 >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$PRODUCTION_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Upload built assets to server shared dir
         run: |
-          ssh root@185.201.113.217 "mkdir -p /srv/www/new.niepodzielni.com/shared/theme-build"
+          ssh "root@$PRODUCTION_HOST" "mkdir -p /srv/www/new.niepodzielni.com/shared/theme-build"
           rsync -az --delete \
             web/app/themes/niepodzielni-theme/public/build/ \
-            root@185.201.113.217:/srv/www/new.niepodzielni.com/shared/theme-build/
-
-      - name: Write vault password
-        run: echo "${{ secrets.ANSIBLE_VAULT_PASS }}" > trellis/.vault_pass
+            "root@$PRODUCTION_HOST:/srv/www/new.niepodzielni.com/shared/theme-build/"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -53,16 +64,62 @@ jobs:
           cache: pip
 
       - name: Install Ansible
-        run: pip install ansible>=2.10.0
+        run: pip install 'ansible>=2.10.0'
 
       - name: Install Ansible Galaxy roles
         working-directory: trellis
         run: ansible-galaxy install -r galaxy.yml -p vendor/roles --force
 
-      - name: Deploy
+      # Vault password przez `--vault-password-file` jako proces stdin (`<(...)`),
+      # nigdy nie zapisywany na dysk.  ANSIBLE_VAULT_PASSWORD jest dostępne tylko
+      # w ramach tego kroku — nie wycieka do logów (GitHub maskuje secrets).
+      - name: Deploy via Trellis
         working-directory: trellis
+        env:
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASS }}
         run: |
           ansible-playbook deploy.yml \
             -e env=production \
             -e site=new.niepodzielni.com \
-            --vault-password-file .vault_pass
+            --vault-password-file <(printf '%s' "$ANSIBLE_VAULT_PASSWORD")
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Worker (Cloudflare ai-agent) deploy — uruchamiany po pomyślnym deployu WP.
+  # Zależność `needs: deploy` zapewnia że worker dostaje update tylko gdy WP
+  # release (Trellis) przeszedł — nie chcemy mieć rozjazdu API między WP i Workerem.
+  #
+  # Wymaga sekretów GitHub:
+  #   CLOUDFLARE_API_TOKEN   — token Workers Edit (Account: Workers Scripts:Edit)
+  #   CLOUDFLARE_ACCOUNT_ID  — ID konta Cloudflare
+  # ────────────────────────────────────────────────────────────────────────────
+  worker-deploy:
+    name: Deploy Cloudflare Worker (production)
+    needs: deploy
+    runs-on: ubuntu-24.04
+    environment: production
+
+    defaults:
+      run:
+        working-directory: workers/ai-agent
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: workers/ai-agent/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci --ignore-scripts
+
+      # PR #7 dodał sekcje [env.production]/[env.staging] do wrangler.toml —
+      # explicit --env production targetuje produkcyjny worker `niepodzielni-ai-agent`.
+      - name: Wrangler deploy (production)
+        run: npx wrangler deploy --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -2,6 +2,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const accordionHeaders = document.querySelectorAll('.m_acordeon_head');
 
     accordionHeaders.forEach(function(head) {
+        if (!head.hasAttribute('tabindex')) head.setAttribute('tabindex', '0');
+
+        head.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+
         head.addEventListener('click', function() {
             // Przełącz klasę na nagłówku (dla strzałki)
             this.classList.toggle('m_acordeon_active');
