@@ -362,7 +362,7 @@ class NpAiChat {
                         if (event.crisis) {
                             // Usuń pusty bąbelek streamingu i pokaż panel kryzysowy
                             bubbleEl.closest('.np-chat__message')?.remove();
-                            this._renderCrisisPanel();
+                            this._renderCrisisPanel(event.crisis_url);
                             onDone({ ...event, reply: '', suggestions: [], quick_replies: [] });
                             return;
                         }
@@ -477,9 +477,15 @@ class NpAiChat {
         this._scrollToBottom();
     }
 
-    _renderCrisisPanel() {
+    _renderCrisisPanel(crisisUrl = '') {
         const div = document.createElement('div');
         div.className = 'np-chat__crisis';
+        const safeUrl = typeof crisisUrl === 'string' ? crisisUrl.trim() : '';
+        const hubLink = safeUrl
+            ? `<a href="${this._escapeHtml(safeUrl)}" class="np-chat__crisis-cta" target="_blank" rel="noopener">
+                <span>Otwórz pełną stronę pomocy w kryzysie →</span>
+              </a>`
+            : '';
         div.innerHTML = `
             <strong class="np-chat__crisis-title">Wygląda na to, że to może być trudna chwila.</strong>
             <p class="np-chat__crisis-desc">Proszę zadzwoń lub napisz do kogoś, kto może pomóc teraz:</p>
@@ -498,7 +504,8 @@ class NpAiChat {
             <a href="tel:112" class="np-chat__crisis-line np-chat__crisis-line--alert">
                 <span class="np-chat__crisis-icon">🚨</span>
                 <span>Zagrożenie życia — <strong>112</strong></span>
-            </a>`;
+            </a>
+            ${hubLink}`;
         this.messagesEl.appendChild(div);
         this._scrollToBottom();
     }

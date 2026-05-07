@@ -4,6 +4,7 @@
     <main id="main" class="site-main home-main">
         @include('partials.home.hero-tax')
         @include('partials.home.mission-bar')
+        @include('partials.wall-of-impact')
         @include('partials.home.about-intro')
         @include('partials.home.help-grid')
         @include('partials.home.event-banner')
