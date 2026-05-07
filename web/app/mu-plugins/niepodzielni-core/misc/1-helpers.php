@@ -10,6 +10,24 @@ if (! defined('ABSPATH')) {
 }
 
 /**
+ * Zwraca true gdy $typ to wariant niskopłatny.
+ * Centralny punkt decyzji — używaj zamiast inline in_array() w wielu miejscach.
+ */
+function np_bookero_is_nisko_typ(string $typ): bool
+{
+    return in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
+}
+
+/**
+ * Sprawdza czy $typ należy do dozwolonych wariantów (pełnopłatny | niskopłatny).
+ * Używaj w handlerach przyjmujących $typ z requesta.
+ */
+function np_bookero_is_valid_typ(string $typ): bool
+{
+    return in_array($typ, [ 'pelno', 'pelnoplatny', 'pelnoplatne', 'nisko', 'niskoplatny', 'niskoplatne' ], true);
+}
+
+/**
  * Wspólny szkielet dla np_bookero_api_key_for() i np_bookero_cal_id_for().
  * Priorytet: stała PHP (z .env) → WP option.
  *
@@ -22,7 +40,7 @@ function np_bookero_config_for(
     string $opt_nisko,
     string $opt_pelny,
 ): string {
-    $is_nisko = in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
+    $is_nisko = np_bookero_is_nisko_typ($typ);
     $const    = $is_nisko ? $const_nisko : $const_pelny;
     $opt      = $is_nisko ? $opt_nisko : $opt_pelny;
 
@@ -110,14 +128,25 @@ function np_get_post_terms(int $post_id, string $taxonomy, int $limit = 0): arra
 /**
  * Zwraca nazwę klucza postmeta dla najbliższego terminu Bookero.
  *
- * @param string $typ  'pelnoplatny' | 'niskoplatny'
+ * @param string $typ  'pelnoplatny' | 'niskoplatny' | warianty
  * @return string  Klucz postmeta
  */
 function np_bk_meta_key(string $typ): string
 {
-    return in_array($typ, [ 'niskoplatny', 'niskoplatne', 'nisko' ], true)
+    return np_bookero_is_nisko_typ($typ)
         ? 'najblizszy_termin_niskoplatny'
         : 'najblizszy_termin_pelnoplatny';
+}
+
+/**
+ * Zwraca nazwę klucza postmeta z worker ID Bookero dla danego typu konsultacji.
+ *
+ * @param string $typ  'pelnoplatny' | 'nisko' | warianty
+ * @return string  'bookero_id_niski' | 'bookero_id_pelny'
+ */
+function np_bk_id_meta_key(string $typ): string
+{
+    return np_bookero_is_nisko_typ($typ) ? 'bookero_id_niski' : 'bookero_id_pelny';
 }
 
 /**
@@ -376,4 +405,63 @@ function np_get_flag_map(): array
         'es'         => 'es',
         'it'         => 'it',
     ];
+}
+
+/**
+ * Weryfikuje token Cloudflare Turnstile w API CF.
+ *
+ * Sekret pobiera w kolejności:
+ *   1. const NP_CF_TURNSTILE_SECRET (.env)
+ *   2. const CF_TURNSTILE_SECRET_KEY (.env, alias dla zgodności)
+ *   3. WP option np_cf_turnstile_secret
+ *
+ * Brak sekretu na produkcji = blokuj; na lokal/staging = przepuść (developer mode).
+ *
+ * @param string $token     Token z pola hidden cf-turnstile-response
+ * @param string $remoteIp  IP klienta (opcjonalny, podnosi accuracy)
+ */
+function np_cf_turnstile_verify(string $token, string $remoteIp = ''): bool
+{
+    $secret = '';
+    foreach ([ 'NP_CF_TURNSTILE_SECRET', 'CF_TURNSTILE_SECRET_KEY' ] as $const) {
+        if (defined($const) && constant($const)) {
+            $secret = (string) constant($const);
+            break;
+        }
+    }
+    if (! $secret) {
+        $secret = (string) get_option('np_cf_turnstile_secret', '');
+    }
+    if (! $secret) {
+        return ! (defined('WP_ENV') && WP_ENV === 'production');
+    }
+
+    $body = [ 'secret' => $secret, 'response' => $token ];
+    if ($remoteIp) {
+        $body['remoteip'] = $remoteIp;
+    }
+
+    $response = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+        'timeout' => 10,
+        'body'    => $body,
+    ]);
+
+    if (is_wp_error($response)) {
+        return false;
+    }
+
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+
+    return (bool) ($data['success'] ?? false);
+}
+
+/**
+ * Inwaliduje cache listingu psychologów (jeśli theme go rejestruje).
+ * Centralizuje wzorzec class_exists() + ::clearCache() używany w wielu miejscach.
+ */
+function np_clear_psy_listing_cache(): void
+{
+    if (class_exists('App\\Services\\PsychologistListingService')) {
+        \App\Services\PsychologistListingService::clearCache();
+    }
 }
