@@ -1,8 +1,9 @@
 const ALLOWED_ORIGINS = [
-    'https://niepodzielni.pl',
+    'https://new.niepodzielni.com',  // produkcja (canonical)
+    'https://niepodzielni.pl',       // legacy
     'https://www.niepodzielni.pl',
-    'https://dev.niepodzielni.com',
-    'http://localhost:8000',
+    'https://dev.niepodzielni.com',  // staging/dev
+    'http://localhost:8000',         // docker dev
 ];
 
 export function corsHeaders(origin: string | null): Record<string, string> {
@@ -10,7 +11,9 @@ export function corsHeaders(origin: string | null): Record<string, string> {
     return {
         'Access-Control-Allow-Origin':  allowed,
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Worker-Secret',
+        // Authorization: Bearer NP_AI_BOT_TOKEN (PR #7) dla /chat /search /feedback.
+        // X-Worker-Secret: dla /sync (WP→Worker).
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Worker-Secret',
         'Access-Control-Max-Age':       '86400',
     };
 }
