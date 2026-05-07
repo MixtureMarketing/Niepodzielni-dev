@@ -21,12 +21,12 @@ function init() {
     const mapEl = document.querySelector('[data-np-crisis-map]');
     if (!mapEl || !window.L) return;
 
-    const termId = parseInt(mapEl.dataset.termId, 10);
+    const termId = parseInt(mapEl.dataset.termId, 10) || 0;
     const apiUrl = mapEl.dataset.apiUrl;
     const loadingEl = document.getElementById('np-crisis-map-loading');
     const listEl = document.getElementById('np-crisis-map-list');
 
-    if (!termId || !apiUrl) return;
+    if (!apiUrl) return;
 
     const map = L.map(mapEl, { scrollWheelZoom: false, zoomControl: true }).setView([52.0, 19.5], 6);
 
@@ -55,8 +55,12 @@ function init() {
         .then((data) => {
             if (loadingEl) loadingEl.hidden = true;
 
+            // Gdy term-id ustawiony — filtruj po nim. Brak term-id = pokaż wszystkie ośrodki
+            // (fallback do pełnej psychomapy, decyzja biznesowa do czasu otagowania ośrodków).
             const items = (Array.isArray(data) ? data : []).filter((item) =>
-                Array.isArray(item?.terms?.rodzaj_pomocy) && item.terms.rodzaj_pomocy.includes(termId),
+                termId
+                    ? (Array.isArray(item?.terms?.rodzaj_pomocy) && item.terms.rodzaj_pomocy.includes(termId))
+                    : true,
             );
 
             if (items.length === 0) {
