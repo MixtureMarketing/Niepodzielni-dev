@@ -170,12 +170,19 @@ export function getPageContext() {
 }
 
 /**
- * Klucze Consent Mode v2 → mapujemy na Zaraz purposeIds (do skonfigurowania
- * w dashboardzie Cloudflare Zaraz → Consent → Purposes). Te same klucze
- * są zapisywane do localStorage (`np_consent`) jako single source of truth
- * bannera CMP.
+ * Klucze Consent Mode v2 — semantyczne nazwy używane w kodzie i localStorage.
+ * Zaraz UI generuje losowe 4-znakowe purposeIds; mapujemy semantyczne klucze
+ * na faktyczne ID skonfigurowane w dashboardzie (Zaraz → Consent → Purposes).
+ * Aktualizacja mapy: po zmianie purposeIds w Zaraz UI, podmień wartości tutaj.
  */
 export const CONSENT_KEYS = ['analytics', 'ads', 'ad_user_data', 'ad_personalization'];
+
+const ZARAZ_PURPOSE_IDS = {
+    analytics:          'aBcw',
+    ads:                'nxsi',
+    ad_user_data:       'NBMn',
+    ad_personalization: 'nTod',
+};
 
 /**
  * Default-denied — wywoływać przed pierwszym npTrack().
@@ -196,7 +203,9 @@ export function setConsentDefault(signals) {
         if (typeof consent?.set === 'function') {
             const payload = {};
             for (const key of CONSENT_KEYS) {
-                if (typeof signals[key] === 'boolean') payload[key] = signals[key];
+                if (typeof signals[key] === 'boolean') {
+                    payload[ZARAZ_PURPOSE_IDS[key]] = signals[key];
+                }
             }
             if (Object.keys(payload).length) consent.set(payload);
         } else {
@@ -220,7 +229,9 @@ export function updateConsent(signals = {}) {
         if (!consent || typeof consent.set !== 'function') return;
         const payload = {};
         for (const key of CONSENT_KEYS) {
-            if (typeof signals[key] === 'boolean') payload[key] = signals[key];
+            if (typeof signals[key] === 'boolean') {
+                payload[ZARAZ_PURPOSE_IDS[key]] = signals[key];
+            }
         }
         if (Object.keys(payload).length) consent.set(payload);
         if (typeof consent.sendQueuedEvents === 'function') {
