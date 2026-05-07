@@ -51,6 +51,16 @@
       mode: '0644'
     notify: restart mysql server
 
+  # Audyt wydajności PR [NEEDS-OPS] — B13: slow query log directory
+  - name: Ensure /var/log/mysql directory exists for slow query log
+    file:
+      path: /var/log/mysql
+      state: directory
+      owner: mysql
+      group: adm
+      mode: '0750'
+    when: mariadb_slow_query_log | default(false)
+
   - name: Set root user password
     mysql_user:
       name: root

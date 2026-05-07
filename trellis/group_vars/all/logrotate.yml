@@ -18,3 +18,52 @@ logrotate_scripts:
               run-parts /etc/logrotate.d/httpd-prerotate; \
             fi \
       postrotate: service nginx reload >/dev/null 2>&1
+
+  # Audyt wydajności PR [NEEDS-OPS] — C6: logrotate dla nginx error log
+  - name: nginx-error
+    path: /var/log/nginx/error.log
+    options:
+      - daily
+      - maxsize 100M
+      - missingok
+      - rotate 14
+      - compress
+      - delaycompress
+      - notifempty
+      - sharedscripts
+    scripts:
+      postrotate: service nginx reload >/dev/null 2>&1
+
+  # Audyt wydajności PR [NEEDS-OPS] — C6: logrotate dla php-fpm
+  - name: php-fpm
+    path: /var/log/php{{ php_version }}-fpm.log
+    options:
+      - daily
+      - maxsize 100M
+      - missingok
+      - rotate 14
+      - compress
+      - delaycompress
+      - notifempty
+      - sharedscripts
+    scripts:
+      postrotate: service php{{ php_version }}-fpm reload >/dev/null 2>&1
+
+  # Audyt wydajności PR [NEEDS-OPS] — C6 + B13: logrotate dla MariaDB slow query log
+  - name: mysql-slow
+    path: /var/log/mysql/slow.log
+    options:
+      - daily
+      - maxsize 500M
+      - missingok
+      - rotate 7
+      - compress
+      - delaycompress
+      - notifempty
+      - create 0640 mysql adm
+      - sharedscripts
+    scripts:
+      postrotate: |
+        if test -x /usr/bin/mysqladmin && /usr/bin/mysqladmin ping --silent 2>/dev/null; then \
+          /usr/bin/mysqladmin flush-logs; \
+        fi

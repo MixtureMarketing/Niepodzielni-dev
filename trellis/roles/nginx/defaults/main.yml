@@ -1,4 +1,8 @@
 ---
+# A8 SKIPPED — Brotli wymaga niestandardowej kompilacji nginx lub Ubuntu distro packages.
+# nginx.org PPA mainline nie dostarcza nginx-module-brotli jako osobnego .deb.
+# Decyzja operatora: można przełączyć na Ubuntu nginx (apt:nginx) zamiast nginx.org PPA
+# i zainstalować libnginx-mod-http-brotli, ale wymaga to testów z obecną konfiguracją Trellis.
 nginx_ppa: "deb http://nginx.org/packages/mainline/ubuntu {{ ansible_distribution_release }} nginx"
 nginx_package: nginx
 nginx_conf: nginx.conf.j2

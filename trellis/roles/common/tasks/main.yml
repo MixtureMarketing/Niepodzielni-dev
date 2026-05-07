@@ -103,3 +103,7 @@
     regexp: "^#?(SystemMaxUse=.*?)$"
     state: present
   notify: restart journald
+
+# Audyt wydajności PR [NEEDS-OPS] — C5: sysctl tuning
+- name: Apply sysctl performance tuning
+  import_tasks: sysctl-tuning.yml

@@ -13,3 +13,14 @@ mariadb_set_innodb_buffer_pool_size: false
 mariadb_innodb_buffer_pool_size: 128M
 mariadb_set_innodb_log_file_size: false
 mariadb_innodb_log_file_size: 96M
+
+# Audyt wydajności PR [NEEDS-OPS] — B2: InnoDB flush / query cache
+mariadb_set_innodb_flush_log_at_trx_commit: false
+mariadb_innodb_flush_log_at_trx_commit: 2
+mariadb_set_query_cache_type: false
+mariadb_query_cache_type: 0
+
+# Audyt wydajności PR [NEEDS-OPS] — B13: Slow query log
+mariadb_slow_query_log: false
+mariadb_slow_query_log_file: /var/log/mysql/slow.log
+mariadb_long_query_time: 2
