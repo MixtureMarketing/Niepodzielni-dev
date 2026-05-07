@@ -50,7 +50,54 @@ function np_shortcode_matchmaker(array $atts): string
  *
  * @return array<string, mixed>
  */
+/**
+ * Klucz cache matchmakera. Wersjonowany przez NP_PSY_LISTING_VERSION (constants
+ * bump przy strukturalnych zmianach payloadu) — zgodne z konwencją
+ * PsychologistListingService. Cache invalidowany przez `np_clear_psy_listing_cache()`,
+ * które jest wywoływane z `save_post_psycholog`, `niepodzielni_bookero_batch_synced`
+ * oraz panelu psychologa (30-panel-psycholog.php).
+ */
+function np_matchmaker_cache_key(): string
+{
+    $version = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.0';
+    return 'np_matchmaker_data_' . $version;
+}
+
+const NP_MATCHMAKER_CACHE_GROUP = 'np_matchmaker';
+const NP_MATCHMAKER_CACHE_TTL   = 5 * MINUTE_IN_SECONDS;
+
 function np_matchmaker_build_data(): array
+{
+    // Cache 5 min — payload ~200 KB, WP_Query 500 postów + 4 taksonomie.
+    // Audyt wydajności PR — high-impact TTFB win (~−150-350 ms na matchmaker pages).
+    $cacheKey = np_matchmaker_cache_key();
+    $cached   = wp_cache_get($cacheKey, NP_MATCHMAKER_CACHE_GROUP);
+    if ($cached !== false && is_array($cached)) {
+        return $cached;
+    }
+
+    $transientKey = 'np_matchmaker_t_' . (defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1');
+    $transient    = get_transient($transientKey);
+    if ($transient !== false && is_array($transient)) {
+        wp_cache_set($cacheKey, $transient, NP_MATCHMAKER_CACHE_GROUP, NP_MATCHMAKER_CACHE_TTL);
+        return $transient;
+    }
+
+    $data = np_matchmaker_build_data_uncached();
+
+    wp_cache_set($cacheKey, $data, NP_MATCHMAKER_CACHE_GROUP, NP_MATCHMAKER_CACHE_TTL);
+    set_transient($transientKey, $data, NP_MATCHMAKER_CACHE_TTL);
+
+    return $data;
+}
+
+/**
+ * Buduje surowe dane matchmakera (bez cache). Wydzielone z `np_matchmaker_build_data()`
+ * żeby umożliwić cache wrapper.
+ *
+ * @return array<string, mixed>
+ */
+function np_matchmaker_build_data_uncached(): array
 {
     // ── Psycholodzy ────────────────────────────────────────────────────────────
     // Jeden WP_Query dla wszystkich + bulk meta cache → zero N+1.

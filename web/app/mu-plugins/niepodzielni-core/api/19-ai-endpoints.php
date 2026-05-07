@@ -71,7 +71,10 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
     $typ  = $request->get_param('consult_type');
     $days = (int) $request->get_param('days');
 
-    // Cache 60s — endpoint wywoływany przez AI Worker na każdym żądaniu czatu
+    // Cache 5 min — endpoint wywoływany przez AI Worker na każdym żądaniu czatu.
+    // Audyt wydajności PR — 60s zbyt agresywne, każdy 1/N rebuilduje payload (300+ postów).
+    // Inwalidowany awaryjnie przez POST /bookero-clear-cb (delete_transient pętli).
+    $ttl       = (int) apply_filters('np_ai_bot_availability_ttl', 5 * MINUTE_IN_SECONDS);
     $cache_key = "np_bot_avail_{$typ}_{$days}";
     $cached    = get_transient($cache_key);
     if ($cached !== false) {
@@ -163,7 +166,7 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
     }
 
     $response = ['slots' => $result];
-    set_transient($cache_key, $response, 60);
+    set_transient($cache_key, $response, $ttl);
 
     return new \WP_REST_Response($response, 200);
 }
