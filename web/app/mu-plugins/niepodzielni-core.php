@@ -43,6 +43,8 @@ require_once NIEPODZIELNI_CORE_PATH . 'cpt/23-osrodki-metaboxes.php'; // Psychom
 
 // 2. INTEGRACJA API BOOKERO I AJAX
 // 8-bookero-api.php usunięty — logika przeniesiona do BookeroApiClient + PsychologistRepository (OOP)
+// Wrapper np_ajax_endpoint() — ładowany jako pierwszy, zanim którykolwiek api/* go użyje.
+require_once NIEPODZIELNI_CORE_PATH . 'api/0-ajax-endpoint-wrapper.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/9-bookero-sync.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/21-psychomapa-endpoint.php'; // Psychomapa: REST API
 require_once NIEPODZIELNI_CORE_PATH . 'api/10-ajax-handlers.php';

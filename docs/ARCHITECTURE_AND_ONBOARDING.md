@@ -642,6 +642,102 @@ dyskretne (kliknięcia), nie ciągłe strumienie wejścia.
 
 ---
 
+## 7.5 API patterns — `np_ajax_endpoint()`
+
+Wszystkie nowe AJAX endpointy rejestruj przez wrapper z
+`web/app/mu-plugins/niepodzielni-core/api/0-ajax-endpoint-wrapper.php`.
+
+Wrapper auto-obsługuje: nonce, capability check, JSON envelope, rate limit per IP.
+Handler skupia się tylko na logice biznesowej.
+
+### Sygnatura
+
+```php
+np_ajax_endpoint(string $action, array $config, callable $handler): void
+```
+
+Konfiguracja:
+
+| Klucz           | Typ           | Default  | Opis                                                                |
+|-----------------|---------------|----------|---------------------------------------------------------------------|
+| `public`        | bool          | `false`  | `true` rejestruje też `wp_ajax_nopriv_*` (niezalogowani)            |
+| `nonce_action`  | ?string       | `null`   | Nazwa akcji nonce; `null` = brak weryfikacji (read-only public)     |
+| `nonce_field`   | string        | `nonce`  | Nazwa pola w `$_POST`/`$_REQUEST` z nonce                            |
+| `capability`    | ?string       | `null`   | `current_user_can()` cap (np. `manage_options`)                     |
+| `auth_callback` | ?callable     | `null`   | Custom guard `fn(array $request): bool` (np. ownership po `post_author`) |
+| `rate_limit`    | ?int          | `null`   | Max wywołań/min/IP (transient `np_rl_<action>_<ip>`)                |
+
+### Handler — kontrakt
+
+```php
+function (array $request): mixed {
+    // ...logika...
+    return ['key' => 'value'];   // → wrapper wyśle wp_send_json_success
+    // throw new \Exception(...) // → wrapper wyśle wp_send_json_error 500
+    // wp_send_json_*()          // dozwolone — wrapper to akceptuje (legacy ścieżki z różnymi kodami HTTP)
+}
+```
+
+### Output JSON
+
+| Sytuacja           | HTTP | Body                                                       |
+|--------------------|------|------------------------------------------------------------|
+| Success (return)   | 200  | `{ "success": true, "data": ... }`                         |
+| `invalid_nonce`    | 403  | `{ "success": false, "data": { "error": "invalid_nonce" } }` |
+| `forbidden` (cap)  | 403  | `{ "success": false, "data": { "error": "forbidden" } }`     |
+| `rate_limited`     | 429  | `{ "success": false, "data": { "error": "rate_limited", "retry_after": 60 } }` |
+| Throwable handlera | 500  | `{ "success": false, "data": { "error": "<msg>" } }`        |
+
+### Przykład — prosty endpoint
+
+```php
+np_ajax_endpoint('np_my_action', [
+    'public'       => false,
+    'nonce_action' => 'np_my_nonce',
+    'capability'   => 'edit_posts',
+    'rate_limit'   => 30,
+], function (array $req): array {
+    $id = (int) ($req['post_id'] ?? 0);
+    return ['title' => get_the_title($id)];
+});
+```
+
+### Migrowane endpointy (Etap 1, 2026-05)
+
+13 AJAX endpointów zmigrowanych z manualnego boilerplate (`add_action` +
+`check_ajax_referer` + `wp_send_json_*`) na wrapper:
+
+| # | Action                       | Plik                                                                                       | Auth                              |
+|---|------------------------------|--------------------------------------------------------------------------------------------|-----------------------------------|
+| 1 | `bk_ingest_month`            | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | nonce `np_bookero_nonce`, public  |
+| 2 | `np_get_terminy`             | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | bez nonce (read-only, page-cache) |
+| 3 | `np_refresh_terminy`         | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | nonce + `manage_options`          |
+| 4 | `np_refresh_termin_single`   | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | nonce + `manage_options`          |
+| 5 | `bk_get_shared_month`        | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | bez nonce (read-only, public)     |
+| 6 | `bk_get_date_slots`          | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | bez nonce (read-only, public)     |
+| 7 | `bk_verify_hour`             | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | nonce, public                     |
+| 8 | `bk_create_booking`          | `web/app/mu-plugins/niepodzielni-core/api/10-ajax-handlers.php`                            | nonce, public                     |
+| 9 | `np_panel_save_profile`      | `web/app/mu-plugins/niepodzielni-core/api/30-panel-psycholog.php`                          | nonce + auth_callback (ownership) |
+| 10| `np_panel_save_taxonomies`   | `web/app/mu-plugins/niepodzielni-core/api/30-panel-psycholog.php`                          | nonce + auth_callback             |
+| 11| `np_panel_upload_photo`      | `web/app/mu-plugins/niepodzielni-core/api/30-panel-psycholog.php`                          | nonce + auth_callback             |
+| 12| `np_panel_get_reviews`       | `web/app/mu-plugins/niepodzielni-core/api/30-panel-psycholog.php`                          | nonce + auth_callback             |
+| 13| `np_panel_reply_review`      | `web/app/mu-plugins/niepodzielni-core/api/30-panel-psycholog.php`                          | nonce + auth_callback             |
+
+REST-y w `19-ai-endpoints.php` i `40-opinie-api.php` używają innego modelu
+auth (X-API-Key bot token, Cloudflare Turnstile, magic_token HMAC) i pozostają
+poza tym wrapperem.
+
+### Jak dodać nowy endpoint
+
+1. Wybierz nazwę akcji `np_<context>_<verb>` (snake_case).
+2. Wybierz nonce action — utwórz w JS przez `wp_create_nonce('np_xxx_nonce')`.
+3. Zarejestruj przez `np_ajax_endpoint()` w odpowiednim pliku `api/`.
+4. Logika handlera: zwraca array (success) lub throw \Exception (error 500).
+5. Test smoke: DevTools Network → POST z nonce → 200 + body z `success:true`.
+6. Test bez nonce → 403 `invalid_nonce`.
+
+---
+
 ## 8. Analytics — Cloudflare Zaraz
 
 ### Architektura śledzenia

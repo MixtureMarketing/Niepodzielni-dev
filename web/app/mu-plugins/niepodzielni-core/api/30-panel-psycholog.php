@@ -9,10 +9,15 @@
  *   - nonce np_panel_nonce
  *   - własność edytowanego posta przez post_author
  *
+ * Endpointy zarejestrowane przez np_ajax_endpoint() (api/0-ajax-endpoint-wrapper.php).
+ * Wrapper obsługuje nonce i auth_callback (sprawdza ownership po post_author).
+ *
  * Endpoints:
  *   - np_panel_save_profile     — biogram + tryb_konsultacji_info
  *   - np_panel_save_taxonomies  — 4× taksonomie (filtrowane przez slug__in)
  *   - np_panel_upload_photo     — featured image
+ *   - np_panel_get_reviews      — lista opinii
+ *   - np_panel_reply_review     — odpowiedź psychologa na opinię
  */
 
 if (! defined('ABSPATH')) {
@@ -32,7 +37,7 @@ function np_panel_get_user_psycholog_post(int $user_id = 0): ?WP_Post
         return null;
     }
     if (array_key_exists($user_id, $cache)) {
-        return $cache[ $user_id ];
+        return $cache[$user_id];
     }
 
     $posts = get_posts([
@@ -42,7 +47,7 @@ function np_panel_get_user_psycholog_post(int $user_id = 0): ?WP_Post
         'author'         => $user_id,
     ]);
 
-    return $cache[ $user_id ] = ($posts[0] ?? null);
+    return $cache[$user_id] = ($posts[0] ?? null);
 }
 
 /**
@@ -70,32 +75,26 @@ function np_panel_can_edit_post(int $post_id): bool
 }
 
 /**
- * Wspólna walidacja na początku każdego endpointu.
- * Zwraca post_id lub kończy request błędem.
+ * Auth callback dla wrappera — czyta post_id z requestu i sprawdza ownership.
+ * Wywoływany ZA nonce-checkiem przez np_ajax_endpoint().
  */
-function np_panel_validate_request(): int
+function np_panel_auth_callback(array $req): bool
 {
-    if (! check_ajax_referer('np_panel_nonce', 'nonce', false)) {
-        wp_send_json_error(['message' => 'Sesja wygasła. Odśwież stronę.'], 403);
-    }
-    $post_id = (int) ($_POST['post_id'] ?? 0);
-    if (! np_panel_can_edit_post($post_id)) {
-        wp_send_json_error(['message' => 'Brak uprawnień do edycji tego profilu.'], 403);
-    }
-    return $post_id;
+    $post_id = (int) ($req['post_id'] ?? 0);
+    return np_panel_can_edit_post($post_id);
 }
 
 // ─── Endpoint: zapisz pola tekstowe (biogram + tryb_konsultacji_info) ───────
 
-add_action('wp_ajax_np_panel_save_profile', 'np_ajax_panel_save_profile');
+np_ajax_endpoint('np_panel_save_profile', [
+    'nonce_action'  => 'np_panel_nonce',
+    'auth_callback' => 'np_panel_auth_callback',
+], function (array $req): array {
+    $post_id = (int) $req['post_id'];
 
-function np_ajax_panel_save_profile(): void
-{
-    $post_id = np_panel_validate_request();
-
-    $biogram = isset($_POST['biogram']) ? wp_kses_post(wp_unslash((string) $_POST['biogram'])) : null;
-    $tryb    = isset($_POST['tryb_konsultacji_info'])
-        ? sanitize_textarea_field(wp_unslash((string) $_POST['tryb_konsultacji_info']))
+    $biogram = isset($req['biogram']) ? wp_kses_post(wp_unslash((string) $req['biogram'])) : null;
+    $tryb    = isset($req['tryb_konsultacji_info'])
+        ? sanitize_textarea_field(wp_unslash((string) $req['tryb_konsultacji_info']))
         : null;
 
     if ($biogram !== null) {
@@ -108,21 +107,18 @@ function np_ajax_panel_save_profile(): void
         update_post_meta($post_id, '_tryb_konsultacji_info', 'field_complex');
     }
 
-    // Inwaliduj cache listingu psychologów (jeśli theme go rejestruje)
     np_clear_psy_listing_cache();
 
-    wp_send_json_success([
-        'message' => 'Profil zapisany.',
-    ]);
-}
+    return ['message' => 'Profil zapisany.'];
+});
 
 // ─── Endpoint: zapisz taksonomie (4× multiselect) ────────────────────────────
 
-add_action('wp_ajax_np_panel_save_taxonomies', 'np_ajax_panel_save_taxonomies');
-
-function np_ajax_panel_save_taxonomies(): void
-{
-    $post_id = np_panel_validate_request();
+np_ajax_endpoint('np_panel_save_taxonomies', [
+    'nonce_action'  => 'np_panel_nonce',
+    'auth_callback' => 'np_panel_auth_callback',
+], function (array $req): array {
+    $post_id = (int) $req['post_id'];
 
     // Mapa: parametr POST → (taxonomy slug, Carbon Fields meta key)
     $map = [
@@ -133,16 +129,15 @@ function np_ajax_panel_save_taxonomies(): void
     ];
 
     foreach ($map as $param => [$taxonomy, $cf_meta_key]) {
-        if (! isset($_POST[ $param ])) {
+        if (! isset($req[$param])) {
             continue; // nie wysłano tego pola — nie zmieniaj
         }
 
-        $input = (array) wp_unslash($_POST[ $param ]);
+        $input = (array) wp_unslash($req[$param]);
         $input = array_map('sanitize_title', $input);
         $input = array_filter($input, static fn($s) => $s !== '');
 
         // KRYTYCZNE: filtruj tylko po slugach które ISTNIEJĄ w tej taksonomii.
-        // get_terms zwróci pustą tablicę jeśli żaden slug nie pasuje — usunie próby wstrzyknięcia.
         $valid_slugs = empty($input)
             ? []
             : (array) get_terms([
@@ -152,41 +147,33 @@ function np_ajax_panel_save_taxonomies(): void
                 'hide_empty' => false,
             ]);
 
-        // Aktualizuj Carbon Fields meta (slugi w tablicy)
-        // Carbon Fields zapisuje te wartości jako serializowaną tablicę pod prefixem `_`
         update_post_meta($post_id, $cf_meta_key, $valid_slugs);
-
-        // Zsynchronizuj natywne term_relationships, by getterm() działał spójnie
         wp_set_object_terms($post_id, $valid_slugs, $taxonomy, false);
     }
 
     np_clear_psy_listing_cache();
 
-    wp_send_json_success([
-        'message' => 'Taksonomie zapisane.',
-    ]);
-}
+    return ['message' => 'Taksonomie zapisane.'];
+});
 
 // ─── Endpoint: upload zdjęcia profilowego ────────────────────────────────────
 
-add_action('wp_ajax_np_panel_upload_photo', 'np_ajax_panel_upload_photo');
-
-function np_ajax_panel_upload_photo(): void
-{
-    $post_id = np_panel_validate_request();
+np_ajax_endpoint('np_panel_upload_photo', [
+    'nonce_action'  => 'np_panel_nonce',
+    'auth_callback' => 'np_panel_auth_callback',
+], function (array $req): void {
+    $post_id = (int) $req['post_id'];
 
     if (empty($_FILES['photo']) || ! is_array($_FILES['photo'])) {
         wp_send_json_error(['message' => 'Nie wgrano pliku.'], 400);
     }
 
-    // Walidacja typu — tylko obrazki
     $allowed = ['image/jpeg', 'image/png', 'image/webp'];
     $type    = (string) ($_FILES['photo']['type'] ?? '');
     if (! in_array($type, $allowed, true)) {
         wp_send_json_error(['message' => 'Dozwolone formaty: JPG, PNG, WebP.'], 400);
     }
 
-    // Walidacja rozmiaru — max 5 MB
     $size = (int) ($_FILES['photo']['size'] ?? 0);
     if ($size > 5 * 1024 * 1024) {
         wp_send_json_error(['message' => 'Plik za duży. Max 5 MB.'], 400);
@@ -201,9 +188,7 @@ function np_ajax_panel_upload_photo(): void
         wp_send_json_error(['message' => 'Błąd uploadu: ' . $attachment_id->get_error_message()], 500);
     }
 
-    // Ustaw jako featured image
     set_post_thumbnail($post_id, $attachment_id);
-
     np_clear_psy_listing_cache();
 
     $url = wp_get_attachment_image_url($attachment_id, 'medium_large');
@@ -213,15 +198,15 @@ function np_ajax_panel_upload_photo(): void
         'attachment_id' => $attachment_id,
         'url'           => $url,
     ]);
-}
+});
 
 // ─── Endpoint: lista opinii dla psychologa ────────────────────────────────────
 
-add_action('wp_ajax_np_panel_get_reviews', 'np_ajax_panel_get_reviews');
-
-function np_ajax_panel_get_reviews(): void
-{
-    $post_id = np_panel_validate_request();
+np_ajax_endpoint('np_panel_get_reviews', [
+    'nonce_action'  => 'np_panel_nonce',
+    'auth_callback' => 'np_panel_auth_callback',
+], function (array $req): array {
+    $post_id = (int) $req['post_id'];
 
     $comments = get_comments([
         'post_id' => $post_id,
@@ -279,25 +264,23 @@ function np_ajax_panel_get_reviews(): void
         ];
     }
 
-    wp_send_json_success(['reviews' => $data]);
-}
+    return ['reviews' => $data];
+});
 
 // ─── Endpoint: odpowiedź na opinię ───────────────────────────────────────────
 
-add_action('wp_ajax_np_panel_reply_review', 'np_ajax_panel_reply_review');
-
-function np_ajax_panel_reply_review(): void
-{
-    $post_id = np_panel_validate_request();
-
-    $comment_id = (int) ($_POST['comment_id'] ?? 0);
-    $content    = sanitize_textarea_field((string) wp_unslash($_POST['content'] ?? ''));
+np_ajax_endpoint('np_panel_reply_review', [
+    'nonce_action'  => 'np_panel_nonce',
+    'auth_callback' => 'np_panel_auth_callback',
+], function (array $req): void {
+    $post_id    = (int) $req['post_id'];
+    $comment_id = (int) ($req['comment_id'] ?? 0);
+    $content    = sanitize_textarea_field((string) wp_unslash($req['content'] ?? ''));
 
     if (! $comment_id || ! $content) {
         wp_send_json_error(['message' => 'Brakuje wymaganych danych.'], 400);
     }
 
-    // Upewnij się, że komentarz dotyczy tego posta
     $parent = get_comment($comment_id);
     if (! $parent || (int) $parent->comment_post_ID !== $post_id || $parent->comment_type !== 'review') {
         wp_send_json_error(['message' => 'Nieprawidłowy komentarz.'], 403);
@@ -331,4 +314,4 @@ function np_ajax_panel_reply_review(): void
         'reply_id' => $reply_id,
         'date'     => get_comment_date('j F Y', (int) $reply_id),
     ]);
-}
+});
