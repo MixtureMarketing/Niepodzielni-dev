@@ -8,6 +8,12 @@
   font-family: var(--mix-font-family-primary);
 }
 
+/* Audit UX H7 — avoid overlap with Bookero "Umów wizytę" CTA on bookero pages */
+[data-bookero] #np-ai-chat,
+body[data-bookero] #np-ai-chat {
+  bottom: 80px;
+}
+
 /* ── Toggle button ─────────────────────────────────────────────────────────── */
 
 .np-chat__toggle {

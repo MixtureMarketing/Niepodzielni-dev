@@ -36,5 +36,11 @@
     .header-flex { padding: 0 15px; }
     .header-logo img { max-height: 35px; }
     .header-actions { gap: 12px; }
-    .appointment-widget .main-text { width: 130px; padding: 8px 12px; font-size: 10px; }
+    /* Audit UX H3 — header CTA legibility on mobile (10px → 12px bold) */
+    .appointment-widget .main-text {
+        width: 130px;
+        padding: 10px 14px;
+        font-size: 12px;
+        font-weight: 700;
+    }
 }

@@ -432,6 +432,14 @@ body[data-np-crisis-page] .np-crisis,
     padding-bottom: 6rem;
 }
 
+/* Audit UX H6 — short viewports (e.g. landscape phones) keep sticky compact */
+@media (max-height: 600px) {
+    .np-crisis__hide {
+        max-height: 80px;
+        overflow: hidden;
+    }
+}
+
 /* AI Chat — banner kryzysowy (renderowany przez ai-chat.js) */
 .np-ai-crisis-banner {
     margin: 0.75rem 0;

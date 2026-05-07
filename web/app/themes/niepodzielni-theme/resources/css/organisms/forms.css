@@ -354,7 +354,8 @@ select.form-field__input:focus {
 .prefix-select__search {
     width: 100%;
     padding: 8px 10px;
-    font-size: 0.9rem;
+    /* Audit UX H4 — iOS input zoom prevention (≥ 16px) */
+    font-size: 16px;
     font-family: var(--mix-font-family-primary);
     border: 1.5px solid var(--mix-color-border-grey);
     border-radius: var(--mix-radius-small);
