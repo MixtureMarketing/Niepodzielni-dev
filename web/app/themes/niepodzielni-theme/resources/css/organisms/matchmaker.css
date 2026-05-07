@@ -243,8 +243,9 @@
     transition: border-color var(--mix-transition-fast);
 }
 
-.np-mm__search:focus {
+.np-mm__search:focus-visible {
     border-color: var(--mix-color-brand-primary);
+    box-shadow: var(--mix-focus-ring);
 }
 
 .np-mm__more-toggle {

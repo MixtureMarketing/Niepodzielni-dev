@@ -11,4 +11,10 @@ import './custom-accordion.js';
 import './mega-menu.js';
 import './bookero-form-listener.js';
 import './tabs.js';
-import './components/ai-chat.js';
+// Defer chat widget load until the main thread is idle — creates a separate Vite chunk
+// that doesn't block critical rendering. Falls back to 1s timeout on unsupported browsers.
+if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => import('./components/ai-chat.js'), { timeout: 3000 });
+} else {
+    setTimeout(() => import('./components/ai-chat.js'), 1000);
+}

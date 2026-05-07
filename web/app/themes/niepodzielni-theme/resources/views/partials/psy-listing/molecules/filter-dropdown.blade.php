@@ -6,10 +6,11 @@
     $terms        = is_wp_error($terms) ? [] : $terms;
 @endphp
 <div class="psy-multiselect-dropdown" data-tax="{{ $tax }}" data-label="{{ $label }}" data-hierarchical="{{ $hierarchical ? '1' : '0' }}">
-    <div class="multiselect-label">{{ $label }}</div>
-    <div class="multiselect-content">
+    <button type="button" class="multiselect-label" aria-expanded="false" aria-haspopup="true" aria-controls="dropdown-{{ $tax }}">{{ $label }}</button>
+    <div class="multiselect-content" id="dropdown-{{ $tax }}" aria-hidden="true">
         <div class="multiselect-search-wrapper">
-            <input type="text" class="multiselect-inner-search" placeholder="Szukaj...">
+            <label for="search-{{ $tax }}" class="sr-only">Szukaj {{ $label }}</label>
+            <input type="text" id="search-{{ $tax }}" class="multiselect-inner-search" placeholder="Szukaj...">
         </div>
         <div class="multiselect-options-list">
             @if($hierarchical)

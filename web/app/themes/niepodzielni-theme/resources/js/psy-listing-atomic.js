@@ -205,20 +205,34 @@ function stripHtml(html) {
             const totalPages = Math.ceil(total / perPage);
             pagTarget.innerHTML = '';
             if (totalPages > 1) {
+                const nav = document.createElement('nav');
+                nav.setAttribute('aria-label', 'Paginacja wyników');
                 const pag = document.createElement('div');
                 pag.className = 'psy-pagination';
-                for(let i=1; i<=totalPages; i++) {
+                for (let i = 1; i <= totalPages; i++) {
                     const btn = document.createElement('button');
-                    btn.className = `psy-page-link ${i===currentPage?'active':''}`;
+                    btn.className = `psy-page-link ${i === currentPage ? 'active' : ''}`;
                     btn.dataset.page = i;
                     btn.textContent = i;
+                    btn.setAttribute('aria-label', `Strona ${i}`);
+                    if (i === currentPage) btn.setAttribute('aria-current', 'page');
                     pag.appendChild(btn);
                 }
-                pagTarget.appendChild(pag);
+                nav.appendChild(pag);
+                pagTarget.appendChild(nav);
             }
         }
 
         // --- EVENTS ---
+
+        function closeAllDropdowns() {
+            document.querySelectorAll('.psy-multiselect-dropdown').forEach(dd => {
+                const content = dd.querySelector('.multiselect-content');
+                const trigger = dd.querySelector('.multiselect-label');
+                if (content) { content.classList.remove('is-open'); content.setAttribute('aria-hidden', 'true'); }
+                if (trigger) trigger.setAttribute('aria-expanded', 'false');
+            });
+        }
 
         document.addEventListener('click', (e) => {
             const label = e.target.closest('.multiselect-label');
@@ -226,10 +240,22 @@ function stripHtml(html) {
                 const dropdown = label.parentElement;
                 const content = dropdown.querySelector('.multiselect-content');
                 const isOpen = content.classList.contains('is-open');
-                document.querySelectorAll('.multiselect-content').forEach(c => c.classList.remove('is-open'));
-                if (!isOpen) content.classList.add('is-open');
+                closeAllDropdowns();
+                if (!isOpen) {
+                    content.classList.add('is-open');
+                    content.setAttribute('aria-hidden', 'false');
+                    label.setAttribute('aria-expanded', 'true');
+                }
             } else if (!e.target.closest('.psy-multiselect-dropdown')) {
-                document.querySelectorAll('.multiselect-content').forEach(c => c.classList.remove('is-open'));
+                closeAllDropdowns();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const openLabel = document.querySelector('.multiselect-label[aria-expanded="true"]');
+                closeAllDropdowns();
+                if (openLabel) openLabel.focus();
             }
         });
 
@@ -283,8 +309,14 @@ function stripHtml(html) {
             }
         });
 
-        filterForm.addEventListener('reset', () => setTimeout(() => { 
-            currentPage = 1; document.querySelectorAll('.multiselect-label').forEach(l => l.textContent = l.parentElement.dataset.label); refreshList(); 
+        filterForm.addEventListener('reset', () => setTimeout(() => {
+            currentPage = 1;
+            document.querySelectorAll('.multiselect-label').forEach(l => {
+                l.textContent = l.parentElement.dataset.label;
+                l.setAttribute('aria-expanded', 'false');
+            });
+            closeAllDropdowns();
+            refreshList();
         }, 10));
 
         // IntersectionObserver for Sticky detection
@@ -304,8 +336,9 @@ function stripHtml(html) {
             mobileToggleBtn.addEventListener('click', () => {
                 const isOpen = secondaryFilters.classList.toggle('is-open');
                 mobileToggleBtn.classList.toggle('is-active', isOpen);
-                // Close any open dropdowns when toggling the panel
-                document.querySelectorAll('.multiselect-content').forEach(c => c.classList.remove('is-open'));
+                mobileToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                secondaryFilters.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+                closeAllDropdowns();
             });
         }
 
