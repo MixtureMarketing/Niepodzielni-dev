@@ -175,6 +175,14 @@ Config::define('NP_AI_BOT_TOKEN', env('NP_AI_BOT_TOKEN') ?: '');
 Config::define('NP_CF_TURNSTILE_SECRET', env('NP_CF_TURNSTILE_SECRET') ?: '');
 Config::define('NP_CF_TURNSTILE_SITE_KEY', env('NP_CF_TURNSTILE_SITE_KEY') ?: '');
 
+// Server-to-Server Conversion API (mu-plugin np-conversion-api).
+// GA4 Measurement Protocol + Meta CAPI dla krytycznych eventów (purchase, generate_lead, sign_up).
+// Brak wartości = endpoint zwraca 'skipped_no_config' i loguje warning. Patrz docs/ARCHITECTURE_AND_ONBOARDING.md sekcja S2S.
+Config::define('NP_GA4_MEASUREMENT_ID', env('NP_GA4_MEASUREMENT_ID') ?: '');
+Config::define('NP_GA4_API_SECRET', env('NP_GA4_API_SECRET') ?: '');
+Config::define('NP_META_PIXEL_ID', env('NP_META_PIXEL_ID') ?: '');
+Config::define('NP_META_CAPI_TOKEN', env('NP_META_CAPI_TOKEN') ?: '');
+
 // Discord webhook „WordPress Audit" — daily audit digest (admin/17-audit-digest.php)
 // + brute-force burst alert (admin/19-lockout-burst-alert.php). Pusty = wysyłany
 // tylko email do admin_email. Patrz docs/monitoring-runbook.md sekcja 2.

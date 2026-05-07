@@ -50,6 +50,11 @@ wordpress_sites:
       np_discord_webhook_url: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_discord_webhook_url'] | default('') }}"
       sentry_dsn: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['sentry_dsn'] | default('') }}"
       np_release: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_release'] | default('production') }}"
+      # S2S Conversion API (mu-plugin np-conversion-api). Brak wartości = endpoint w trybie noop.
+      np_ga4_measurement_id: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_ga4_measurement_id'] | default('') }}"
+      np_ga4_api_secret: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_ga4_api_secret'] | default('') }}"
+      np_meta_pixel_id: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_meta_pixel_id'] | default('') }}"
+      np_meta_capi_token: "{{ vault_wordpress_sites['new.niepodzielni.com']['env']['np_meta_capi_token'] | default('') }}"
 
   # Staging vhost na tym samym VPS produkcyjnym — gałąź `dev` deployowana przez
   # .github/workflows/dev-deploy.yml. Cache wyłączony żeby zmiany widać od razu.
@@ -97,3 +102,8 @@ wordpress_sites:
       np_discord_webhook_url: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_discord_webhook_url'] | default('') }}"
       sentry_dsn: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['sentry_dsn'] | default('') }}"
       np_release: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_release'] | default('staging') }}"
+      # S2S Conversion API — patrz new.niepodzielni.com powyżej.
+      np_ga4_measurement_id: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_ga4_measurement_id'] | default('') }}"
+      np_ga4_api_secret: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_ga4_api_secret'] | default('') }}"
+      np_meta_pixel_id: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_meta_pixel_id'] | default('') }}"
+      np_meta_capi_token: "{{ vault_wordpress_sites['dev.niepodzielni.com']['env']['np_meta_capi_token'] | default('') }}"

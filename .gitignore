@@ -8,8 +8,9 @@ web/app/plugins/*
 web/app/mu-plugins/*/
 # Dev-only Zaraz mock — nie trafia na produkcję
 web/app/mu-plugins/zaraz-dev-mock.php
-# Ale NIE ignoruj katalogu z kodem własnym projektu
+# Ale NIE ignoruj katalogów z kodem własnym projektu
 !web/app/mu-plugins/niepodzielni-core/
+!web/app/mu-plugins/np-conversion-api/
 web/app/themes/twentytwentyfive/
 web/app/upgrade
 web/app/uploads/*
