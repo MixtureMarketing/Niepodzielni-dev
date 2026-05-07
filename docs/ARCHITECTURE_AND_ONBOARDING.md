@@ -738,6 +738,51 @@ poza tym wrapperem.
 
 ---
 
+## 7.6 Forms framework — `BaseFormHandler`
+
+REST-owe formularze publiczne (Turnstile + opcjonalny OTP) idą przez
+`web/app/mu-plugins/niepodzielni-core/src/Forms/`:
+
+| Plik                          | LOC | Rola                                                       |
+|-------------------------------|-----|------------------------------------------------------------|
+| `BaseFormHandler.php`         | 366 | Abstract: `validate()`, `saveSubmission()`, `sendEmails()`, OTP (`generateAndSendOTP` + `verifyOTP`) |
+| `ContactForm.php`             |  62 | Konkretny handler (`form_id=contact`)                      |
+| `Helpers/CommonFields.php`    | 215 | Predefiniowane konfiguracje pól (imie, email, telefon, kod_pocztowy, …) |
+| `Helpers/PhonePrefixes.php`   | 107 | Tabela kierunkowych + min/max długość (walidacja relacyjna) |
+
+REST endpointy w `api/50-forms-api.php`:
+
+- `POST /wp-json/niepodzielni/v1/forms/{form_id}/submit` — walidacja, zapis CPT `zgloszenie`, mail/OTP.
+- `POST /wp-json/niepodzielni/v1/forms/{form_id}/verify` — weryfikacja kodu OTP (rate limit 5/15 min per submission).
+
+Rejestr handlerów rozszerzalny przez filtr `np_form_handlers` (mapa
+`form_id => FQCN extends BaseFormHandler`).
+
+### Right-sizing — decyzja (Etap 5, 2026-05)
+
+Audyt: 1 konkretny handler (`ContactForm`) + abstract base + helpery = ~750 LOC.
+Powierzchowna ocena = overengineering, ale:
+
+- `BaseFormHandler` jest jednowarstwowy (1 abstract → 1 konkretna), nie 5-poziomową hierarchią.
+- `CommonFields` to płaski słownik konfiguracji (DRY), nie fabryka fabryk.
+- `PLAN-NOWE-FUNKCJE.md` i `PLAN-T1-IMPLEMENTACJA.md` planują reuse w **co najmniej 4 nadchodzących formularzach** (matchmaker email, AI feedback, T1/T2).
+- Ścieżka OTP (~80 LOC) jest dziś martwa w `ContactForm` (`requireVerification=false`), ale to jedyne realne źródło "zbędnego" kodu — usunięcie wymusiłoby rekonstrukcję w T1.
+
+**Decyzja: framework jest right-sized dla aktywnie planowanej ekspansji.** Etap 5
+zostaje no-op poza tą sekcją. Jeśli za 3 mies. nadal będzie tylko 1 handler i
+plany się posypią — wrócić do tematu i zwinąć abstrakcję do prostej funkcji
+`np_handle_form_submit()` per form.
+
+### Jak dodać nowy formularz
+
+1. Stwórz `src/Forms/MojForm.php extends BaseFormHandler`.
+2. Implementuj `getFormId(): string` i `getFields(): array` (skorzystaj z `CommonFields::*`).
+3. Opcjonalnie nadpisz `protected bool $userConfirmation`, `$requireVerification`.
+4. Zarejestruj przez filtr (lub dopisz do tablicy w `np_get_form_handlers()`).
+5. JS frontu woła `POST /wp-json/niepodzielni/v1/forms/<form_id>/submit` z `cf-turnstile-response`.
+
+---
+
 ## 8. Analytics — Cloudflare Zaraz
 
 ### Architektura śledzenia
