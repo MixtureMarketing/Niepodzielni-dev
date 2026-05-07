@@ -11,7 +11,8 @@
     @php(wp_body_open())
 
     <div id="app">
-      <a class="sr-only focus:not-sr-only" href="#main">
+      {{-- WCAG 2.4.1 Bypass Blocks / 2.4.7 Focus Visible --}}
+      <a class="skip-link" href="#main">
         {{ __('Skip to content', 'sage') }}
       </a>
 

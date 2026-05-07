@@ -121,7 +121,8 @@ if ($posts_items === false) {
             {{-- DOLNY PASEK MENU --}}
             <div class="mega-menu-footer">
                 <div class="mega-menu-emergency">
-                    <span class="emergency-number">112</span>
+                    {{-- WCAG 2.5.5 Target Size / actionable phone link --}}
+                    <a href="tel:112" class="emergency-number" aria-label="Zadzwoń pod numer alarmowy 112">112</a>
                     <p>Numer alarmowy w sytuacji<br>zagrożenia życia lub zdrowia</p>
                 </div>
 

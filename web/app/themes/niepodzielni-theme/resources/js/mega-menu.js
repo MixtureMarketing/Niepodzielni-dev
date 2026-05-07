@@ -11,6 +11,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const dotsContainer = document.getElementById('megaMenuSliderDots');
     let currentSlide  = 0;
     let sliderInterval = null;
+    let sliderPaused   = false;
+
+    // WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap — kontekst pod menu staje się inert
+    function setBackgroundInert(on) {
+        const main   = document.querySelector('main');
+        const footer = document.querySelector('footer');
+        [main, footer].forEach((el) => {
+            if (!el) return;
+            if (on) {
+                el.setAttribute('inert', '');
+                el.setAttribute('aria-hidden', 'true');
+            } else {
+                el.removeAttribute('inert');
+                el.removeAttribute('aria-hidden');
+            }
+        });
+    }
 
     function openMenu() {
         megaMenu.classList.add('is-active');
@@ -18,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
         megaMenu.setAttribute('aria-hidden', 'false');
         burgerBtn.setAttribute('aria-expanded', 'true');
         burgerBtn.setAttribute('aria-label', 'Zamknij menu');
+        setBackgroundInert(true);
         startSlider();
 
         const firstLink = megaMenu.querySelector('a, button');
@@ -30,6 +48,7 @@ document.addEventListener('DOMContentLoaded', function () {
         megaMenu.setAttribute('aria-hidden', 'true');
         burgerBtn.setAttribute('aria-expanded', 'false');
         burgerBtn.setAttribute('aria-label', 'Otwórz menu');
+        setBackgroundInert(false);
         stopSlider();
     }
 
@@ -62,6 +81,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- SLIDER FUNCTIONS ---
+    function prefersReducedMotion() {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
     function initSlider() {
         if (!sliderTrack || slides.length <= 1) return;
 
@@ -76,6 +99,26 @@ document.addEventListener('DOMContentLoaded', function () {
             dot.addEventListener('click', () => goToSlide(i));
             dotsContainer.appendChild(dot);
         });
+
+        // WCAG 2.2.2 Pause, Stop, Hide — przycisk pauzy auto-slidera
+        const pauseBtn = document.createElement('button');
+        pauseBtn.type = 'button';
+        pauseBtn.className = 'slider-pause';
+        pauseBtn.setAttribute('aria-label', 'Wstrzymaj slajdy');
+        pauseBtn.setAttribute('aria-pressed', 'false');
+        pauseBtn.textContent = '⏸';
+        pauseBtn.addEventListener('click', () => {
+            sliderPaused = !sliderPaused;
+            pauseBtn.setAttribute('aria-pressed', String(sliderPaused));
+            pauseBtn.setAttribute('aria-label', sliderPaused ? 'Wznów slajdy' : 'Wstrzymaj slajdy');
+            pauseBtn.textContent = sliderPaused ? '▶' : '⏸';
+            if (sliderPaused) {
+                stopSlider();
+            } else {
+                startSlider();
+            }
+        });
+        dotsContainer.parentNode?.insertBefore(pauseBtn, dotsContainer.nextSibling);
     }
 
     function goToSlide(index) {
@@ -93,6 +136,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function startSlider() {
         if (slides.length <= 1) return;
+        // WCAG 2.3.3 / prefers-reduced-motion — nie auto-rotuj jeśli user prosi o zredukowany ruch
+        if (prefersReducedMotion()) return;
+        if (sliderPaused) return;
         stopSlider();
         sliderInterval = setInterval(() => {
             currentSlide = (currentSlide + 1) % slides.length;

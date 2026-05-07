@@ -139,9 +139,14 @@ function bind(banner) {
 
     banner.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            // Esc → tylko jeśli user już ma zapisaną decyzję (re-otwarte z stopki).
-            // Inaczej Esc nie zamyka — zgoda jest wymagana.
-            if (readDecision()) hideBanner(banner);
+            // WCAG 2.1.2 No Keyboard Trap — Esc zawsze zamyka banner.
+            // Pierwsza wizyta: traktujemy jak "Tylko niezbędne" (ALL_DENIED) — privacy-by-default,
+            // GDPR compliant (brak zgody = brak trackingu).
+            if (readDecision()) {
+                hideBanner(banner);
+            } else {
+                commit(ALL_DENIED);
+            }
             return;
         }
         trapFocus(banner, e);

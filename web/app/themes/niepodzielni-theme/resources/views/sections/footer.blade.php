@@ -60,22 +60,22 @@
                 </ul>
             </div>
 
-            {{-- KOLUMNA 4: Telefony zaufania --}}
+            {{-- KOLUMNA 4: Telefony zaufania (WCAG 2.5.5 — klikalne tel: links) --}}
             <div class="footer-col emergency-col">
                 <div class="emergency-item">
-                    <div class="emergency-number-col"><h4>112</h4></div>
+                    <div class="emergency-number-col"><h4><a href="tel:112" aria-label="Zadzwoń pod numer alarmowy 112">112</a></h4></div>
                     <div class="emergency-text-col"><p>Numer alarmowy w sytuacji<br>zagrożenia życia lub zdrowia</p></div>
                 </div>
                 <div class="emergency-item">
-                    <div class="emergency-number-col"><h4>116 111</h4></div>
+                    <div class="emergency-number-col"><h4><a href="tel:116111" aria-label="Zadzwoń na Telefon Zaufania dla Dzieci i Młodzieży 116 111">116 111</a></h4></div>
                     <div class="emergency-text-col"><p>Telefon Zaufania dla Dzieci i Młodzieży</p></div>
                 </div>
                 <div class="emergency-item">
-                    <div class="emergency-number-col"><h4>800 70 22 22</h4></div>
+                    <div class="emergency-number-col"><h4><a href="tel:800702222" aria-label="Zadzwoń do Centrum Wsparcia 800 70 22 22">800 70 22 22</a></h4></div>
                     <div class="emergency-text-col"><p>Centrum Wsparcia dla Osób Dorosłych w Kryzysie Psychicznym</p></div>
                 </div>
                 <div class="emergency-item">
-                    <div class="emergency-number-col"><h4>800 12 12 12</h4></div>
+                    <div class="emergency-number-col"><h4><a href="tel:800121212" aria-label="Zadzwoń pod numer wsparcia psychologicznego 800 12 12 12">800 12 12 12</a></h4></div>
                     <div class="emergency-text-col"><p>Wsparcie psychologiczne w sytuacji kryzysowej – infolinia dla dzieci, młodzieży i opiekunów</p></div>
                 </div>
             </div>

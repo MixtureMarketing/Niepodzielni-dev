@@ -1,3 +1,22 @@
+/* --- Skip link (WCAG 2.4.1 Bypass Blocks, 2.4.7 Focus Visible) --- */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    z-index: 999;
+    padding: 1rem 1.5rem;
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 0 0 8px 0;
+    font-weight: 700;
+}
+.skip-link:focus {
+    left: 0;
+    top: 0;
+    outline: 3px solid var(--mix-color-brand-secondary);
+    outline-offset: 2px;
+}
+
 /* --- Style dla języków z flagami --- */
 .jezyki_contener {
     display: table-row;

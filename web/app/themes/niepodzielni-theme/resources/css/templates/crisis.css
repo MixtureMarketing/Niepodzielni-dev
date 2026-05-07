@@ -127,9 +127,10 @@
     border-radius: var(--np-crisis-radius);
 }
 
+/* WCAG 1.4.11 Non-text Contrast — yellow on red = 1.85:1 fail; double-outline 3:1+ */
 .np-crisis__number-link:focus-visible {
-    outline: 3px solid var(--np-crisis-yellow);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 3px #fff, 0 0 0 6px #1a1a1a;
 }
 
 .np-crisis__number-label {
@@ -423,6 +424,12 @@
         right: 1rem;
         max-width: none;
     }
+}
+
+/* WCAG 2.4.11 Focus Not Obscured / 1.4.10 Reflow — sticky button cover guard */
+body[data-np-crisis-page] .np-crisis,
+.np-crisis[data-np-crisis-page] {
+    padding-bottom: 6rem;
 }
 
 /* AI Chat — banner kryzysowy (renderowany przez ai-chat.js) */
