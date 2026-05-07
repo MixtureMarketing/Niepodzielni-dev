@@ -22,6 +22,7 @@ export default defineConfig({
       input: [
         'resources/css/app.css',
         'resources/js/app.js',
+        'resources/js/consent-banner.js',
         'resources/js/bookero-init.js',
         'resources/js/psy-listing-atomic.js',
         'resources/js/events-listing.js',

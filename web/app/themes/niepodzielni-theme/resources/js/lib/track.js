@@ -102,31 +102,59 @@ export function getPageContext() {
 }
 
 /**
- * Default-denied — wywoływać przed pierwszym npTrack().
- * Zaraz Consent Manager poczeka aż user wyrazi zgodę przez CMP UI.
+ * Klucze Consent Mode v2 → mapujemy na Zaraz purposeIds (do skonfigurowania
+ * w dashboardzie Cloudflare Zaraz → Consent → Purposes). Te same klucze
+ * są zapisywane do localStorage (`np_consent`) jako single source of truth
+ * bannera CMP.
  */
-export function setConsentDefault() {
+export const CONSENT_KEYS = ['analytics', 'ads', 'ad_user_data', 'ad_personalization'];
+
+/**
+ * Default-denied — wywoływać przed pierwszym npTrack().
+ * Bez argumentu ustawia wszystkie znane purposeIds na `false`.
+ * Z argumentem (np. po wczytaniu z localStorage) re-stosuje wcześniejsze
+ * decyzje użytkownika jeszcze przed inicjalizacją Zaraz.
+ *
+ * @param {Partial<Record<typeof CONSENT_KEYS[number], boolean>>} [signals]
+ */
+export function setConsentDefault(signals) {
     try {
-        window.zaraz?.consent?.setAll?.(false);
+        const consent = window.zaraz?.consent;
+        // Fallback: pełny default-deny gdy brak sygnałów lub brak API set()
+        if (!signals) {
+            consent?.setAll?.(false);
+            return;
+        }
+        if (typeof consent?.set === 'function') {
+            const payload = {};
+            for (const key of CONSENT_KEYS) {
+                if (typeof signals[key] === 'boolean') payload[key] = signals[key];
+            }
+            if (Object.keys(payload).length) consent.set(payload);
+        } else {
+            consent?.setAll?.(false);
+        }
     } catch {
         // noop — CM może być nieaktywny w dashboardzie
     }
 }
 
 /**
- * Aktualizacja sygnałów zgody (Consent Mode v2).
- * @param {{analytics?: boolean, ads?: boolean}} opts
+ * Aktualizacja sygnałów zgody (Consent Mode v2). Akceptuje dowolny podzbiór
+ * z {analytics, ads, ad_user_data, ad_personalization}.
+ * Po update wywołuje `sendQueuedEvents()` żeby Zaraz dosłał kolejkowane eventy.
+ *
+ * @param {Partial<Record<typeof CONSENT_KEYS[number], boolean>>} signals
  */
-export function updateConsent({ analytics, ads } = {}) {
+export function updateConsent(signals = {}) {
     try {
         const consent = window.zaraz?.consent;
-        if (!consent) return;
-        if (typeof analytics === 'boolean' && typeof consent.set === 'function') {
-            consent.set({ analytics_storage: analytics });
+        if (!consent || typeof consent.set !== 'function') return;
+        const payload = {};
+        for (const key of CONSENT_KEYS) {
+            if (typeof signals[key] === 'boolean') payload[key] = signals[key];
         }
-        if (typeof ads === 'boolean' && typeof consent.set === 'function') {
-            consent.set({ ad_storage: ads });
-        }
+        if (Object.keys(payload).length) consent.set(payload);
         if (typeof consent.sendQueuedEvents === 'function') {
             consent.sendQueuedEvents();
         }

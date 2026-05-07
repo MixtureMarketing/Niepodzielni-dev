@@ -806,16 +806,84 @@ Mapa Bookero browser event → nazwa GA4 jest w `BOOKERO_EVENT_MAP` w
 
 ### Consent Mode v2 — sygnalizacja
 
-`lib/track.js` eksportuje `setConsentDefault()` i `updateConsent({ analytics, ads })`.
+`lib/track.js` eksportuje `setConsentDefault(signals?)` i `updateConsent(signals)`,
+gdzie `signals` to podzbiór czterech kluczy Consent Mode v2:
 
-- `setConsentDefault()` — wywoływany w `app.js` na samym początku, ustawia
-  `window.zaraz.consent.setAll(false)` (default-denied). Eventy są kolejkowane
-  po stronie Zaraz Consent Manager dopóki user nie wyrazi zgody.
-- `updateConsent({ analytics: true, ads: true })` — wywoływany przez CMP po
-  akceptacji zgody (CMP UI to osobny PR).
-- Eventy krytyczne (`purchase`, `donation`, `generate_lead`) mają zachowanie
-  „anonymous ping" przez Zaraz Consent Mode v2 — Cloudflare wysyła je nawet bez
-  zgody (zgodnie z GA4/Meta conversion modeling). Lokalnie nie blokujemy.
+| Klucz                | GA4 / Google Consent Mode v2 mapping |
+| -------------------- | ------------------------------------ |
+| `analytics`          | `analytics_storage`                  |
+| `ads`                | `ad_storage`                         |
+| `ad_user_data`       | `ad_user_data`                       |
+| `ad_personalization` | `ad_personalization`                 |
+
+Te klucze są **purposeIds** w Cloudflare Zaraz → Consent → Purposes — muszą być
+skonfigurowane w dashboardzie z dokładnie takimi nazwami (case-sensitive).
+Wszystkie cztery są **default `denied`** (GDPR compliance).
+
+**Default state (denied)** — `app.js` wywołuje `setConsentDefault({...all denied})`
+od razu po starcie, ZANIM jakikolwiek `npTrack()` zostanie odpalony. Jeśli user
+ma już decyzję w `localStorage.np_consent` (TTL 6 miesięcy), `app.js` re-stosuje
+ją zamiast pełnego deny — Zaraz nie musi kolejkować eventów dla powracających
+gości.
+
+**Banner CMP** — `resources/js/consent-banner.js` (entry vite, ~1KB gzip),
+renderowany przez `partials/consent-banner.blade.php`. Banner jest w layoucie
+`layouts/app.blade.php` z wyjątkiem `template-pomoc-kryzys.blade.php` (Crisis Hub
+nie tracukje, więc CMP byłby tylko hałasem). Trzy CTA:
+
+- **„Akceptuję wszystkie"** → `updateConsent({analytics:true, ads:true, ad_user_data:true, ad_personalization:true})`
+- **„Tylko niezbędne"** → wszystko `false` (eventy `purchase`, `donation`, `generate_lead`
+  i tak idą przez Zaraz „anonymous ping" — patrz niżej).
+- **„Zarządzaj zgodami"** → rozwija fieldset z 4 checkboxami; **„Zapisz wybór"**
+  zapisuje wybrany podzbiór.
+
+**Re-show** — link `[data-np-consent-open]` w stopce („Zmień zgody") otwiera
+banner ponownie z prefillem aktualnych wyborów.
+
+**Persistence** — `localStorage.np_consent` JSON: `{ ts, analytics, ads, ad_user_data,
+ad_personalization }`. TTL 6 miesięcy (po wygaśnięciu banner pojawia się
+automatycznie przy następnej wizycie).
+
+**Eventy krytyczne** (`purchase`, `donation`, `generate_lead`) mają zachowanie
+„anonymous ping" przez Zaraz Consent Mode v2 — Cloudflare wysyła je nawet bez
+zgody (zgodnie z GA4/Meta conversion modeling). Lokalnie nie blokujemy.
+
+#### Co Zaraz dashboard musi mieć skonfigurowane
+
+1. **Consent Manager → Enabled**.
+2. **Purposes**: cztery wpisy z `id` dokładnie takimi: `analytics`, `ads`,
+   `ad_user_data`, `ad_personalization`. Wszystkie `default = false`.
+3. **GA4 Tool → Consent**: nasłuch na purpose `analytics` (i `ad_user_data`,
+   `ad_personalization` dla CM v2 signals). Mapuje na `analytics_storage`,
+   `ad_user_data`, `ad_personalization` w GA4 config command.
+4. **Meta Pixel Tool → Consent**: nasłuch na purpose `ads`.
+5. **Conversion modeling**: GA4 → włącz „Consent Mode (advanced)" w GA4
+   Property → Admin → Data Streams.
+
+#### Test plan — GA4 DebugView (consent_state)
+
+Cel: zweryfikować że Consent Mode v2 sygnały trafiają do GA4 zgodnie z UX bannera.
+
+Setup:
+- Otwórz GA4 → Admin → DebugView (włącz `?_dbg=1` w URL lub rozszerzenie GA Debugger).
+- Otwórz stronę w trybie inkognito (czyste localStorage).
+
+| Scenariusz                                       | Oczekiwany `consent_state` w GA4 DebugView |
+| ------------------------------------------------ | ------------------------------------------ |
+| Page load, banner widoczny, user nic nie kliknął | `G100` (wszystko denied)                   |
+| Klik „Akceptuję wszystkie"                       | `G111` (analytics + ad_storage + ad_user_data + ad_personalization granted) |
+| Klik „Tylko niezbędne"                           | `G100` (wszystko denied)                   |
+| „Zarządzaj zgodami" → tylko Analityka → Zapisz   | `G110` (analytics granted, ads denied)     |
+| Reload po decyzji „Akceptuję wszystkie"          | `G111` od razu (z localStorage), banner ukryty |
+| Klik „Zmień zgody" w stopce                      | Banner pojawia się ponownie z prefillem    |
+| Strona `/pomoc-w-kryzysie/`                      | Banner NIE pojawia się, `setConsentDefault({...denied})` jeden raz, brak `npTrack` |
+
+Smoke checklist:
+- [ ] Po wyczyszczeniu localStorage banner pojawia się przy kolejnym page load.
+- [ ] Po `localStorage.removeItem('np_consent')` + reload banner też się pojawia.
+- [ ] Klawisz Tab krąży wewnątrz dialogu (focus trap), Esc zamyka tylko gdy
+      decyzja już istnieje (ponowne otwarcie z stopki).
+- [ ] `aria-labelledby` / `aria-describedby` poprawnie wskazują na tytuł i opis.
 
 ### Payload zdarzenia `purchase`
 
