@@ -3,7 +3,22 @@
  * Vanilla JS ES2022+. Obsługa gwiazdek, submit Fetch API, CF Turnstile.
  */
 
+import { npTrack, getPageContext } from './lib/track.js';
+
 const cfg = window.NpReviewsConfig ?? {};
+
+const REVIEW_FORM_ID = 'review';
+let reviewFormStartedFired = false;
+
+function fireReviewStarted() {
+    if (reviewFormStartedFired) return;
+    reviewFormStartedFired = true;
+    npTrack('form_started', {
+        ...getPageContext(),
+        form_id:   REVIEW_FORM_ID,
+        form_name: 'review_submission',
+    });
+}
 
 // ── Star rating widget ────────────────────────────────────────────────────────
 
@@ -24,6 +39,7 @@ function initStarPicker(container) {
         star.addEventListener('mouseenter', () => setRating(idx + 1, true));
         star.addEventListener('mouseleave', () => setRating(Number(hidden.value), false));
         star.addEventListener('click',      () => {
+            fireReviewStarted();
             setRating(idx + 1, false);
             star.closest('.rvw-star-group')?.querySelector('.field-error')?.textContent && (
                 star.closest('.rvw-star-group').querySelector('.field-error').textContent = ''
@@ -134,6 +150,16 @@ async function handleReviewSubmit(form) {
         const json = await res.json();
 
         if (json.status === 'success') {
+            try {
+                npTrack('generate_lead', {
+                    ...getPageContext(),
+                    form_id:   REVIEW_FORM_ID,
+                    form_name: 'review_submission',
+                    rating:    Number(form.querySelector('input[name="rating"]')?.value) || null,
+                });
+            } catch {
+                // noop
+            }
             form.innerHTML = `<div class="rvw-success" role="status">
                 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="16 8 10 14 7 11"/></svg>
                 <p>Dziękujemy za Twoją opinię!</p>
@@ -179,6 +205,8 @@ function refreshReviewsList(postId) {
 
 function bindInlineValidation(form) {
     form.querySelectorAll('input[required], textarea[required]').forEach(field => {
+        field.addEventListener('focus', fireReviewStarted);
+        field.addEventListener('input', fireReviewStarted, { once: true });
         field.addEventListener('blur', () => {
             const wrapper = field.closest('.form-field');
             const err     = wrapper?.querySelector('.field-error');

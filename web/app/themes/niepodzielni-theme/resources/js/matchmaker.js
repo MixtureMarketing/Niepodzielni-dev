@@ -60,6 +60,7 @@ class NpMatchmaker {
         this._trackedStarted   = false;
         this._lastTrackedStep  = null;
         this._lastTrackedListKey = null;
+        this._trackedSignUp    = false;
 
         // Priorytet przywracania stanu: URL > sessionStorage > domyślny
         const urlState     = restoreFromUrl();
@@ -122,6 +123,18 @@ class NpMatchmaker {
                     filters: this._filtersSnapshot(),
                 } );
             }
+        }
+        // sign_up — finał matchmakera (przejście do widoku wyników, krok 4).
+        // Emit raz na sesję widgetu — kolejne re-rendery step=4 nie powtarzają eventu.
+        if ( step === 4 && ! this._trackedSignUp ) {
+            this._trackedSignUp = true;
+            npTrack( 'sign_up', {
+                ...getPageContext(),
+                form_id:   'matchmaker',
+                form_name: 'matchmaker_completion',
+                method:    'matchmaker',
+                filters:   this._filtersSnapshot(),
+            } );
         }
         this._set( { step } );
     }
