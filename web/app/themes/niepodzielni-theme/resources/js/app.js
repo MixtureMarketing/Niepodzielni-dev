@@ -5,11 +5,9 @@ import.meta.glob([
 
 import './components/slider.js';
 import './components/dynamic-content.js';
-import './components/bookero-date.js';
 import './components/appointment-widget.js';
 import './custom-accordion.js';
 import './mega-menu.js';
-import './bookero-form-listener.js';
 import './tabs.js';
 // Defer chat widget load until the main thread is idle — creates a separate Vite chunk
 // that doesn't block critical rendering. Falls back to 1s timeout on unsupported browsers.
