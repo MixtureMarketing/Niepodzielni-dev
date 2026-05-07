@@ -10,6 +10,14 @@ ntp_manage_config: true
 www_root: /srv/www
 max_journal_size: 512M
 
+# h5bp expires module — włącza nginx `expires` directive dla statycznych assetów.
+# Bez tego CF klienci nie widzą `Cache-Control: max-age=...` z origin i CF używa
+# default ~7200s, więc ponowne wizyty pobierają assets od nowa.
+# Audyt wydajności PR — high-impact LCP win (~−400-800 ms na statics).
+# [NEEDS-OPS] wymaga reprovision: `ansible-playbook server.yml -e env=production --tags=nginx`.
+h5bp:
+  expires: true
+
 # Values of raw_vars will be wrapped in `{% raw %}` to avoid templating problems if values include `{%` and `{{`.
 # Will recurse dicts/lists. `*` is wildcard for one or more dict keys, list indices, or strings. Example:
 #   - vault_wordpress_sites.*.*_salt    -- matches vault_wordpress_sites.example.com.env.secure_auth_salt etc.

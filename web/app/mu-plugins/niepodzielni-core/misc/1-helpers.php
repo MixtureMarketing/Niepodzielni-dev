@@ -487,4 +487,12 @@ function np_clear_psy_listing_cache(): void
     if (class_exists('App\\Services\\PsychologistListingService')) {
         \App\Services\PsychologistListingService::clearCache();
     }
+
+    // Inwalidacja cache matchmakera (window.NP_MATCHMAKER, 15-matchmaker-shortcode.php)
+    if (function_exists('np_matchmaker_cache_key')) {
+        $key = np_matchmaker_cache_key();
+        wp_cache_delete($key, 'np_matchmaker');
+        $version = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1';
+        delete_transient('np_matchmaker_t_' . $version);
+    }
 }
