@@ -43,6 +43,14 @@ index_name = "niepodzielni-knowledge"
 binding = "AVAIL_CACHE"
 id      = "3a8699757cf64581b9b6b958bf436a5b"
 
+# ── AI_SEARCH_CACHE (B5): KV cache dla /search (TTL 600s).
+#    NEEDS-OPS: utwórz namespace `wrangler kv namespace create AI_SEARCH_CACHE`
+#    i zastąp placeholder ID poniżej. Dla --env production/staging — analogicznie
+#    `wrangler kv namespace create AI_SEARCH_CACHE --env <env>`.
+[[kv_namespaces]]
+binding = "AI_SEARCH_CACHE"
+id      = "REPLACE_WITH_REAL_KV_ID"
+
 # ── Wartości jawne (bez sekretów). `GATEWAY_BASE_URL` zawiera account_id, ale
 #    sam URL bez `CF_AIG_TOKEN` nie pozwala na wywołanie. Zostaje w `vars`. ──
 [vars]
@@ -82,6 +90,10 @@ id      = "4f9d83208b804a709cb273d8dbcf46aa"
 binding = "AVAIL_CACHE"
 id      = "4201695d4dfe41e6a38a8ebe15d62372"
 
+[[env.production.kv_namespaces]]
+binding = "AI_SEARCH_CACHE"
+id      = "REPLACE_WITH_REAL_KV_ID_PRODUCTION"
+
 [env.production.vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
 CHAT_MODEL       = "openai/gpt-4o-mini"
@@ -116,6 +128,10 @@ id      = "a987aa1e6f0d48f3b4f55cf068dd9b79"
 [[env.staging.kv_namespaces]]
 binding = "AVAIL_CACHE"
 id      = "ed309d95c1f84d1682dc2a8d79ca8d58"
+
+[[env.staging.kv_namespaces]]
+binding = "AI_SEARCH_CACHE"
+id      = "REPLACE_WITH_REAL_KV_ID_STAGING"
 
 [env.staging.vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"

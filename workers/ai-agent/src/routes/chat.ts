@@ -4,6 +4,7 @@ import { requireBearer } from '../auth';
 import { rateLimit } from '../rateLimit';
 import { parseJsonBody } from '../jsonBody';
 import { validateChatRequest } from '../schemas';
+import { fetchWithTimeout } from '../fetchWithTimeout';
 
 // CHAT_MODEL jest odczytywany z env.CHAT_MODEL (wrangler.toml: "openai/gpt-4o-mini")
 // wywołania idą przez AI Gateway (env.GATEWAY_BASE_URL) z tokenem env.CF_AIG_TOKEN
@@ -319,7 +320,7 @@ async function gatewayChat(
         body.tool_choice  = 'auto';
     }
 
-    const res = await fetch(`${env.GATEWAY_BASE_URL}/chat/completions`, {
+    const res = await fetchWithTimeout(`${env.GATEWAY_BASE_URL}/chat/completions`, {
         method:  'POST',
         headers: {
             'Content-Type':  'application/json',
@@ -352,7 +353,7 @@ async function gatewayChat(
 }
 
 async function gatewayStream(env: Env, messages: AiMessage[]): Promise<ReadableStream> {
-    const res = await fetch(`${env.GATEWAY_BASE_URL}/chat/completions`, {
+    const res = await fetchWithTimeout(`${env.GATEWAY_BASE_URL}/chat/completions`, {
         method:  'POST',
         headers: {
             'Content-Type':  'application/json',
@@ -394,7 +395,7 @@ interface ContextResult {
 async function fetchNearestDates(env: Env, psychologistIds: number[]): Promise<Map<number, string>> {
     const map = new Map<number, string>();
     try {
-        const res = await fetch(
+        const res = await fetchWithTimeout(
             `${env.WP_API_URL}/bot-availability?consult_type=pelno&days=30`,
             { headers: { 'X-API-Key': env.WP_BOT_TOKEN, 'User-Agent': 'NiepodzielniBot/1.0' } },
         );
@@ -442,7 +443,7 @@ async function buildAvailabilityContext(env: Env, consultType: string): Promise<
     }
 
     try {
-        const res = await fetch(
+        const res = await fetchWithTimeout(
             `${env.WP_API_URL}/bot-availability?consult_type=${consultType}&days=30`,
             { headers: { 'X-API-Key': env.WP_BOT_TOKEN, 'User-Agent': 'NiepodzielniBot/1.0' } },
         );
@@ -550,7 +551,7 @@ async function buildAvailabilityContext(env: Env, consultType: string): Promise<
 // Kontekst filtrowany po dacie — metadane bezpośrednio z API (bez Vectorize)
 async function buildDateFilteredContext(env: Env, filterDate: string): Promise<ContextResult> {
     try {
-        const res = await fetch(
+        const res = await fetchWithTimeout(
             `${env.WP_API_URL}/bot-availability?consult_type=pelno&days=30`,
             { headers: { 'X-API-Key': env.WP_BOT_TOKEN } },
         );
