@@ -44,38 +44,6 @@ function np_resolve_form_handler(string $formId): ?\Niepodzielni\Forms\BaseFormH
     return new $handlers[$formId]();
 }
 
-// ─── Weryfikacja CF Turnstile ─────────────────────────────────────────────────
-
-function np_verify_turnstile(string $token, string $remoteIp = ''): bool
-{
-    $secret = defined('NP_CF_TURNSTILE_SECRET')
-        ? (string) NP_CF_TURNSTILE_SECRET
-        : (string) get_option('np_cf_turnstile_secret', '');
-
-    // Na produkcji brak sekretu = blokuj; lokalnie/staging = przepuść
-    if (! $secret) {
-        return ! (defined('WP_ENV') && WP_ENV === 'production');
-    }
-
-    $body = ['secret' => $secret, 'response' => $token];
-    if ($remoteIp) {
-        $body['remoteip'] = $remoteIp;
-    }
-
-    $response = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-        'timeout' => 10,
-        'body'    => $body,
-    ]);
-
-    if (is_wp_error($response)) {
-        return false;
-    }
-
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-
-    return (bool) ($data['success'] ?? false);
-}
-
 // ─── Rejestracja endpointów ───────────────────────────────────────────────────
 
 add_action('rest_api_init', function (): void {
@@ -127,7 +95,7 @@ function np_forms_handle_submit(\WP_REST_Request $request): \WP_REST_Response
     $turnstileToken = (string) $request->get_param('cf-turnstile-response');
     $remoteIp       = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
-    if (! np_verify_turnstile($turnstileToken, $remoteIp)) {
+    if (! np_cf_turnstile_verify($turnstileToken, $remoteIp)) {
         return new \WP_REST_Response([
             'status'  => 'error',
             'message' => 'Weryfikacja anty-spam nie powiodła się. Odśwież stronę i spróbuj ponownie.',
