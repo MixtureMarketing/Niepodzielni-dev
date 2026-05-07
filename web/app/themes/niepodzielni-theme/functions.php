@@ -50,7 +50,7 @@ Application::configure()
 |
 */
 
-collect(['setup', 'filters', 'seo', 'events-listing', 'shortcodes/shortcodes-ui', 'shortcodes/shortcodes-profile', 'contact-form'])
+collect(['setup', 'filters', 'seo', 'events-listing', 'shortcodes/shortcodes-ui', 'shortcodes/shortcodes-profile'])
     ->each(function ($file) {
         if (! locate_template($file = "app/{$file}.php", true, true)) {
             wp_die(
