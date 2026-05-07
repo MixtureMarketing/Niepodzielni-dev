@@ -45,6 +45,7 @@
     "roots/wordpress": "6.9.4",
     "roots/wp-config": "1.0.0",
     "stripe/stripe-php": "^16.5",
+    "sentry/sentry": "^4.0",
     "vlucas/phpdotenv": "^5.5",
     "wp-theme/twentytwentyfive": "^1.0",
     "wpackagist-plugin/media-cloud-sync": "^1.3",

@@ -14,6 +14,8 @@ export interface Env {
     WORKER_SECRET:        string;          // X-Worker-Secret dla /sync (WP→Worker)
     WP_BOT_TOKEN:         string;          // X-API-Key dla wywołań Worker→WP
     NP_AI_BOT_TOKEN:      string;          // Bearer token dla /chat /search /feedback
+    SENTRY_DSN?:          string;          // opcjonalny — error tracking (PR-B monitoring)
+    SENTRY_ENV?:          string;          // 'production' | 'staging' (jak ustawisz w wrangler secret)
 }
 
 export type KnowledgeType = 'psycholog' | 'faq' | 'article' | 'workshop' | 'group';
