@@ -424,12 +424,23 @@ interface WpPsychologist {
     specializations: string;
 }
 
-// Kontekst dostępności — pobiera psychologów z wolnymi terminami, sortuje po dacie
+// Kontekst dostępności — pobiera psychologów z wolnymi terminami, sortuje po dacie.
+// Wynik cache'owany w KV (90s TTL) — /bot-availability jest drogie (N psychologów × DB).
 async function buildAvailabilityContext(env: Env, consultType: string): Promise<{
     contextText:   string;
     suggestions:   PanelItem[];
     quick_replies: QuickReply[];
 }> {
+    // 1-minutowy bucket → klucz zmienia się co 60s, stary wpis wygasa po 90s
+    const kvKey = `avail:${consultType}:${Math.floor(Date.now() / 60_000)}`;
+
+    if (env.AVAIL_CACHE) {
+        const hit = await env.AVAIL_CACHE.get(kvKey, 'json') as {
+            contextText: string; suggestions: PanelItem[]; quick_replies: QuickReply[];
+        } | null;
+        if (hit) return hit;
+    }
+
     try {
         const res = await fetch(
             `${env.WP_API_URL}/bot-availability?consult_type=${consultType}&days=30`,
@@ -522,7 +533,14 @@ async function buildAvailabilityContext(env: Env, consultType: string): Promise<
             })));
         }
 
-        return { contextText, suggestions, quick_replies };
+        const result = { contextText, suggestions, quick_replies };
+
+        if (env.AVAIL_CACHE) {
+            // fire-and-forget — nie blokuj odpowiedzi na zapis do KV
+            env.AVAIL_CACHE.put(kvKey, JSON.stringify(result), { expirationTtl: 90 }).catch(() => {});
+        }
+
+        return result;
     } catch (e) {
         console.error('[buildAvailabilityContext] error:', e);
         return { contextText: 'Nie udało się pobrać terminów.', suggestions: [], quick_replies: [] };

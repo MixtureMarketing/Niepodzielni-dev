@@ -225,5 +225,12 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', $webroot_dir . '/wp/');
 }
 
-define('QM_ENABLE_CAPSULE', true);
-// SAVEQUERIES i QM_SHOW_ALL_QUERIES są włączane tylko w środowisku development (patrz config/environments/development.php)
+// Query Monitor + SAVEQUERIES są włączone tylko poza produkcją.
+// Na produkcji: SAVEQUERIES=false ustawione w config/environments/production.php (PR #7).
+if (WP_ENV !== 'production') {
+    define('QM_ENABLE_CAPSULE', true);
+    define('QM_SHOW_ALL_QUERIES', true);
+    if (! defined('SAVEQUERIES')) {
+        define('SAVEQUERIES', true);
+    }
+}

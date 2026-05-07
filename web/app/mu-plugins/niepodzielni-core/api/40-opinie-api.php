@@ -193,6 +193,12 @@ function np_reviews_recalculate_rating(int $postId): void
         'parent'  => 0,
     ]);
 
+    // Wstępnie załaduj meta wszystkich komentarzy jednym zapytaniem (eliminuje N+1)
+    $ids = array_map(fn($c) => (int) $c->comment_ID, $comments);
+    if ($ids) {
+        update_comment_meta_cache($ids);
+    }
+
     $total = 0;
     $count = 0;
 

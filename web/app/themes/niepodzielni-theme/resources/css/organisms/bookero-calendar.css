@@ -184,13 +184,13 @@
 .params-input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
 .label-param, .label-customer-name, .label-customer-email { display: block; font-size: .875rem; font-weight: var(--font-weight-medium); color: var(--color-text-muted); margin-bottom: .5rem; }
 input[slot="field"], textarea[slot="field"], .customer-section .field > input { width: 100%; border: none; border-bottom: 1px solid var(--border-color-input); padding: .5rem .125rem; font-size: 1rem; background: transparent; transition: border-color var(--transition-speed); box-sizing: border-box; font-family: var(--font-family-main); }
-input[slot="field"]:focus, textarea[slot="field"]:focus, .customer-section .field > input:focus { outline: none; border-color: var(--color-primary); }
+input[slot="field"]:focus-visible, textarea[slot="field"]:focus-visible, .customer-section .field > input:focus-visible { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(1, 190, 74, 0.45); }
 textarea[slot="field"] { resize: vertical; min-height: 80px; background: var(--bg-light-gray); border-radius: 13px; padding: .625rem; border: none; }
 
 /* Telefon */
 .label-customer-phone { display: none; }
 .vue-tel-input { border: none !important; border-bottom: 1px solid var(--border-color-input) !important; border-radius: 0 !important; }
-.vue-tel-input:focus-within { outline: none; box-shadow: none; border-color: var(--color-primary); }
+.vue-tel-input:focus-within { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(1, 190, 74, 0.45); }
 .vue-tel-input .vti__dropdown, .vue-tel-input .vti__input { background: transparent; border: none; }
 .vue-tel-input .vti__input { font-size: 1rem; font-family: var(--font-family-main); padding-left: .5rem; }
 

@@ -14,6 +14,7 @@ Config::define('WP_DEBUG', false);
 Config::define('WP_DEBUG_DISPLAY', false);
 Config::define('WP_DEBUG_LOG', false);
 Config::define('SCRIPT_DEBUG', false);
+// Nigdy nie zapisuj zapytań SQL — kosztuje pamięć i czas na każdym żądaniu (PR #5 perf).
 Config::define('SAVEQUERIES', false);
 Config::define('WP_DISABLE_FATAL_ERROR_HANDLER', false);
 

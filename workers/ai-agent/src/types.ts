@@ -3,7 +3,8 @@ export interface Env {
     VECTORIZE_PSY:        VectorizeIndex; // legacy — fallback podczas migracji
     VECTORIZE_FAQ:        VectorizeIndex; // legacy — fallback podczas migracji
     VECTORIZE_KNOWLEDGE:  VectorizeIndex; // unified knowledge base
-    RATE_LIMIT?:          KVNamespace;    // opcjonalny — patrz src/rateLimit.ts
+    AVAIL_CACHE:          KVNamespace;   // KV cache dla buildAvailabilityContext (TTL 90s, PR #5)
+    RATE_LIMIT?:          KVNamespace;   // opcjonalny — patrz src/rateLimit.ts (PR #7)
     GATEWAY_BASE_URL:     string;
     CHAT_MODEL:           string;
     EMBED_MODEL:          string;
