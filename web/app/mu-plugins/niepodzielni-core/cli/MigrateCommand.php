@@ -142,6 +142,94 @@ class MigrateCommand
     }
 
     /**
+     * Wyłącza autoload dla "ciężkich" opcji wp_options (heurystyka rozmiaru / transients).
+     *
+     * Migracja `2026-05-autoload-cleanup` w trybie batchowym (`wp np migrate run`)
+     * domyślnie tylko raportuje (dry-run) — realna mutacja wymaga jawnego `--yes`
+     * przez ten dedykowany subcommand.
+     *
+     * ## OPTIONS
+     *
+     * [--dry-run]
+     * : Pokaż top 20 + listę kandydatów, nie modyfikuj DB.
+     *
+     * [--yes]
+     * : Wykonaj mutację (autoload='no') dla kandydatów. Wymagane na produkcji.
+     *
+     * ## EXAMPLES
+     *
+     *     wp np migrate autoload-cleanup --dry-run
+     *     wp np migrate autoload-cleanup --yes
+     *
+     * @param  array<int, string>     $args
+     * @param  array<string, mixed>   $assocArgs
+     */
+    public function autoload_cleanup(array $args, array $assocArgs): void
+    {
+        $dryRun = (bool) (\WP_CLI\Utils\get_flag_value($assocArgs, 'dry-run', false));
+        $yes = (bool) (\WP_CLI\Utils\get_flag_value($assocArgs, 'yes', false));
+
+        if (! $dryRun && ! $yes) {
+            \WP_CLI::error('Musisz przekazać --dry-run (raport) lub --yes (wykonaj). Bez tego komenda nic nie robi.');
+        }
+
+        if ($dryRun && $yes) {
+            \WP_CLI::error('Sprzeczne flagi: --dry-run i --yes nie mogą wystąpić jednocześnie.');
+        }
+
+        $file = $this->migrationsDir . '/2026-05-autoload-cleanup.php';
+        if (! file_exists($file)) {
+            \WP_CLI::error("Brak pliku migracji: {$file}");
+        }
+
+        require_once $file;
+
+        $fn = '\\Niepodzielni\\Core\\Migrations\\np_migration_2026_05_autoload_cleanup';
+        if (! function_exists($fn)) {
+            \WP_CLI::error("Plik {$file} nie definiuje funkcji {$fn}.");
+        }
+
+        if ($yes) {
+            \WP_CLI::warning('Tryb --yes: WYKONUJĘ realną mutację autoload="no" dla kandydatów.');
+        } else {
+            \WP_CLI::line('Tryb --dry-run: pokażę co byłoby wykonane.');
+        }
+
+        /** @var callable(array{dry_run?: bool, force?: bool}): array{name: string, status: string, message: string, duration_ms: float, rows_before: int, rows_after: int, size_before_mb: float, size_after_mb: float} $fn */
+        $result = $fn([
+            'dry_run' => $dryRun,
+            'force' => $yes,
+        ]);
+
+        $status = (string) ($result['status'] ?? 'unknown');
+        $message = (string) ($result['message'] ?? '');
+        $duration = (float) ($result['duration_ms'] ?? 0);
+        $rowsBefore = (int) ($result['rows_before'] ?? 0);
+        $rowsAfter = (int) ($result['rows_after'] ?? 0);
+        $sizeBefore = (float) ($result['size_before_mb'] ?? 0);
+        $sizeAfter = (float) ($result['size_after_mb'] ?? 0);
+
+        \WP_CLI::line('');
+        \WP_CLI::line('→ 2026-05-autoload-cleanup');
+        \WP_CLI::line('  status:   ' . $status);
+        \WP_CLI::line('  message:  ' . $message);
+        \WP_CLI::line(sprintf('  duration: %.2f ms', $duration));
+        \WP_CLI::line(sprintf(
+            '  autoload rows (yes): %d → %d (autoload total: %.2f MB → %.2f MB)',
+            $rowsBefore,
+            $rowsAfter,
+            $sizeBefore,
+            $sizeAfter,
+        ));
+
+        if ($status === 'error') {
+            \WP_CLI::halt(1);
+        }
+
+        \WP_CLI::success('Gotowe (' . $status . ').');
+    }
+
+    /**
      * Konwertuje nazwę pliku na slug funkcji.
      * `2026-05-add-postmeta-index.php` → `2026_05_add_postmeta_index`
      */
