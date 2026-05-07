@@ -29,6 +29,23 @@
         'number'  => 50,
     ]);
 
+    // Pre-fetch wszystkich odpowiedzi psychologów jednym zapytaniem (eliminacja N+1
+    // w pętli — wcześniej każda opinia robiła osobne `get_comments(parent=>...)`).
+    $reviews_by_id = [];
+    if (! empty($reviews)) {
+        $review_ids = array_map(static fn($c) => (int) $c->comment_ID, $reviews);
+        $all_replies = get_comments([
+            'parent__in' => $review_ids,
+            'status'     => 'approve',
+            'orderby'    => 'comment_date',
+            'order'      => 'ASC',
+        ]);
+        foreach ($all_replies as $reply) {
+            $parent_id = (int) $reply->comment_parent;
+            $reviews_by_id[$parent_id] ??= $reply; // pierwsza odpowiedź wygrywa
+        }
+    }
+
     // Magic token z URL
     $magic_token = sanitize_text_field($_GET['magic_token'] ?? '');
     $rvw_email   = sanitize_email($_GET['rvw_email'] ?? '');
@@ -190,13 +207,8 @@
                         $r_verified = (bool) get_comment_meta($r_id, '_verified_visit', true);
                         $r_date    = get_comment_date('j F Y', $r_id);
 
-                        // Odpowiedź psychologa (pierwsze child comment)
-                        $replies = get_comments([
-                            'parent' => $r_id,
-                            'status' => 'approve',
-                            'number' => 1,
-                        ]);
-                        $reply = $replies[0] ?? null;
+                        // Odpowiedź psychologa — z pre-fetchowanej mapy.
+                        $reply = $reviews_by_id[$r_id] ?? null;
                     @endphp
                     <li class="rvw-item">
                         <div class="rvw-item__header">

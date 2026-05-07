@@ -1,5 +1,9 @@
-import type { Env, ChatRequest, ChatMessage, VectorMetadata, PanelItem, QuickReply } from '../types';
+import type { Env, ChatMessage, VectorMetadata, PanelItem, QuickReply } from '../types';
 import { embed } from '../embed';
+import { requireBearer } from '../auth';
+import { rateLimit } from '../rateLimit';
+import { parseJsonBody } from '../jsonBody';
+import { validateChatRequest } from '../schemas';
 
 // CHAT_MODEL jest odczytywany z env.CHAT_MODEL (wrangler.toml: "openai/gpt-4o-mini")
 // wywołania idą przez AI Gateway (env.GATEWAY_BASE_URL) z tokenem env.CF_AIG_TOKEN
@@ -739,15 +743,15 @@ function sseEvent(data: unknown): string {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function handleChat(request: Request, env: Env): Promise<Response> {
-    const body = await request.json<ChatRequest>();
-    const { messages, filter_date, consult_type, intent } = body;
+    const unauth = requireBearer(request, env.NP_AI_BOT_TOKEN);
+    if (unauth) return unauth;
 
-    if (!messages?.length) {
-        return new Response(JSON.stringify({ error: 'Brak wiadomości' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-        });
-    }
+    const limited = await rateLimit(request, env, { bucket: 'chat', limit: 30, windowSec: 60 });
+    if (limited) return limited;
+
+    const parsed = await parseJsonBody(request, validateChatRequest, 64 * 1024);
+    if (!parsed.ok) return parsed.response;
+    const { messages, filter_date, consult_type, intent } = parsed.value;
 
     const sseHeaders = {
         'Content-Type':                'text/event-stream',

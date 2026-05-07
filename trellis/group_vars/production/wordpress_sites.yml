@@ -14,6 +14,11 @@ wordpress_sites:
     ssl:
       enabled: true
       provider: letsencrypt
+      # HSTS — 2 lata, włączając subdomeny + zgłoszenie do listy preload przeglądarek.
+      # Patrz https://hstspreload.org/ przed pierwszym rolloutem (proces nieodwracalny przez ~6 mies.).
+      hsts_max_age: 63072000
+      hsts_include_subdomains: true
+      hsts_preload: true
     cache:
       enabled: true
     object_cache:

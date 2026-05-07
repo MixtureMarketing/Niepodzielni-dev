@@ -308,15 +308,6 @@ function np_ajax_bk_get_shared_month(): void
     wp_send_json_success(np_bookero_shared_calendar_service()->buildMonthData($typ, $plus_months));
 }
 
-/**
- * @deprecated  Pozostawiona dla kompatybilności wstecznej — używaj SharedCalendarService::buildMonthData().
- *              Wewnętrznie deleguje do nowego serwisu (transient cache jest wspólny).
- */
-function np_bk_build_month_data(string $typ, int $plus_months): array
-{
-    return np_bookero_shared_calendar_service()->buildMonthData($typ, $plus_months);
-}
-
 // ─── Shared Calendar: sloty dla konkretnego dnia ─────────────────────────────
 
 add_action('wp_ajax_bk_get_date_slots', 'np_ajax_bk_get_date_slots');
