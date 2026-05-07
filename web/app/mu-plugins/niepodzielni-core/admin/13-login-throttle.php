@@ -19,13 +19,18 @@ const NP_LOGIN_LOCKOUT       = 30 * MINUTE_IN_SECONDS;
 
 function np_login_client_ip(): string
 {
-    // CF / reverse-proxy aware.  REMOTE_ADDR jest ostatecznym fallbackiem.
+    // Audit security #4 — deleguj do wspólnego helpera (misc/1-helpers.php).
+    // TODO(ops): nginx musi mieć `set_real_ip_from <CF ranges>` + `real_ip_header CF-Connecting-IP`
+    // — inaczej spoofing nagłówka omija throttle.
+    if (function_exists('np_get_client_ip')) {
+        return np_get_client_ip();
+    }
+    // Fallback przy nietypowej kolejności ładowania.
     foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
         $value = isset($_SERVER[$key]) ? (string) $_SERVER[$key] : '';
         if ($value === '') {
             continue;
         }
-        // X-Forwarded-For może być listą — bierzemy pierwszy element.
         $ip = trim((string) explode(',', $value)[0]);
         if (filter_var($ip, FILTER_VALIDATE_IP)) {
             return $ip;

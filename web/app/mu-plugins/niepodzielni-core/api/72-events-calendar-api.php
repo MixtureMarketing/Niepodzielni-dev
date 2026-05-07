@@ -288,7 +288,7 @@ function np_calendar_reminder_subscribe(\WP_REST_Request $request): \WP_REST_Res
     $email     = sanitize_email((string) ($body['email'] ?? ''));
     $eventId   = (int) ($body['event_post_id'] ?? 0);
     $turnstile = (string) ($body['cf-turnstile-response'] ?? '');
-    $remoteIp  = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+    $remoteIp  = function_exists('np_get_client_ip') ? np_get_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
     if (! is_email($email)) {
         return new \WP_REST_Response([
@@ -304,13 +304,26 @@ function np_calendar_reminder_subscribe(\WP_REST_Request $request): \WP_REST_Res
         ], 400);
     }
 
-    // Turnstile (re-use helper z forms-api). W dev pomijamy.
-    if (function_exists('np_verify_turnstile') && ! np_verify_turnstile($turnstile, $remoteIp)) {
+    // Audit security #5 — sliding window 3 zapisy/h per IP.
+    $rlKey   = 'np_reminder_rl_' . md5($remoteIp);
+    $rlCount = (int) get_transient($rlKey);
+    if ($rlCount >= 3) {
+        return new \WP_REST_Response([
+            'status'  => 'error',
+            'message' => 'Zbyt wiele zapisów w krótkim czasie. Spróbuj za godzinę.',
+        ], 429);
+    }
+
+    // Audit security #1 — fail-closed: brak helpera lub błąd weryfikacji = blokuj.
+    if (! function_exists('np_cf_turnstile_verify') || ! np_cf_turnstile_verify($turnstile, $remoteIp)) {
         return new \WP_REST_Response([
             'status'  => 'error',
             'message' => 'Weryfikacja anty-spam nie powiodła się.',
         ], 400);
     }
+
+    // Inkrementuj licznik dopiero po Turnstile (żeby boty nie wyczerpały slotów legalnych userów).
+    set_transient($rlKey, $rlCount + 1, HOUR_IN_SECONDS);
 
     $event = np_calendar_load_event($eventId);
     if ($event === null) {

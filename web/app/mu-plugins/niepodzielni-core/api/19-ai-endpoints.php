@@ -23,7 +23,13 @@ add_action('rest_api_init', function (): void {
     register_rest_route('niepodzielni/v1', '/bookero-clear-cb', [
         'methods'             => 'POST',
         'callback'            => 'np_ai_rest_clear_cb',
-        'permission_callback' => 'np_ai_rest_verify_token',
+        // Audit security #2 — admin alternative + token; throttle wewnątrz callbacka.
+        'permission_callback' => function (\WP_REST_Request $request) {
+            if (current_user_can('manage_options')) {
+                return true;
+            }
+            return np_ai_rest_verify_token($request);
+        },
     ]);
 
     register_rest_route('niepodzielni/v1', '/bot-availability', [
@@ -54,13 +60,15 @@ function np_ai_rest_verify_token(\WP_REST_Request $request): bool|\WP_Error
         ? (string) NP_AI_BOT_TOKEN
         : (string) get_option('np_ai_bot_token', '');
 
+    // Audit security #3 — generic 401 (information disclosure: brak ujawniania
+    // czy token jest skonfigurowany; ten sam status dla brak tokenu / zły token).
     if (! $token) {
-        return new \WP_Error('no_token', 'Bot token not configured', ['status' => 500]);
+        return new \WP_Error('unauthorized', 'Authentication required', ['status' => 401]);
     }
 
     $provided = $request->get_header('X-API-Key');
     if (! hash_equals($token, (string) $provided)) {
-        return new \WP_Error('unauthorized', 'Invalid token', ['status' => 401]);
+        return new \WP_Error('unauthorized', 'Authentication required', ['status' => 401]);
     }
 
     return true;
@@ -246,6 +254,20 @@ function np_ai_rest_bookero_status(): \WP_REST_Response
  */
 function np_ai_rest_clear_cb(\WP_REST_Request $request): \WP_REST_Response
 {
+    // Audit security #2 — throttle 10 req/min/IP; admini pomijają (manage_options).
+    if (! current_user_can('manage_options')) {
+        $ip      = function_exists('np_get_client_ip') ? np_get_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+        $rlKey   = 'np_clear_cb_rl_' . md5($ip);
+        $rlCount = (int) get_transient($rlKey);
+        if ($rlCount >= 10) {
+            return new \WP_REST_Response([
+                'ok'    => false,
+                'error' => 'rate_limited',
+            ], 429);
+        }
+        set_transient($rlKey, $rlCount + 1, MINUTE_IN_SECONDS);
+    }
+
     $was_active = (bool) get_transient(BOOKERO_LOCKOUT_KEY);
 
     delete_transient(BOOKERO_LOCKOUT_KEY);

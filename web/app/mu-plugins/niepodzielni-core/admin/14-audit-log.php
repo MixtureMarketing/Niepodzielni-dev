@@ -84,6 +84,13 @@ function np_audit_log(string $action, array $context = []): void
 
 function np_audit_client_ip(): string
 {
+    // Audit security #4 — deleguj do wspólnego helpera (misc/1-helpers.php).
+    // TODO(ops): nginx musi mieć `set_real_ip_from <CF ranges>` + `real_ip_header CF-Connecting-IP`
+    // — inaczej spoofing nagłówka omija audit log.
+    if (function_exists('np_get_client_ip')) {
+        return np_get_client_ip();
+    }
+    // Fallback przy nietypowej kolejności ładowania.
     foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
         $value = isset($_SERVER[$key]) ? (string) $_SERVER[$key] : '';
         if ($value === '') {

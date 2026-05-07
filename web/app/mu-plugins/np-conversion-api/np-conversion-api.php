@@ -336,15 +336,26 @@ function np_s2s_send_meta(
 
 function np_s2s_client_ip(): string
 {
-    // Trellis przekazuje real IP w X-Forwarded-For (nginx → php-fpm).
-    if (! empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-        return (string) $_SERVER['HTTP_CF_CONNECTING_IP'];
+    // Audit security #4 — wspólny helper z walidacją FILTER_VALIDATE_IP (np_get_client_ip
+    // w niepodzielni-core/misc/1-helpers.php). Zachowujemy lokalny wrapper żeby nie łamać
+    // istniejących wywołań w tym pliku.
+    // TODO(ops): nginx musi mieć `set_real_ip_from <CF ranges>` + `real_ip_header CF-Connecting-IP`
+    // — inaczej spoofing nagłówka omija throttle/audit.
+    if (function_exists('np_get_client_ip')) {
+        return np_get_client_ip();
     }
-    if (! empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $parts = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']);
-        return trim($parts[0]);
+    // Fallback (helper niezaładowany — np. wczesny boot / testy izolowane).
+    foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
+        $value = isset($_SERVER[$key]) ? (string) $_SERVER[$key] : '';
+        if ($value === '') {
+            continue;
+        }
+        $ip = trim((string) explode(',', $value)[0]);
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $ip;
+        }
     }
-    return (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    return '0.0.0.0';
 }
 
 /**
