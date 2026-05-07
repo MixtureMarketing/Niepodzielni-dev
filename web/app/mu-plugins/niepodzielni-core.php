@@ -96,6 +96,11 @@ if (defined('WP_CLI') && WP_CLI) {
             new \Niepodzielni\Psychomapa\GeocodingService(),
         ),
     );
+
+    // Idempotentny migration runner — uruchamiany ręcznie w oknie serwisowym.
+    // Migracje w `migrations/` muszą być idempotentne (sprawdzać stan przed mutacją).
+    require_once NIEPODZIELNI_CORE_PATH . 'cli/MigrateCommand.php';
+    \WP_CLI::add_command('np migrate', \Niepodzielni\Core\CLI\MigrateCommand::class);
 }
 
 // JEDNORAZOWE — usuń po wykonaniu
