@@ -78,6 +78,7 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/14-audit-log.php';                 
 require_once NIEPODZIELNI_CORE_PATH . 'admin/15-retention-cron.php';               // retention CPT zgłoszeń + audit log
 require_once NIEPODZIELNI_CORE_PATH . 'admin/16-security-headers.php';             // Referrer/Permissions/CSP-Report-Only
 require_once NIEPODZIELNI_CORE_PATH . 'admin/17-audit-digest.php';                 // dzienny digest bezpieczeństwa → Discord
+require_once NIEPODZIELNI_CORE_PATH . 'admin/18-sentry-init.php';                  // Sentry — error tracking (bez PII)
 require_once NIEPODZIELNI_CORE_PATH . 'admin/19-lockout-burst-alert.php';          // alert >20 lockoutów/h → Discord
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)

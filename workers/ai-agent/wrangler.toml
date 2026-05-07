@@ -5,14 +5,17 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 preview_urls = false
 
-# ── Sekrety (NIGDY tutaj — używaj `wrangler secret put <NAME>`): ────────────
+# ── Sekrety (NIGDY tutaj — używaj `wrangler secret put <NAME> --env <env>`): ─
 #   CF_AIG_TOKEN     — Cloudflare AI Gateway bearer token
 #   WORKER_SECRET    — wspólny sekret WP↔Worker dla /sync (X-Worker-Secret)
 #   WP_BOT_TOKEN     — token do REST API WP (X-API-Key) dla /bot-feedback
 #   NP_AI_BOT_TOKEN  — Bearer token używany przez WP front do uwierzytelniania
 #                      requestów `/chat`, `/search`, `/feedback` (musi być
 #                      identyczny z `NP_AI_BOT_TOKEN` w `.env` WP)
-# Patrz: docs/security-runbook.md → "Rotacja sekretów Worker".
+#   SENTRY_DSN       — opcjonalny, pusty = Sentry wyłączony (PR-B monitoring)
+#   SENTRY_ENV       — 'production' lub 'staging', identyfikuje environment w Sentry
+# Patrz: docs/security-runbook.md → "Rotacja sekretów Worker"
+#  i     docs/monitoring-runbook.md → sekcja 4.3 (Sentry).
 
 [ai]
 binding = "AI"
