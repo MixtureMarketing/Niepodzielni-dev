@@ -118,6 +118,22 @@ innodb_buffer_pool_size = {{ mariadb_innodb_buffer_pool_size }}
 innodb_log_file_size = {{ mariadb_innodb_log_file_size }}
 {% endif %}
 
+# Audyt wydajności PR [NEEDS-OPS] — B2: InnoDB performance tuning
+{% if mariadb_set_innodb_flush_log_at_trx_commit is defined and mariadb_set_innodb_flush_log_at_trx_commit %}
+innodb_flush_log_at_trx_commit = {{ mariadb_innodb_flush_log_at_trx_commit }}
+{% endif %}
+{% if mariadb_set_query_cache_type is defined and mariadb_set_query_cache_type %}
+query_cache_type = {{ mariadb_query_cache_type }}
+{% endif %}
+
+# Audyt wydajności PR [NEEDS-OPS] — B13: Slow query log
+{% if mariadb_slow_query_log is defined and mariadb_slow_query_log %}
+slow_query_log         = 1
+slow_query_log_file    = {{ mariadb_slow_query_log_file | default('/var/log/mysql/slow.log') }}
+long_query_time        = {{ mariadb_long_query_time | default(2) }}
+log_slow_verbosity     = query_plan,explain
+{% endif %}
+
 # this is only for embedded server
 [embedded]
 

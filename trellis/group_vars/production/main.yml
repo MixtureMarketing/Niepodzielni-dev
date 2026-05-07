@@ -8,13 +8,30 @@ php_upload_max_filesize: 64M
 php_post_max_size: 64M
 
 # OPcache — production: validate timestamps off (deploy resets cache), JIT enabled
+# Audyt wydajności PR [NEEDS-OPS] — B1
 php_opcache_validate_timestamps: 0
 php_opcache_revalidate_freq: 0
-php_opcache_max_accelerated_files: 10000
-php_opcache_memory_consumption: 256
-php_opcache_interned_strings_buffer: 16
+php_opcache_max_accelerated_files: 20000
+php_opcache_memory_consumption: 512
+php_opcache_interned_strings_buffer: 32
 php_opcache_jit: tracing
-php_opcache_jit_buffer_size: 64M
+php_opcache_jit_buffer_size: 128M
+php_opcache_huge_code_pages: 1
+
+# MariaDB tuning — Audyt wydajności PR [NEEDS-OPS] — B2 + B13
+# VPS z 4 GB RAM: 1 GB (25%) dla InnoDB buffer pool
+mariadb_set_innodb_buffer_pool_size: true
+mariadb_innodb_buffer_pool_size: 1G
+mariadb_set_innodb_log_file_size: true
+mariadb_innodb_log_file_size: 256M
+mariadb_set_innodb_flush_log_at_trx_commit: true
+mariadb_innodb_flush_log_at_trx_commit: 2
+mariadb_set_query_cache_type: true
+mariadb_query_cache_type: 0
+# Slow query log — B13
+mariadb_slow_query_log: true
+mariadb_slow_query_log_file: /var/log/mysql/slow.log
+mariadb_long_query_time: 2
 
 # Redis — 256 MB, evict LRU keys (object cache)
 redis_maxmemory: 256mb
@@ -24,3 +41,23 @@ redis_maxmemory_policy: allkeys-lru
 nginx_cache_duration: 30s
 nginx_cache_inactive: 1h
 nginx_cache_size: 512m
+
+# fail2ban — Audyt wydajności PR [NEEDS-OPS] — B3
+# Wzmocnienie ochrony: wp-login (5 prób / 10 min -> 1h ban), xmlrpc (3 próby -> 1h ban)
+fail2ban_bantime: 3600
+fail2ban_maxretry: 5
+fail2ban_services_custom:
+  - name: wordpress-wp-login
+    port: http,https
+    filter: wordpress-wp-login
+    logpath: /var/log/nginx/access.log
+    maxretry: 5
+    findtime: 600
+    bantime: 3600
+  - name: wordpress-xmlrpc
+    port: http,https
+    filter: wordpress-xmlrpc
+    logpath: /var/log/nginx/access.log
+    maxretry: 3
+    findtime: 600
+    bantime: 3600
