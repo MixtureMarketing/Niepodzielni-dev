@@ -149,10 +149,11 @@ function np_donations_pit_pdf(\WP_REST_Request $request): \WP_REST_Response
 {
     $donorName = (string) $request->get_param('donor_name');
     $turnstile = (string) $request->get_param('cf-turnstile-response');
-    $remoteIp  = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+    $remoteIp  = function_exists('np_get_client_ip') ? np_get_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
-    // Turnstile (re-use helper z forms-api). Pomijamy gdy brak skonfigurowanego sekretu w dev.
-    if (function_exists('np_verify_turnstile') && ! np_verify_turnstile($turnstile, $remoteIp)) {
+    // Audit security #1 — fail-closed: brak helpera lub błąd weryfikacji = blokuj.
+    // (W dev pomijanie obsługuje sam helper przez WP_ENV !== production.)
+    if (! function_exists('np_cf_turnstile_verify') || ! np_cf_turnstile_verify($turnstile, $remoteIp)) {
         return new \WP_REST_Response([
             'status'  => 'error',
             'message' => 'Weryfikacja anty-spam nie powiodła się.',

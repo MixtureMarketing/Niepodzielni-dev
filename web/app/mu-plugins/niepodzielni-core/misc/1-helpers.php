@@ -10,6 +10,31 @@ if (! defined('ABSPATH')) {
 }
 
 /**
+ * Zwraca IP klienta (CF / reverse-proxy aware), z fallbackiem na REMOTE_ADDR.
+ * Audit security #4 — zunifikowane miejsce ekstrakcji IP, zastępuje 3 duplikaty.
+ *
+ * TODO(ops): nginx musi mieć skonfigurowane `set_real_ip_from <CF ranges>` oraz
+ * `real_ip_header CF-Connecting-IP`, inaczej atakujący może spoofować nagłówek
+ * `CF-Connecting-IP` / `X-Forwarded-For` i obchodzić throttle/audit. Walidacja
+ * IP rangów Cloudflare jest poza scope tego PR (audyt server config).
+ */
+function np_get_client_ip(): string
+{
+    foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
+        $value = isset($_SERVER[$key]) ? (string) $_SERVER[$key] : '';
+        if ($value === '') {
+            continue;
+        }
+        // X-Forwarded-For może być listą — bierzemy pierwszy element.
+        $ip = trim((string) explode(',', $value)[0]);
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $ip;
+        }
+    }
+    return '0.0.0.0';
+}
+
+/**
  * Zwraca wersję assetu (na potrzeby wp_enqueue_*) bez stat() na każdy request.
  * Wynik filemtime() cachowany w object cache (Redis na prod) na 10 min;
  * po deploy `wp cache flush` lub `opcache_reset` natychmiast odświeża wersje.

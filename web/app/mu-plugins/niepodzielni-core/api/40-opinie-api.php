@@ -37,7 +37,7 @@ function np_reviews_handle_submit(\WP_REST_Request $request): \WP_REST_Response
     $email  = sanitize_email((string) ($body['email'] ?? ''));
     $content = sanitize_textarea_field((string) ($body['content'] ?? ''));
     $magicToken = sanitize_text_field((string) ($body['magic_token'] ?? ''));
-    $rvwEmail   = sanitize_email((string) ($body['rvw_email'] ?? $email));
+    $rvwEmail   = sanitize_email((string) ($body['rvw_email'] ?? ''));
 
     // Walidacja posta
     $post = get_post($postId);
@@ -55,21 +55,33 @@ function np_reviews_handle_submit(\WP_REST_Request $request): \WP_REST_Response
     }
 
     // ── Weryfikacja magic_token lub Turnstile ──────────────────────────────
+    // Audit security #6 — NIE nadpisuj $email rvw_email-em zanim magic_token nie zostanie
+    // potwierdzony. Wcześniej: invalid magic + valid rvw_email + Turnstile pass = review
+    // zapisany na cudzy adres (potential email impersonation).
     $magicValid = false;
     if ($magicToken && $rvwEmail) {
         $expected   = np_reviews_generate_magic_token($rvwEmail, $postId);
         $magicValid = hash_equals($expected, $magicToken);
-        $email      = $rvwEmail;
+        if ($magicValid) {
+            // Tylko po pozytywnej weryfikacji ufamy adresowi z magic linka.
+            $email = $rvwEmail;
+        }
     }
 
     if (! $magicValid) {
         // Weryfikacja Cloudflare Turnstile
-        $tsToken = sanitize_text_field((string) ($body['cf-turnstile-response'] ?? ''));
-        if (! np_cf_turnstile_verify($tsToken, (string) ($_SERVER['REMOTE_ADDR'] ?? ''))) {
+        $tsToken  = sanitize_text_field((string) ($body['cf-turnstile-response'] ?? ''));
+        $remoteIp = function_exists('np_get_client_ip') ? np_get_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        if (! np_cf_turnstile_verify($tsToken, $remoteIp)) {
             return new \WP_REST_Response([
                 'status'  => 'error',
                 'message' => 'Weryfikacja anty-spam nie powiodła się. Odśwież stronę i spróbuj ponownie.',
             ], 400);
+        }
+        // Po Turnstile pass: jeśli user dostarczył rvw_email a $email jest pusty,
+        // traktujemy rvw_email jako "claimed by user" — Turnstile był jego dowodem człowieczeństwa.
+        if ($email === '' && $rvwEmail !== '') {
+            $email = $rvwEmail;
         }
     }
 
