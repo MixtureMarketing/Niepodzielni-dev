@@ -19,6 +19,7 @@ Migracje **nie odpalają się automatycznie**. Operator wykonuje je ręcznie w o
 | Data       | Slug                          | Cel                                                                           |
 | ---------- | ----------------------------- | ----------------------------------------------------------------------------- |
 | 2026-05-07 | `2026-05-add-postmeta-index`  | Composite index `(post_id, meta_key)` na `wp_postmeta` — przyspiesza meta_query w listingu psychologów, Carbon Fields, Bookero ID lookups. |
+| 2026-05-07 | `2026-05-cpt-keys-unify`      | Ujednolicenie kluczy postmeta dla 3 CPT eventów (Etap 3 refactoru): kopia `godzina → godzina_rozpoczecia` (warsztaty, grupy-wsparcia) oraz `koszt → cena` (wydarzenia). Idempotent: kopiuje tylko gdy nowy klucz pusty. Stare klucze pozostają w DB (cleanup w osobnej, późniejszej migracji). |
 
 ## Uruchamianie — DEV (Docker)
 
@@ -39,6 +40,24 @@ docker exec niepodzielni-db mysql bedrock_niepodzielni \
 ```
 
 Po migracji `key` w EXPLAIN powinien pokazać `idx_post_meta` zamiast `post_id`.
+
+### Weryfikacja `2026-05-cpt-keys-unify`
+
+```bash
+# Sprawdź ile postów warsztatów/grup ma już nowy klucz
+docker exec niepodzielni-db mysql bedrock_niepodzielni -e "
+  SELECT p.post_type, COUNT(*) AS rows_with_new_key
+  FROM wp_postmeta pm
+  JOIN wp_posts p ON p.ID = pm.post_id
+  WHERE p.post_type IN ('warsztaty','grupy-wsparcia') AND pm.meta_key = 'godzina_rozpoczecia'
+  GROUP BY p.post_type;"
+
+# Wydarzenia: sprawdź czy `cena` ma wartości
+docker exec niepodzielni-db mysql bedrock_niepodzielni -e "
+  SELECT COUNT(*) FROM wp_postmeta pm
+  JOIN wp_posts p ON p.ID = pm.post_id
+  WHERE p.post_type='wydarzenia' AND pm.meta_key='cena' AND pm.meta_value != '';"
+```
 
 ## Uruchamianie — PROD (operator, okno serwisowe)
 

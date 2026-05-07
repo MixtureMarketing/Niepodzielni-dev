@@ -205,7 +205,9 @@ add_shortcode('godziny_wydarzenia', function () {
 add_shortcode('moj_start_wydarzenia', function () {
     $post_id       = get_the_ID();
     $data_surowa   = get_post_meta($post_id, 'data', true);
-    $godzina_start = get_post_meta($post_id, 'godzina', true);
+    // Etap 3: ujednolicony klucz `godzina_rozpoczecia` (fallback na stary `godzina`).
+    $godzina_start = get_post_meta($post_id, 'godzina_rozpoczecia', true)
+        ?: get_post_meta($post_id, 'godzina', true);
     $godzina_koniec = get_post_meta($post_id, 'godzina_zakonczenia', true);
 
     if (! $data_surowa) {

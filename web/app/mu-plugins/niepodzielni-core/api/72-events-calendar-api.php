@@ -121,9 +121,10 @@ function np_calendar_load_event(int $postId): ?array
 
     $isWydarzenie = $post->post_type === 'wydarzenia';
 
-    $timeStart = $isWydarzenie
-        ? (string) get_post_meta($postId, 'godzina_rozpoczecia', true)
-        : (string) get_post_meta($postId, 'godzina', true);
+    // Etap 3 refactoru: ujednolicony klucz `godzina_rozpoczecia` dla wszystkich CPT events.
+    // Fallback na stary `godzina` (warsztaty/grupy-wsparcia przed migracją DB).
+    $timeStart = (string) (get_post_meta($postId, 'godzina_rozpoczecia', true)
+        ?: get_post_meta($postId, 'godzina', true));
     $timeEnd   = (string) get_post_meta($postId, 'godzina_zakonczenia', true);
 
     $title = $isWydarzenie

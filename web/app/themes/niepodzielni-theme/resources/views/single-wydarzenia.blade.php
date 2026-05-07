@@ -5,13 +5,18 @@
   $post_id = get_the_ID();
   $m = [];
   $keys = [
-    'data','godzina_rozpoczecia','godzina_zakonczenia','miasto','lokalizacja','koszt',
+    'data','godzina_rozpoczecia','godzina_zakonczenia','miasto','lokalizacja','koszt','cena',
     'opis','opis_-_na_zdjecie','tutil_-_rozszerzony','wyrozniona_czesc',
     'zdjecie_tla','zdjecie','poprzednmie_edycje','id_uslugi',
   ];
   foreach ($keys as $k) {
     $m[$k] = get_post_meta($post_id, $k, true);
   }
+
+  // Etap 3 refactoru: ujednolicony klucz `cena` dla wszystkich CPT events.
+  // Fallback na stary `koszt` na czas migracji DB. Eksponujemy oba aliasy w $m.
+  $m['koszt'] = $m['cena'] ?: $m['koszt'];
+  $m['cena']  = $m['koszt'];
 
   $title    = $m['tutil_-_rozszerzony'] ?: get_the_title($post_id);
   $subtitle = $m['wyrozniona_czesc'];

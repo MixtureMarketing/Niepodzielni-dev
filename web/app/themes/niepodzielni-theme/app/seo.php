@@ -384,7 +384,9 @@ add_action('wp_head', function () {
     $event_status = $status_map[$raw_status] ?? 'https://schema.org/EventScheduled';
 
     $data    = (string) get_post_meta($pid, 'data', true);
-    $start_t = (string) get_post_meta($pid, 'godzina', true);
+    // Etap 3: ujednolicony klucz `godzina_rozpoczecia` (fallback na stary `godzina`).
+    $start_t = (string) (get_post_meta($pid, 'godzina_rozpoczecia', true)
+        ?: get_post_meta($pid, 'godzina', true));
     $end_t   = (string) get_post_meta($pid, 'godzina_zakonczenia', true);
 
     $startDate = np_seo_datetime($data, $start_t);
@@ -497,7 +499,9 @@ add_action('wp_head', function () {
     $miasto      = (string) get_post_meta($pid, 'miasto', true);
     $lokalizacja = (string) get_post_meta($pid, 'lokalizacja', true);
     $opis        = (string) get_post_meta($pid, 'opis', true);
-    $koszt_raw   = (string) get_post_meta($pid, 'koszt', true);
+    // Etap 3: ujednolicony klucz `cena` (fallback na stary `koszt`).
+    $koszt_raw   = (string) (get_post_meta($pid, 'cena', true)
+        ?: get_post_meta($pid, 'koszt', true));
     $koszt       = np_seo_price($koszt_raw);
     $is_free     = $koszt === 0.0 || strtolower($koszt_raw) === 'bezpłatne';
 

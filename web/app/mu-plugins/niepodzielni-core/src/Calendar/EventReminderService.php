@@ -98,9 +98,10 @@ class EventReminderService
         $title    = $post->post_title;
         $url      = (string) get_permalink($eventId);
         $date     = (string) get_post_meta($eventId, 'data', true);
-        $timeStart = $post->post_type === 'wydarzenia'
-            ? (string) get_post_meta($eventId, 'godzina_rozpoczecia', true)
-            : (string) get_post_meta($eventId, 'godzina', true);
+        // Etap 3 refactoru: ujednolicony klucz `godzina_rozpoczecia` dla wszystkich CPT events.
+        // Fallback na stary `godzina` (warsztaty/grupy-wsparcia przed migracją DB).
+        $timeStart = (string) (get_post_meta($eventId, 'godzina_rozpoczecia', true)
+            ?: get_post_meta($eventId, 'godzina', true));
         $location = (string) get_post_meta($eventId, 'lokalizacja', true);
         if ($post->post_type === 'wydarzenia') {
             $miasto = (string) get_post_meta($eventId, 'miasto', true);

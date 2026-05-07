@@ -265,7 +265,10 @@ function np_cf_warsztaty_grupy(): void
             Field::make('date', 'data', 'Data')
                 ->set_storage_format('Y-m-d'),
 
-            Field::make('text', 'godzina', 'Godzina rozpoczęcia')
+            // Etap 3 refactoru: ujednolicony klucz `godzina_rozpoczecia` dla wszystkich
+            // 3 CPT events (poprzednio warsztaty/grupy używały `godzina`).
+            // Migracja DB: wp np migrate run (2026-05-cpt-keys-unify).
+            Field::make('text', 'godzina_rozpoczecia', 'Godzina rozpoczęcia')
                 ->set_attribute('placeholder', 'np. 18:00')
                 ->set_width(50),
 
@@ -343,7 +346,10 @@ function np_cf_wydarzenia(): void
                 ->set_attribute('placeholder', 'np. ul. Nowy Świat 1')
                 ->set_width(50),
 
-            Field::make('text', 'koszt', 'Koszt')
+            // Etap 3 refactoru: ujednolicony klucz `cena` dla wszystkich 3 CPT events
+            // (poprzednio wydarzenia używały `koszt`).
+            // Migracja DB: wp np migrate run (2026-05-cpt-keys-unify).
+            Field::make('text', 'cena', 'Cena / koszt uczestnictwa')
                 ->set_attribute('placeholder', 'np. Bezpłatne / 50 zł'),
 
             Field::make('textarea', 'opis', 'Opis skrócony')
