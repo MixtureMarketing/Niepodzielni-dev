@@ -17,13 +17,9 @@ preview_urls = false
 [ai]
 binding = "AI"
 
-# ── Rate limiting (KV-backed counter). Utwórz namespace komendą: ────────────
-#   wrangler kv:namespace create RATE_LIMIT
-# i wklej `id`/`preview_id` poniżej.
-# [[kv_namespaces]]
-# binding     = "RATE_LIMIT"
-# id          = "<production-namespace-id>"
-# preview_id  = "<preview-namespace-id>"
+# ── Rate limiting (KV-backed counter). Top-level binding nie jest dziedziczony
+#    przez `--env` deploys; każdy env (production/staging) deklaruje własny KV
+#    namespace poniżej. `wrangler kv namespace create RATE_LIMIT --env <env>`.
 
 [[vectorize]]
 binding    = "VECTORIZE_PSY"
@@ -46,8 +42,29 @@ EMBED_MODEL      = "@cf/baai/bge-m3"
 WP_API_URL       = "https://dev.niepodzielni.com/wp-json/niepodzielni/v1"
 
 # ── Środowiska. Wdrażaj produkcję komendą: `wrangler deploy --env production` ─
+# UWAGA: env.* nie dziedziczą top-level [ai], [[vectorize]], [[kv_namespaces]].
+# Każde środowisko musi powtórzyć wszystkie używane bindings.
 [env.production]
 name = "niepodzielni-ai-agent-production"
+
+[env.production.ai]
+binding = "AI"
+
+[[env.production.vectorize]]
+binding    = "VECTORIZE_PSY"
+index_name = "psycholodzy"
+
+[[env.production.vectorize]]
+binding    = "VECTORIZE_FAQ"
+index_name = "faq"
+
+[[env.production.vectorize]]
+binding    = "VECTORIZE_KNOWLEDGE"
+index_name = "niepodzielni-knowledge"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMIT"
+id      = "4f9d83208b804a709cb273d8dbcf46aa"
 
 [env.production.vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
@@ -57,6 +74,25 @@ WP_API_URL       = "https://niepodzielni.pl/wp-json/niepodzielni/v1"
 
 [env.staging]
 name = "niepodzielni-ai-agent-staging"
+
+[env.staging.ai]
+binding = "AI"
+
+[[env.staging.vectorize]]
+binding    = "VECTORIZE_PSY"
+index_name = "psycholodzy"
+
+[[env.staging.vectorize]]
+binding    = "VECTORIZE_FAQ"
+index_name = "faq"
+
+[[env.staging.vectorize]]
+binding    = "VECTORIZE_KNOWLEDGE"
+index_name = "niepodzielni-knowledge"
+
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMIT"
+id      = "a987aa1e6f0d48f3b4f55cf068dd9b79"
 
 [env.staging.vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
