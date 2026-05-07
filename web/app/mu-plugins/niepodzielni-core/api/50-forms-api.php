@@ -217,6 +217,19 @@ function np_forms_handle_verify(\WP_REST_Request $request): \WP_REST_Response
         ], 400);
     }
 
+    // Brute-force chronion: licznik prób per submission_id (max 5/15min).
+    // OTP są 6-cyfrowe (~10^6), więc bez throttlingu atak słownikowy trwa minuty.
+    $attemptKey      = 'np_otp_attempts_' . $submissionId;
+    $attempts        = (int) get_transient($attemptKey);
+    $maxOtpAttempts  = 5;
+
+    if ($attempts >= $maxOtpAttempts) {
+        return new \WP_REST_Response([
+            'status'  => 'error',
+            'message' => 'Zbyt wiele nieudanych prób. Wyślij formularz ponownie, by otrzymać nowy kod.',
+        ], 429);
+    }
+
     // Sprawdź, czy zgłoszenie należy do tego formularza
     $storedFormId = get_post_meta($submissionId, '_form_id', true);
     if ($storedFormId !== $formId) {
@@ -229,11 +242,14 @@ function np_forms_handle_verify(\WP_REST_Request $request): \WP_REST_Response
     $verified = $handler->verifyOTP($submissionId, $otpCode);
 
     if (! $verified) {
+        set_transient($attemptKey, $attempts + 1, 15 * MINUTE_IN_SECONDS);
         return new \WP_REST_Response([
             'status'  => 'error',
             'message' => 'Kod jest nieprawidłowy lub wygasł. Spróbuj ponownie.',
         ], 400);
     }
+
+    delete_transient($attemptKey);
 
     return new \WP_REST_Response([
         'status'  => 'success',

@@ -31,11 +31,11 @@ if (! is_dir(NIEPODZIELNI_CORE_PATH)) {
 
 // 1. REJESTRACJA CPT, TAKSONOMII I METABOXÓW
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/14-cpt-psycholog.php';
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/15-event-cpt-helper.php';   // helper register_event_cpt — musi być przed 17/18/19
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/16-cpt-aktualnosci.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/17-cpt-wydarzenia.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/18-cpt-warsztaty.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/19-cpt-grupy-wsparcia.php';
-require_once NIEPODZIELNI_CORE_PATH . 'cpt/20-cpt-metaboxes.php'; // fallback gdy brak CF
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/21-carbon-fields.php'; // Carbon Fields (główny)
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-zgloszenia.php';    // CPT: Zgłoszenia (Forms)
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-osrodki.php';       // Psychomapa: CPT + taksonomie
@@ -67,6 +67,11 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/8-login-page.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/9-psycholog-role.php';                // rola WP psycholog + redirecty
 require_once NIEPODZIELNI_CORE_PATH . 'admin/10-psycholog-admin-cols.php';         // kolumna "Konto" na liście
 require_once NIEPODZIELNI_CORE_PATH . 'admin/11-psycholog-account-metabox.php';    // metabox "Stwórz konto"
+require_once NIEPODZIELNI_CORE_PATH . 'admin/12-cookie-hardening.php';             // Secure/HttpOnly/SameSite cookies + krótszy session
+require_once NIEPODZIELNI_CORE_PATH . 'admin/13-login-throttle.php';               // brute-force protection na logowanie
+require_once NIEPODZIELNI_CORE_PATH . 'admin/14-audit-log.php';                    // utrwalanie zdarzeń bezpieczeństwa
+require_once NIEPODZIELNI_CORE_PATH . 'admin/15-retention-cron.php';               // retention CPT zgłoszeń + audit log
+require_once NIEPODZIELNI_CORE_PATH . 'admin/16-security-headers.php';             // Referrer/Permissions/CSP-Report-Only
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';
