@@ -10,6 +10,29 @@ if (! defined('ABSPATH')) {
 }
 
 /**
+ * Zwraca wersję assetu (na potrzeby wp_enqueue_*) bez stat() na każdy request.
+ * Wynik filemtime() cachowany w object cache (Redis na prod) na 10 min;
+ * po deploy `wp cache flush` lub `opcache_reset` natychmiast odświeża wersje.
+ *
+ * @param string      $path     Ścieżka pliku JS/CSS na dysku.
+ * @param string|null $fallback Wartość zwracana gdy plik nie istnieje (np. wersja pluginu).
+ */
+function np_asset_version(string $path, ?string $fallback = null): ?string
+{
+    $key = 'np_asset_ver:' . md5($path);
+    $ver = wp_cache_get($key, 'np_asset_ver');
+    if ($ver !== false) {
+        return $ver === '' ? $fallback : (string) $ver;
+    }
+
+    $mtime = @filemtime($path);
+    $ver   = $mtime ? (string) $mtime : '';
+    wp_cache_set($key, $ver, 'np_asset_ver', 10 * MINUTE_IN_SECONDS);
+
+    return $ver === '' ? $fallback : $ver;
+}
+
+/**
  * Zwraca true gdy $typ to wariant niskopłatny.
  * Centralny punkt decyzji — używaj zamiast inline in_array() w wielu miejscach.
  */

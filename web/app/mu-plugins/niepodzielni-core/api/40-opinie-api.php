@@ -280,7 +280,7 @@ function np_reviews_enqueue_assets(): void
         return;
     }
 
-    wp_enqueue_script('np-reviews', $jsUrl, [], (string) filemtime($jsPath), true);
+    wp_enqueue_script('np-reviews', $jsUrl, [], np_asset_version($jsPath, '1.0.0'), true);
 
     $siteKey = '';
     foreach (['NP_CF_TURNSTILE_SITE_KEY', 'CF_TURNSTILE_SITE_KEY'] as $c) {
