@@ -12,6 +12,8 @@ namespace Niepodzielni\Forms;
  */
 abstract class BaseFormHandler
 {
+    public const OTP_TTL = 15 * MINUTE_IN_SECONDS;
+
     protected bool    $saveToDb            = true;
     protected ?string $adminEmail          = null;
     protected bool    $userConfirmation    = false;
@@ -241,8 +243,6 @@ abstract class BaseFormHandler
         $userEmail  = (string) get_post_meta($submissionId, '_user_email', true);
         $sourceUrl  = (string) get_post_meta($submissionId, '_source_url', true);
 
-        $htmlFilter = static fn(): string => 'text/html';
-
         // ── Mail do admina ──
         $adminBody  = "<p>Nowe zgłoszenie z formularza <strong>{$this->getFormId()}</strong> na stronie {$siteName}.</p>";
         $adminBody .= '<table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;">';
@@ -255,24 +255,13 @@ abstract class BaseFormHandler
         }
         $adminBody .= '</table>';
 
-        add_filter('wp_mail_content_type', $htmlFilter);
-        wp_mail(
-            $adminEmail,
-            "[{$siteName}] Nowe zgłoszenie — {$this->getFormId()}",
-            $adminBody,
-        );
+        np_send_html_mail($adminEmail, "[{$siteName}] Nowe zgłoszenie — {$this->getFormId()}", $adminBody);
 
         // ── Potwierdzenie dla użytkownika ──
         if ($this->userConfirmation && $userEmail) {
             $userBody = $this->getUserConfirmationBody($formData, $siteName);
-            wp_mail(
-                $userEmail,
-                "[{$siteName}] Potwierdzenie zgłoszenia",
-                $userBody,
-            );
+            np_send_html_mail($userEmail, "[{$siteName}] Potwierdzenie zgłoszenia", $userBody);
         }
-
-        remove_filter('wp_mail_content_type', $htmlFilter);
     }
 
     /**
@@ -299,26 +288,17 @@ abstract class BaseFormHandler
 
         $code    = (string) random_int(100000, 999999);
         $hash    = hash_hmac('sha256', $code, wp_salt('auth'));
-        $expires = time() + (15 * MINUTE_IN_SECONDS);
+        $expires = time() + self::OTP_TTL;
 
         update_post_meta($submissionId, '_otp_hash', $hash);
         update_post_meta($submissionId, '_otp_expires_at', (string) $expires);
 
-        $siteName   = get_bloginfo('name');
-        $body       = "<p>Twój kod weryfikacyjny dla {$siteName}:</p>"
-                    . "<h2 style=\"letter-spacing:8px;font-size:32px;\">{$code}</h2>"
-                    . "<p>Kod jest ważny przez 15 minut.</p>";
+        $siteName = get_bloginfo('name');
+        $body     = "<p>Twój kod weryfikacyjny dla {$siteName}:</p>"
+                  . "<h2 style=\"letter-spacing:8px;font-size:32px;\">{$code}</h2>"
+                  . "<p>Kod jest ważny przez 15 minut.</p>";
 
-        $htmlFilter = static fn(): string => 'text/html';
-        add_filter('wp_mail_content_type', $htmlFilter);
-        $sent = wp_mail(
-            $userEmail,
-            "[{$siteName}] Kod weryfikacyjny",
-            $body,
-        );
-        remove_filter('wp_mail_content_type', $htmlFilter);
-
-        return $sent;
+        return np_send_html_mail($userEmail, "[{$siteName}] Kod weryfikacyjny", $body);
     }
 
     /**

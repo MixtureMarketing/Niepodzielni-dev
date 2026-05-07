@@ -304,7 +304,15 @@ if (! function_exists('np_bookero_is_nisko_typ')) {
 }
 
 if (! function_exists('np_bookero_log_error')) {
-    function np_bookero_log_error(string $context, string $msg): void {}
+    function np_bookero_log_error(string $context, string|array $msg): void {}
+}
+
+if (! function_exists('np_send_html_mail')) {
+    /** @param string[] $headers */
+    function np_send_html_mail(string $to, string $subject, string $body, array $headers = []): bool
+    {
+        return true;
+    }
 }
 
 if (! function_exists('np_get_sortable_date')) {

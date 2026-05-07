@@ -174,8 +174,8 @@ function np_reviews_check_bookero_visit(int $postId, string $email): bool
         $client   = new \Niepodzielni\Bookero\BookeroApiClient();
         $workerIdPelny = $repo->getWorkerId($postId, 'pelnoplatny');
         $workerIdNisko = $repo->getWorkerId($postId, 'nisko');
-        $calPelny = defined('NP_BOOKERO_CAL_ID_PELNY') ? (string) NP_BOOKERO_CAL_ID_PELNY : (string) get_option('np_bookero_cal_pelny', '');
-        $calNisko = defined('NP_BOOKERO_CAL_ID_NISKO') ? (string) NP_BOOKERO_CAL_ID_NISKO : (string) get_option('np_bookero_cal_nisko', '');
+        $calPelny = np_bookero_cal_id_for('pelnoplatny');
+        $calNisko = np_bookero_cal_id_for('nisko');
 
         $pairs = array_filter([
             $workerIdPelny ? [$calPelny, $workerIdPelny] : null,
@@ -271,9 +271,7 @@ function np_reviews_notify_psychologist(int $postId, int $commentId, string $aut
           . "<p><a href=\"{$adminLink}\">Zobacz opinię w panelu admina</a></p>"
           . "<p>Pozdrawiamy, {$siteName}</p>";
 
-    add_filter('wp_mail_content_type', static fn() => 'text/html');
-    wp_mail($author->user_email, "[{$siteName}] Nowa opinia — {$postTitle}", $body);
-    remove_filter('wp_mail_content_type', static fn() => 'text/html');
+    np_send_html_mail($author->user_email, "[{$siteName}] Nowa opinia — {$postTitle}", $body);
 }
 
 // ─── Enqueue ──────────────────────────────────────────────────────────────────
@@ -294,16 +292,7 @@ function np_reviews_enqueue_assets(): void
 
     wp_enqueue_script('np-reviews', $jsUrl, [], np_asset_version($jsPath, '1.0.0'), true);
 
-    $siteKey = '';
-    foreach (['NP_CF_TURNSTILE_SITE_KEY', 'CF_TURNSTILE_SITE_KEY'] as $c) {
-        if (defined($c) && constant($c)) {
-            $siteKey = (string) constant($c);
-            break;
-        }
-    }
-    if (! $siteKey) {
-        $siteKey = (string) get_option('np_cf_turnstile_site_key', '');
-    }
+    $siteKey = np_get_turnstile_site_key();
 
     wp_localize_script('np-reviews', 'NpReviewsConfig', [
         'apiUrl'        => esc_url_raw(rest_url('niepodzielni/v1/reviews')),

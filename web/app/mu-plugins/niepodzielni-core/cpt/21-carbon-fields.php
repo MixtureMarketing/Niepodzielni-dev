@@ -51,6 +51,27 @@ if (! class_exists(\Carbon_Fields\Carbon_Fields::class)) {
 use Carbon_Fields\Container;
 use Carbon_Fields\Field;
 
+// ─── CF section header helper ────────────────────────────────────────────────
+
+/**
+ * Generuje HTML nagłówka sekcji dla Carbon Fields field 'html'.
+ * Zastępuje 6 powielonych inline-HTML-ów w kontenerach CF.
+ *
+ * @param string $label  Treść nagłówka
+ * @param bool   $first  Czy to pierwszy nagłówek w kontenerze (mniejszy margin-top)
+ * @return string  Kompletny tag <h3> gotowy do set_html()
+ */
+function np_cf_section_html(string $label, bool $first = false): string
+{
+    $mt = $first ? '4px' : '20px';
+
+    return sprintf(
+        '<h3 style="margin:%s 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">%s</h3>',
+        $mt,
+        esc_html($label),
+    );
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 // Musi nastąpić na after_setup_theme — CF rejestruje własne hooki i assets.
 
@@ -92,7 +113,7 @@ function np_cf_theme_options(): void
         ->add_tab('Strona główna', [
 
             Field::make('html', 'cf_sep_hero_tax')
-                ->set_html('<h3 style="margin:4px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Sekcja Hero (1,5%)</h3>'),
+                ->set_html(np_cf_section_html('Sekcja Hero (1,5%)', true)),
 
             Field::make('image', 'hero_tax_bg_desktop', 'Zdjęcie tła — desktop')
                 ->set_value_type('id')
@@ -107,7 +128,7 @@ function np_cf_theme_options(): void
         ->add_tab('Partnerzy', [
 
             Field::make('html', 'cf_sep_partners')
-                ->set_html('<h3 style="margin:4px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Slider partnerów (stopka)</h3><p style="color:#555;margin-bottom:16px">Dodaj logo każdego partnera. Link i jego rodzaj są opcjonalne.</p>'),
+                ->set_html(np_cf_section_html('Slider partnerów (stopka)', true) . '<p style="color:#555;margin-bottom:16px">Dodaj logo każdego partnera. Link i jego rodzaj są opcjonalne.</p>'),
 
             Field::make('complex', 'partners', 'Partnerzy')
                 ->set_layout('tabbed-vertical')
@@ -156,7 +177,7 @@ function np_cf_psycholog(): void
             // Nie ma potrzeby osobnego checkboxa "Świadczy wizyty X".
 
             Field::make('html', 'cf_sep_pelno')
-                ->set_html('<h3 style="margin:4px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Wizyty pełnopłatne</h3>'),
+                ->set_html(np_cf_section_html('Wizyty pełnopłatne', true)),
 
             Field::make('text', 'bookero_id_pelny', 'Bookero ID (pełnopłatne)')
                 ->set_attribute('placeholder', 'np. 12345')
@@ -171,7 +192,7 @@ function np_cf_psycholog(): void
             // ── Wizyty niskopłatne ────────────────────────────────────────────
 
             Field::make('html', 'cf_sep_nisko')
-                ->set_html('<h3 style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Wizyty niskopłatne</h3>'),
+                ->set_html(np_cf_section_html('Wizyty niskopłatne')),
 
             Field::make('text', 'bookero_id_niski', 'Bookero ID (niskopłatne)')
                 ->set_attribute('placeholder', 'np. 12346')
@@ -186,7 +207,7 @@ function np_cf_psycholog(): void
             // ── Ogólne ────────────────────────────────────────────────────────
 
             Field::make('html', 'cf_sep_ogolne')
-                ->set_html('<h3 style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Ogólne</h3>'),
+                ->set_html(np_cf_section_html('Ogólne')),
 
             Field::make('select', 'rodzaj_wizyty', 'Rodzaj wizyty')
                 ->set_options([
@@ -206,7 +227,7 @@ function np_cf_psycholog(): void
 
             // ── Konto WP psychologa ───────────────────────────────────────────
             Field::make('html', 'cf_sep_konto')
-                ->set_html('<h3 style="margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid #e0e0e0;color:#1d2327">Konto psychologa (panel frontendowy)</h3>'),
+                ->set_html(np_cf_section_html('Konto psychologa (panel frontendowy)')),
 
             Field::make('text', 'email_kontaktowy', 'Email logowania')
                 ->set_attribute('type', 'email')
