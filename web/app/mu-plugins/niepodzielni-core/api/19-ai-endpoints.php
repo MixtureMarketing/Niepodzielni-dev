@@ -92,13 +92,19 @@ function np_ai_rest_bot_availability(\WP_REST_Request $request): \WP_REST_Respon
         'posts_per_page'         => 300,
         'fields'                 => 'ids',
         'no_found_rows'          => true,
-        'update_post_meta_cache' => true,
+        'update_post_meta_cache' => false,
         'update_post_term_cache' => false,
         'meta_query'             => [[
             'key'     => $id_key,
             'compare' => 'EXISTS',
         ]],
     ]);
+
+    // fields=ids pomija hydratację cache; bez tego pętla robiłaby ~4*N zapytań
+    // (get_post_meta + get_the_title/get_permalink + 2x get_the_terms na psychologa)
+    if ($psycholodzy) {
+        _prime_post_caches($psycholodzy, true, true);
+    }
 
     // Zagreguj dostępność per data
     $availability = [];
@@ -180,13 +186,18 @@ function np_ai_rest_bookero_status(): \WP_REST_Response
         'posts_per_page'         => 300,
         'fields'                 => 'ids',
         'no_found_rows'          => true,
-        'update_post_meta_cache' => true,
+        'update_post_meta_cache' => false,
         'update_post_term_cache' => false,
         'meta_query'             => [[
             'key'     => 'bookero_id_niski',
             'compare' => 'EXISTS',
         ]],
     ]);
+
+    // fields=ids pomija hydratację post object cache; bez tego get_the_title robi 1 SELECT/post
+    if ($psycholodzy) {
+        _prime_post_caches($psycholodzy, false, true);
+    }
 
     $workers = [];
     foreach ($psycholodzy as $post_id) {

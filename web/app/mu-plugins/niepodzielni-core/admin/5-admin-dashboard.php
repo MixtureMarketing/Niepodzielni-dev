@@ -100,31 +100,34 @@ function np_render_dashboard_widget(): void
     global $wpdb;
     $total_psy = (int) $psycholodzy->publish;
 
-    // Psycholodzy z ustawionym worker ID (mają Bookero)
-    $with_bookero = (int) $wpdb->get_var(
-        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
-         INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-         WHERE p.post_type = 'psycholog' AND p.post_status = 'publish'
-           AND pm.meta_key IN ('bookero_id_pelny','bookero_id_niski')
-           AND pm.meta_value != ''",
-    );
+    // 1 zapytanie zamiast 3 DISTINCT — wynik cache'owany na 5 min, bo widget renderowany przy każdym otwarciu dashboardu
+    $cache_key   = 'np_dash_psy_stats';
+    $cache_group = 'np_admin_dashboard';
+    $stats       = wp_cache_get($cache_key, $cache_group);
 
-    // Zsynchronizowani (mają np_termin_updated_at)
-    $synced = (int) $wpdb->get_var(
-        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
-         INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-         WHERE p.post_type = 'psycholog' AND p.post_status = 'publish'
-           AND pm.meta_key = 'np_termin_updated_at'",
-    );
+    if (false === $stats) {
+        $row = $wpdb->get_row(
+            "SELECT
+                COUNT(DISTINCT IF(pm.meta_key IN ('bookero_id_pelny','bookero_id_niski') AND pm.meta_value != '', p.ID, NULL))   AS with_bookero,
+                COUNT(DISTINCT IF(pm.meta_key = 'np_termin_updated_at', p.ID, NULL))                                              AS synced,
+                COUNT(DISTINCT IF(pm.meta_key IN ('najblizszy_termin_pelnoplatny','najblizszy_termin_niskoplatny') AND pm.meta_value != '', p.ID, NULL)) AS has_terms
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+             WHERE p.post_type = 'psycholog' AND p.post_status = 'publish'
+               AND pm.meta_key IN ('bookero_id_pelny','bookero_id_niski','np_termin_updated_at','najblizszy_termin_pelnoplatny','najblizszy_termin_niskoplatny')",
+            ARRAY_A,
+        );
+        $stats = [
+            'with_bookero' => (int) ($row['with_bookero'] ?? 0),
+            'synced'       => (int) ($row['synced'] ?? 0),
+            'has_terms'    => (int) ($row['has_terms'] ?? 0),
+        ];
+        wp_cache_set($cache_key, $stats, $cache_group, 5 * MINUTE_IN_SECONDS);
+    }
 
-    // Mają wolne terminy (przynajmniej jeden typ)
-    $has_terms = (int) $wpdb->get_var(
-        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
-         INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-         WHERE p.post_type = 'psycholog' AND p.post_status = 'publish'
-           AND pm.meta_key IN ('najblizszy_termin_pelnoplatny','najblizszy_termin_niskoplatny')
-           AND pm.meta_value != ''",
-    );
+    $with_bookero = $stats['with_bookero'];
+    $synced       = $stats['synced'];
+    $has_terms    = $stats['has_terms'];
 
     // max(0,...) — psycholodzy z terminem zapisanym przed dodaniem np_termin_updated_at
     // mogą powodować ujemne liczby; cron uzupełni timestamp przy następnym przebiegu
