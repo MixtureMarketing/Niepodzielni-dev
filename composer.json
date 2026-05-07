@@ -53,7 +53,8 @@
   "require-dev": {
     "laravel/pint": "^1.27",
     "pestphp/pest": "^4.0",
-    "phpstan/phpstan": "^2.1"
+    "phpstan/phpstan": "^2.1",
+    "wpackagist-plugin/query-monitor": "^3.17"
   },
   "config": {
     "optimize-autoloader": true,

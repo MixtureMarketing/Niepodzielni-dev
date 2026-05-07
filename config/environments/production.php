@@ -34,3 +34,12 @@ ini_set('log_errors', '1');
 
 // Wskaźnik dla mu-pluginów / monitoringu, że jesteśmy w produkcji.
 Config::define('NP_RUNTIME', 'production');
+
+// Bezpiecznik: jeśli Query Monitor by się znalazł na produkcji (np. przez
+// plugin auto-update albo niepoprawny `composer install --dev` w deploy),
+// `QM_DISABLED=true` wymusza, żeby plugin nie inicjalizował zbierania danych.
+// Plugin jest deklarowany jako dev-dependency w composer.json — produkcyjny
+// `composer install --no-dev` pomija go, ten stałe to drugi poziom obrony.
+if (! defined('QM_DISABLED')) {
+    define('QM_DISABLED', true);
+}
