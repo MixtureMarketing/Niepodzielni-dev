@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
 
+# Default permissions: read-only code clone. SSH (DEPLOY_SSH_KEY), wrangler
+# (CLOUDFLARE_API_TOKEN) i ansible (ANSIBLE_VAULT_PASS) używają własnych
+# sekretów — nie wymagają GITHUB_TOKEN write access.
+permissions:
+  contents: read
+
 # Anuluje równoległe deploye na tej samej gałęzi.
 concurrency:
   group: deploy-production

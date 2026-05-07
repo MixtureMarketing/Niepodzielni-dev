@@ -25,6 +25,12 @@ on:
   pull_request:
     branches: [main, dev]
 
+# Default permissions — wszystkie joby mają tylko read code (clone repo).
+# Reszta operacji używa własnych sekretów (DEPLOY_SSH_KEY, CLOUDFLARE_API_TOKEN
+# itd.), nie GITHUB_TOKEN. Naprawia: actions/missing-workflow-permissions.
+permissions:
+  contents: read
+
 # Anuluje poprzedni run dla tej samej gałęzi/PR gdy nowy commit trafi zanim
 # poprzedni się zakończy — oszczędza minuty runner-ów na niepotrzebnych runach.
 concurrency:

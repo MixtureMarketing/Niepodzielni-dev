@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from tests.integration.conftest import get
 
 
@@ -8,8 +10,9 @@ def test_https_site_redirects_from_http():
         f"Expected redirect from http://example-https.com, got {response.status_code}. "
         f"Headers: {dict(response.headers)}"
     )
-    assert response.headers.get("Location", "").startswith("https://"), (
-        f"Expected redirect target to use https scheme, got {response.headers.get('Location')!r}. "
+    location = response.headers.get("Location", "")
+    assert urlparse(location).scheme == "https", (
+        f"Expected redirect target to use https scheme, got {location!r}. "
         f"Headers: {dict(response.headers)}"
     )
 
@@ -21,8 +24,12 @@ def test_www_domain_redirects_to_canonical_http():
         f"Expected redirect from www domain, got {response.status_code}. "
         f"Headers: {dict(response.headers)}"
     )
-    assert response.headers.get("Location", "").startswith("http://example.com"), (
-        f"Expected redirect target to canonical host, got {response.headers.get('Location')!r}. "
+    # Pełny URL parse zamiast startswith() — zabezpiecza przed open-redirect
+    # do hostów typu http://example.com.evil.com (CodeQL py/incomplete-url-substring-sanitization).
+    location = response.headers.get("Location", "")
+    parsed = urlparse(location)
+    assert parsed.scheme == "http" and parsed.netloc == "example.com", (
+        f"Expected redirect target to canonical http://example.com, got {location!r}. "
         f"Headers: {dict(response.headers)}"
     )
 
