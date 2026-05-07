@@ -40,8 +40,11 @@
 }
 
 .footer-contact-list li a {
-    display: flex;
-    align-items: flex-start;
+    /* Audit UX H2 — footer contact tap target 44px */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 4px;
     gap: 10px;
     text-decoration: none;
     color: inherit;

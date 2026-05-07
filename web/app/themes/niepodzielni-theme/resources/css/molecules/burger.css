@@ -1,11 +1,13 @@
 /* --- Hamburger Menu --- */
+/* Audit UX H1 — burger 44x44 (WCAG 2.5.5 + Apple HIG tap target) */
 .burger {
   position: relative;
-  width: 32px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   background: transparent;
   border: none;
-  padding: 0;
+  padding: 10px;
+  box-sizing: border-box;
   cursor: pointer;
   display: block;
 }
@@ -14,17 +16,18 @@
   display: block;
   position: absolute;
   height: 3px;
-  width: 100%;
+  /* Inner bars: 24px wide × 24px tall area inside 10px padding */
+  width: calc(100% - 20px);
   background: var(--mix-color-brand-primary);
   border-radius: 9px;
   opacity: 1;
-  left: 0;
+  left: 10px;
   transform: rotate(0deg);
   transition: var(--mix-transition-duration-fast) var(--mix-transition-timing-ease);
 }
 
 .burger span:nth-of-type(1) {
-  top: 0px;
+  top: 10px;
   transform-origin: left center;
 }
 
@@ -35,15 +38,15 @@
 }
 
 .burger span:nth-of-type(3) {
-  top: 100%;
+  top: calc(100% - 10px);
   transform-origin: left center;
   transform: translateY(-100%);
 }
 
 .burger[aria-expanded="true"] span:nth-of-type(1) {
   transform: rotate(45deg);
-  top: 0px;
-  left: 4px;
+  top: 10px;
+  left: 14px;
 }
 
 .burger[aria-expanded="true"] span:nth-of-type(2) {
@@ -53,8 +56,8 @@
 
 .burger[aria-expanded="true"] span:nth-of-type(3) {
   transform: rotate(-45deg);
-  top: 22px;
-  left: 4px;
+  top: 32px;
+  left: 14px;
 }
 
 .burger:focus-visible {

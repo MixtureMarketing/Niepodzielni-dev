@@ -232,3 +232,14 @@
         min-width: 220px;
     }
 }
+
+/* Audit UX H5 — single-psycholog <480px breakpoint (360px screens) */
+@media (max-width: 480px) {
+    .psy-name-h1 { font-size: clamp(24px, 6vw, 32px) !important; }
+    .psy-card-photo {
+        width: 180px !important;
+        height: 180px !important;
+        min-width: 180px;
+    }
+    .psy-profile-card { padding: 24px 16px; border-radius: 24px; }
+}
