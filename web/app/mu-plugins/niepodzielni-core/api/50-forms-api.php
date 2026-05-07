@@ -256,7 +256,10 @@ function np_forms_enqueue_assets(): void
         : (string) get_option('np_cf_turnstile_site_key', '');
 
     wp_localize_script('niepodzielni-forms', 'NpFormsConfig', [
-        'apiBase'       => esc_url_raw(rest_url('niepodzielni/v1/forms')),
+        'apiBase'          => esc_url_raw(rest_url('niepodzielni/v1/forms')),
+        // X-WP-Nonce: wymagany przez WP REST API (rest_cookie_check_errors) gdy
+        // request idzie z zalogowanej sesji. Bez tego WP zwraca 403 "Cookie check failed".
+        'nonce'            => wp_create_nonce('wp_rest'),
         'turnstileSiteKey' => $siteKey,
     ]);
 }

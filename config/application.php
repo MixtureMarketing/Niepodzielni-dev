@@ -171,6 +171,10 @@ Config::define('NP_AI_WORKER_URL', env('NP_AI_WORKER_URL') ?: '');
 Config::define('NP_AI_WORKER_SECRET', env('NP_AI_WORKER_SECRET') ?: '');
 Config::define('NP_AI_BOT_TOKEN', env('NP_AI_BOT_TOKEN') ?: '');
 
+// Cloudflare Turnstile (anty-spam dla formularzy). Vault → .env → constants.
+Config::define('NP_CF_TURNSTILE_SECRET', env('NP_CF_TURNSTILE_SECRET') ?: '');
+Config::define('NP_CF_TURNSTILE_SITE_KEY', env('NP_CF_TURNSTILE_SITE_KEY') ?: '');
+
 /**
  * Custom Settings
  */
