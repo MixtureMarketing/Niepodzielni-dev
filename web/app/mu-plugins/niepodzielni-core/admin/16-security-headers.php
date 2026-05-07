@@ -39,7 +39,7 @@ add_action('send_headers', static function (): void {
             "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdn.jsdelivr.net",
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
             "img-src 'self' data: https: blob:",
-            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com",
+            "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com",
             "connect-src 'self' https://challenges.cloudflare.com https://*.workers.dev https://*.cloudflare.com",
             "frame-src https://challenges.cloudflare.com https://*.bookero.pl",
             "frame-ancestors 'self'",
