@@ -49,7 +49,7 @@ id      = "3a8699757cf64581b9b6b958bf436a5b"
 #    `wrangler kv namespace create AI_SEARCH_CACHE --env <env>`.
 [[kv_namespaces]]
 binding = "AI_SEARCH_CACHE"
-id      = "REPLACE_WITH_REAL_KV_ID"
+id      = "8edacbb38d8a426a93b40756dfd2da81"
 
 # ── Wartości jawne (bez sekretów). `GATEWAY_BASE_URL` zawiera account_id, ale
 #    sam URL bez `CF_AIG_TOKEN` nie pozwala na wywołanie. Zostaje w `vars`. ──
@@ -92,7 +92,7 @@ id      = "4201695d4dfe41e6a38a8ebe15d62372"
 
 [[env.production.kv_namespaces]]
 binding = "AI_SEARCH_CACHE"
-id      = "REPLACE_WITH_REAL_KV_ID_PRODUCTION"
+id      = "b0cafd3f05d644909511ff27deb0aa24"
 
 [env.production.vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
@@ -131,7 +131,7 @@ id      = "ed309d95c1f84d1682dc2a8d79ca8d58"
 
 [[env.staging.kv_namespaces]]
 binding = "AI_SEARCH_CACHE"
-id      = "REPLACE_WITH_REAL_KV_ID_STAGING"
+id      = "094d9ed1c4534abf8afb81030ccafd35"
 
 [env.staging.vars]
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
