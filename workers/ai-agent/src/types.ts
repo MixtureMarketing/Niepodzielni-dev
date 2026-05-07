@@ -3,14 +3,16 @@ export interface Env {
     VECTORIZE_PSY:        VectorizeIndex; // legacy — fallback podczas migracji
     VECTORIZE_FAQ:        VectorizeIndex; // legacy — fallback podczas migracji
     VECTORIZE_KNOWLEDGE:  VectorizeIndex; // unified knowledge base
-    AVAIL_CACHE:          KVNamespace;   // KV cache dla buildAvailabilityContext (TTL 90s)
+    AVAIL_CACHE:          KVNamespace;   // KV cache dla buildAvailabilityContext (TTL 90s, PR #5)
+    RATE_LIMIT?:          KVNamespace;   // opcjonalny — patrz src/rateLimit.ts (PR #7)
     GATEWAY_BASE_URL:     string;
     CHAT_MODEL:           string;
     EMBED_MODEL:          string;
     WP_API_URL:           string;
     CF_AIG_TOKEN:         string;
-    WORKER_SECRET:        string;
-    WP_BOT_TOKEN:         string;
+    WORKER_SECRET:        string;          // X-Worker-Secret dla /sync (WP→Worker)
+    WP_BOT_TOKEN:         string;          // X-API-Key dla wywołań Worker→WP
+    NP_AI_BOT_TOKEN:      string;          // Bearer token dla /chat /search /feedback
 }
 
 export type KnowledgeType = 'psycholog' | 'faq' | 'article' | 'workshop' | 'group';

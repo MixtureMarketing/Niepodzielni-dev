@@ -71,46 +71,10 @@
     {{-- FORMULARZ --}}
     <section class="psy-section kontakt-form-section">
         <div class="psy-container">
-            <h2 class="section-title section-title--green">Napisz do nas</h2>
-            <p class="kontakt-form-section__intro">Czekamy na Twoje wiadomości i jesteśmy tu, aby wspierać Cię w każdej sytuacji. Dziękujemy za zainteresowanie naszą fundacją!</p>
-
-            @if(isset($_GET['kontakt']) && $_GET['kontakt'] === 'ok')
-                <div class="kontakt-form-notice kontakt-form-notice--success">Dziękujemy za wiadomość! Odpiszemy najszybciej jak to możliwe.</div>
-            @elseif(isset($_GET['kontakt']) && $_GET['kontakt'] === 'blad')
-                <div class="kontakt-form-notice kontakt-form-notice--error">Wystąpił błąd. Sprawdź pola i spróbuj ponownie.</div>
-            @endif
-
-            <form class="kontakt-form" method="POST" action="{{ esc_url(admin_url('admin-post.php')) }}">
-                <input type="hidden" name="action" value="np_contact_form">
-                @php wp_nonce_field('np_contact_form', 'np_contact_nonce'); @endphp
-
-                <div class="kontakt-form__row">
-                    <div class="kontakt-form__field">
-                        <input type="text" name="imie" placeholder="Imię" required>
-                    </div>
-                    <div class="kontakt-form__field">
-                        <input type="text" name="nazwisko" placeholder="Nazwisko">
-                    </div>
-                </div>
-                <div class="kontakt-form__row">
-                    <div class="kontakt-form__field">
-                        <input type="tel" name="telefon" placeholder="Numer telefonu">
-                    </div>
-                    <div class="kontakt-form__field">
-                        <input type="email" name="email" placeholder="Adres e-mail" required>
-                    </div>
-                </div>
-                <div class="kontakt-form__field kontakt-form__field--full">
-                    <textarea name="wiadomosc" placeholder="Twoja wiadomość" rows="5" required></textarea>
-                </div>
-                <div class="kontakt-form__field kontakt-form__field--full kontakt-form__checkbox">
-                    <label>
-                        <input type="checkbox" required>
-                        Akceptuję <a href="/polityka-prywatnosci/">Politykę Prywatności</a>
-                    </label>
-                </div>
-                <button type="submit" class="psy-btn psy-btn-green">WYŚLIJ</button>
-            </form>
+            <x-forms.contact-form
+                title="Napisz do nas"
+                intro="Czekamy na Twoje wiadomości i jesteśmy tu, aby wspierać Cię w każdej sytuacji. Dziękujemy za zainteresowanie naszą fundacją!"
+            />
         </div>
     </section>
 

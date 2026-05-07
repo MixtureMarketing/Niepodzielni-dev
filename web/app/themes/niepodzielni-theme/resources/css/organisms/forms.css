@@ -2,6 +2,37 @@
    Niepodzielni Forms — style bazowe
    ========================================================= */
 
+/* ── Nagłówek formularza ──────────────────────────────── */
+.contact-form__title {
+    font-size: clamp(26px, 3vw, 36px);
+    font-weight: 700;
+    color: var(--mix-color-brand-primary);
+    margin: 0 0 12px;
+    line-height: 1.25;
+}
+
+.contact-form__intro {
+    font-size: 14px;
+    color: #707070;
+    margin: 0 0 32px;
+    max-width: 560px;
+    line-height: 1.6;
+}
+
+/* ── Grid/Layout formularza ───────────────────────────── */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
 /* ── Wrapper pola ─────────────────────────────────────── */
 .form-field {
     display: flex;
@@ -56,6 +87,76 @@
     min-height: 120px;
 }
 
+/* ── Select ───────────────────────────────────────────── */
+select.form-field__input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23828282' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+select.form-field__input:focus {
+    border-color: var(--mix-color-brand-primary);
+    box-shadow: 0 0 0 3px rgba(1, 190, 74, 0.15);
+}
+
+/* ── Radio — styl przycisków ─────────────────────────── */
+.form-field__radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.form-field__radio-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: var(--mix-font-weight-medium);
+    padding: 9px 16px;
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    background: var(--mix-color-background-light);
+    color: var(--mix-color-text-dark);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.form-field__radio-label:has(.form-field__radio:checked) {
+    border-color: var(--mix-color-brand-primary);
+    background: rgba(1, 190, 74, 0.07);
+    color: var(--mix-color-brand-primary);
+}
+
+.form-field__radio-label:hover {
+    border-color: var(--mix-color-brand-primary);
+}
+
+.form-field__radio {
+    display: none;
+}
+
+/* Fallback dla przeglądarek bez :has() */
+@supports not selector(:has(+*)) {
+    .form-field__radio {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        accent-color: var(--mix-color-brand-primary);
+        cursor: pointer;
+    }
+    .form-field__radio-label {
+        border: none;
+        padding: 0;
+        background: none;
+    }
+}
+
 /* ── Checkbox ─────────────────────────────────────────── */
 .form-field--checkbox {
     flex-direction: column;
@@ -78,6 +179,46 @@
     margin-top: 2px;
     accent-color: var(--mix-color-brand-primary);
     cursor: pointer;
+}
+
+/* ── Przycisk submit ──────────────────────────────────── */
+.niepodzielni-form [type="submit"],
+.contact-form-wrapper [type="submit"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 32px;
+    font-size: 1rem;
+    font-family: var(--mix-font-family-primary);
+    font-weight: var(--mix-font-weight-semibold, 600);
+    border: none;
+    border-radius: var(--mix-radius-small);
+    background: var(--mix-color-brand-primary);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.niepodzielni-form [type="submit"]:hover,
+.contact-form-wrapper [type="submit"]:hover {
+    background: #01a848;
+    box-shadow: 0 4px 12px rgba(1, 190, 74, 0.3);
+}
+
+.niepodzielni-form [type="submit"]:focus-visible,
+.contact-form-wrapper [type="submit"]:focus-visible {
+    outline: 3px solid rgba(1, 190, 74, 0.5);
+    outline-offset: 2px;
+}
+
+.niepodzielni-form [type="submit"]:disabled,
+.contact-form-wrapper [type="submit"]:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 /* ── Błąd pola ────────────────────────────────────────── */
@@ -126,6 +267,161 @@
 .is-loading [type="submit"] {
     opacity: 0.7;
     pointer-events: none;
+}
+
+/* ── Pole telefonu ────────────────────────────────────── */
+.form-field__phone-wrapper {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.form-field__phone-wrapper [data-phone-input] {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+/* ── Prefix select (custom dropdown) ─────────────────── */
+.prefix-select {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.prefix-select__trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 10px;
+    min-width: 108px;
+    flex: 1;
+    /* Identyczne obramowanie/tło/font co form-field__input */
+    background: var(--mix-color-background-light);
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    font-size: 1rem;
+    font-family: var(--mix-font-family-primary);
+    color: var(--mix-color-text-dark);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color var(--mix-transition-fast), box-shadow var(--mix-transition-fast);
+    box-sizing: border-box;
+}
+
+.prefix-select__trigger:focus,
+.prefix-select__trigger[aria-expanded="true"] {
+    border-color: var(--mix-color-brand-primary);
+    box-shadow: 0 0 0 3px rgba(1, 190, 74, 0.15);
+    outline: none;
+}
+
+.prefix-select__chevron {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: #828282;
+    transition: transform 0.15s ease;
+}
+
+.prefix-select__trigger[aria-expanded="true"] .prefix-select__chevron {
+    transform: rotate(180deg);
+}
+
+.prefix-select__code {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.prefix-select__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 200;
+    width: 280px;
+    background: #fff;
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.prefix-select__search-wrap {
+    padding: 8px;
+    border-bottom: 1px solid var(--mix-color-border-grey);
+}
+
+.prefix-select__search {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    font-family: var(--mix-font-family-primary);
+    border: 1.5px solid var(--mix-color-border-grey);
+    border-radius: var(--mix-radius-small);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.prefix-select__search:focus {
+    border-color: var(--mix-color-brand-primary);
+}
+
+.prefix-select__list {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    max-height: 240px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.prefix-select__option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--mix-color-text-dark);
+    transition: background 0.1s;
+}
+
+.prefix-select__option:hover,
+.prefix-select__option:focus,
+.prefix-select__option.is-focused {
+    background: var(--mix-color-background-grey-light, #f5f5f5);
+    outline: none;
+}
+
+.prefix-select__option.is-selected {
+    background: rgba(1, 190, 74, 0.08);
+    font-weight: 500;
+}
+
+.prefix-select__option-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.prefix-select__option-code {
+    color: #828282;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.prefix-select__option[hidden] {
+    display: none;
+}
+
+/* Flag icon sizing inside dropdown */
+.prefix-select .fi {
+    flex-shrink: 0;
+    width: 20px;
+    height: 15px;
+    border-radius: 2px;
+    background-size: cover;
 }
 
 /* ── OTP ──────────────────────────────────────────────── */

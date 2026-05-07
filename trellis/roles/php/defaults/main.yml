@@ -1,0 +1,46 @@
+disable_default_pool: true
+memcached_sessions: false
+redis_sessions: false
+redis_sessions_database: 1
+
+php_extensions_custom: {}
+php_extensions: "{{ php_extensions_default | combine(php_extensions_custom) }}"
+
+php_error_reporting: 'E_ALL & ~E_DEPRECATED & ~E_STRICT'
+php_display_errors: 'Off'
+php_display_startup_errors: 'Off'
+php_max_execution_time: 120
+php_max_input_time: 300
+php_max_input_vars: 1000
+php_memory_limit: 96M
+php_cli_memory_limit: -1
+php_mysqlnd_collect_memory_statistics: 'Off'
+php_post_max_size: 25M
+php_sendmail_path: /usr/bin/msmtp -t
+php_session_save_path: /tmp
+php_session_cookie_httponly: 'On'
+php_session_cookie_secure: 'Off'
+php_upload_max_filesize: 25M
+php_timezone: '{{ ntp_timezone }}'
+php_output_buffering: 'Off'
+
+php_opcache_enable: 1
+php_opcache_enable_cli: 1
+php_opcache_enable_file_override: 0
+php_opcache_fast_shutdown: 1
+php_opcache_interned_strings_buffer: 8
+php_opcache_max_accelerated_files: 4000
+php_opcache_memory_consumption: 128
+php_opcache_revalidate_freq: 60
+php_opcache_validate_timestamps: 1
+php_opcache_max_wasted_percentage: 5
+php_opcache_huge_code_pages: 0
+php_opcache_jit: 'disable'
+php_opcache_jit_buffer_size: 0
+
+php_fpm_set_emergency_restart_threshold: false
+php_fpm_emergency_restart_threshold: 0
+php_fpm_set_emergency_restart_interval: false
+php_fpm_emergency_restart_interval: 0
+php_fpm_set_process_control_timeout: true
+php_fpm_process_control_timeout: 10

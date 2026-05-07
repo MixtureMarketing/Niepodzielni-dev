@@ -31,17 +31,20 @@ if (! is_dir(NIEPODZIELNI_CORE_PATH)) {
 
 // 1. REJESTRACJA CPT, TAKSONOMII I METABOXÓW
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/14-cpt-psycholog.php';
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/15-event-cpt-helper.php';   // helper register_event_cpt — musi być przed 17/18/19
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/16-cpt-aktualnosci.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/17-cpt-wydarzenia.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/18-cpt-warsztaty.php';
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/19-cpt-grupy-wsparcia.php';
-require_once NIEPODZIELNI_CORE_PATH . 'cpt/20-cpt-metaboxes.php'; // fallback gdy brak CF
 require_once NIEPODZIELNI_CORE_PATH . 'cpt/21-carbon-fields.php'; // Carbon Fields (główny)
-require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-zgloszenia.php'; // CPT: Zgłoszenia (readonly)
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-zgloszenia.php';    // CPT: Zgłoszenia (Forms)
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/22-cpt-osrodki.php';       // Psychomapa: CPT + taksonomie
+require_once NIEPODZIELNI_CORE_PATH . 'cpt/23-osrodki-metaboxes.php'; // Psychomapa: Carbon Fields
 
 // 2. INTEGRACJA API BOOKERO I AJAX
 // 8-bookero-api.php usunięty — logika przeniesiona do BookeroApiClient + PsychologistRepository (OOP)
 require_once NIEPODZIELNI_CORE_PATH . 'api/9-bookero-sync.php';
+require_once NIEPODZIELNI_CORE_PATH . 'api/21-psychomapa-endpoint.php'; // Psychomapa: REST API
 require_once NIEPODZIELNI_CORE_PATH . 'api/10-ajax-handlers.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/11-bookero-shortcodes.php';
 require_once NIEPODZIELNI_CORE_PATH . 'api/12-bookero-enqueue.php';
@@ -64,9 +67,31 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/8-login-page.php';
 require_once NIEPODZIELNI_CORE_PATH . 'admin/9-psycholog-role.php';                // rola WP psycholog + redirecty
 require_once NIEPODZIELNI_CORE_PATH . 'admin/10-psycholog-admin-cols.php';         // kolumna "Konto" na liście
 require_once NIEPODZIELNI_CORE_PATH . 'admin/11-psycholog-account-metabox.php';    // metabox "Stwórz konto"
+require_once NIEPODZIELNI_CORE_PATH . 'admin/12-cookie-hardening.php';             // Secure/HttpOnly/SameSite cookies + krótszy session
+require_once NIEPODZIELNI_CORE_PATH . 'admin/13-login-throttle.php';               // brute-force protection na logowanie
+require_once NIEPODZIELNI_CORE_PATH . 'admin/14-audit-log.php';                    // utrwalanie zdarzeń bezpieczeństwa
+require_once NIEPODZIELNI_CORE_PATH . 'admin/15-retention-cron.php';               // retention CPT zgłoszeń + audit log
+require_once NIEPODZIELNI_CORE_PATH . 'admin/16-security-headers.php';             // Referrer/Permissions/CSP-Report-Only
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';
+
+// 5. SERWISY OOP (require_once — poza PSR-4 z src/)
+require_once NIEPODZIELNI_CORE_PATH . 'services/GeocodingService.php';
+
+// Zarejestruj hook geokodowania (admin: automatyczny zapis po Carbon Fields)
+(new \Niepodzielni\Psychomapa\GeocodingService())->registerHooks();
+
+// 6. WP-CLI — komendy dostępne tylko w kontekście CLI
+if (defined('WP_CLI') && WP_CLI) {
+    require_once NIEPODZIELNI_CORE_PATH . 'cli/ImportPsychomapyCommand.php';
+    \WP_CLI::add_command(
+        'niepodzielni import-psychomapa',
+        new \Niepodzielni\Psychomapa\ImportPsychomapyCommand(
+            new \Niepodzielni\Psychomapa\GeocodingService(),
+        ),
+    );
+}
 
 // JEDNORAZOWE — usuń po wykonaniu
 if (file_exists(NIEPODZIELNI_CORE_PATH . 'misc/99-term-cleanup.php')) {

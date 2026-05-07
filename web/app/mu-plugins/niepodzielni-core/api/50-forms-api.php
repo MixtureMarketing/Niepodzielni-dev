@@ -11,6 +11,12 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+// ─── Manualne ładowanie klas (wymagane jeśli autoloader nie został odświeżony) ──
+require_once dirname(__DIR__) . '/src/Forms/Helpers/PhonePrefixes.php';
+require_once dirname(__DIR__) . '/src/Forms/Helpers/CommonFields.php';
+require_once dirname(__DIR__) . '/src/Forms/BaseFormHandler.php';
+require_once dirname(__DIR__) . '/src/Forms/ContactForm.php';
+
 // ─── Rejestr formularzy ───────────────────────────────────────────────────────
 
 /**
@@ -36,38 +42,6 @@ function np_resolve_form_handler(string $formId): ?\Niepodzielni\Forms\BaseFormH
         return null;
     }
     return new $handlers[$formId]();
-}
-
-// ─── Weryfikacja CF Turnstile ─────────────────────────────────────────────────
-
-function np_verify_turnstile(string $token, string $remoteIp = ''): bool
-{
-    $secret = defined('NP_CF_TURNSTILE_SECRET')
-        ? (string) NP_CF_TURNSTILE_SECRET
-        : (string) get_option('np_cf_turnstile_secret', '');
-
-    // Jeśli sekret nie jest skonfigurowany — przepuść (tryb deweloperski)
-    if (! $secret) {
-        return true;
-    }
-
-    $body = ['secret' => $secret, 'response' => $token];
-    if ($remoteIp) {
-        $body['remoteip'] = $remoteIp;
-    }
-
-    $response = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-        'timeout' => 10,
-        'body'    => $body,
-    ]);
-
-    if (is_wp_error($response)) {
-        return false;
-    }
-
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-
-    return (bool) ($data['success'] ?? false);
 }
 
 // ─── Rejestracja endpointów ───────────────────────────────────────────────────
@@ -121,7 +95,7 @@ function np_forms_handle_submit(\WP_REST_Request $request): \WP_REST_Response
     $turnstileToken = (string) $request->get_param('cf-turnstile-response');
     $remoteIp       = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
-    if (! np_verify_turnstile($turnstileToken, $remoteIp)) {
+    if (! np_cf_turnstile_verify($turnstileToken, $remoteIp)) {
         return new \WP_REST_Response([
             'status'  => 'error',
             'message' => 'Weryfikacja anty-spam nie powiodła się. Odśwież stronę i spróbuj ponownie.',
@@ -211,6 +185,19 @@ function np_forms_handle_verify(\WP_REST_Request $request): \WP_REST_Response
         ], 400);
     }
 
+    // Brute-force chronion: licznik prób per submission_id (max 5/15min).
+    // OTP są 6-cyfrowe (~10^6), więc bez throttlingu atak słownikowy trwa minuty.
+    $attemptKey      = 'np_otp_attempts_' . $submissionId;
+    $attempts        = (int) get_transient($attemptKey);
+    $maxOtpAttempts  = 5;
+
+    if ($attempts >= $maxOtpAttempts) {
+        return new \WP_REST_Response([
+            'status'  => 'error',
+            'message' => 'Zbyt wiele nieudanych prób. Wyślij formularz ponownie, by otrzymać nowy kod.',
+        ], 429);
+    }
+
     // Sprawdź, czy zgłoszenie należy do tego formularza
     $storedFormId = get_post_meta($submissionId, '_form_id', true);
     if ($storedFormId !== $formId) {
@@ -223,11 +210,14 @@ function np_forms_handle_verify(\WP_REST_Request $request): \WP_REST_Response
     $verified = $handler->verifyOTP($submissionId, $otpCode);
 
     if (! $verified) {
+        set_transient($attemptKey, $attempts + 1, 15 * MINUTE_IN_SECONDS);
         return new \WP_REST_Response([
             'status'  => 'error',
             'message' => 'Kod jest nieprawidłowy lub wygasł. Spróbuj ponownie.',
         ], 400);
     }
+
+    delete_transient($attemptKey);
 
     return new \WP_REST_Response([
         'status'  => 'success',
@@ -246,6 +236,11 @@ function np_forms_enqueue_assets(): void
 
     if (! file_exists($jsPath)) {
         return;
+    }
+
+    // flag-icons — wymagane przez custom prefix dropdown w polu telefonu
+    if (! wp_style_is('flag-icons', 'enqueued')) {
+        wp_enqueue_style('flag-icons', 'https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css', [], null);
     }
 
     wp_enqueue_script(

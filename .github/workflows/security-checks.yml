@@ -1,0 +1,107 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Security checks: dependency audits dla PHP (Composer) i Node (npm).
+# Działa równolegle z ci-cd.yml — szybkie, tanie, sygnalizuje znane CVE.
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Security checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  # Cotygodniowy audyt — wyłapuje CVE ujawnione po ostatnim merge.
+  schedule:
+    - cron: '17 6 * * 1'
+
+# Domyślnie GITHUB_TOKEN ma tylko prawo czytać repo.  Każdy job, który
+# potrzebuje większych uprawnień, deklaruje je lokalnie (patrz `secret-scan`).
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  composer-audit:
+    name: Composer audit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Composer audit (locked)
+        run: composer audit --locked --no-interaction --abandoned=report
+
+  npm-audit-theme:
+    name: npm audit (theme)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web/app/themes/niepodzielni-theme
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/app/themes/niepodzielni-theme/package-lock.json
+
+      - name: npm audit (high+)
+        run: npm audit --omit=dev --audit-level=high
+
+  npm-audit-worker:
+    name: npm audit (ai-agent worker)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: workers/ai-agent
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: workers/ai-agent/package-lock.json
+
+      - name: npm install (no scripts, supply-chain hardening)
+        run: npm ci --ignore-scripts
+
+      - name: npm audit (high+)
+        run: npm audit --omit=dev --audit-level=high
+
+  # Skanuje pliki staged w repo pod kątem przypadkowo zacommitowanych
+  # sekretów (klucze API, prywatne klucze, tokeny).  Używa gitleaks.
+  secret-scan:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-24.04
+    # Gitleaks-action może (opcjonalnie) komentować na PR przy znalezieniach.
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

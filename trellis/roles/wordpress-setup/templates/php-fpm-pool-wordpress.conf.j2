@@ -1,0 +1,26 @@
+; {{ ansible_managed }}
+
+[wordpress]
+listen = /var/run/php-fpm-wordpress.sock
+; Keep socket owner/group aligned with Nginx's service user so Nginx can always connect to php-fpm.
+listen.owner = www-data
+listen.group = www-data
+user = {{ wordpress_runtime_hardened | ternary(wordpress_runtime_user, web_user) }}
+group = {{ wordpress_runtime_hardened | ternary(wordpress_runtime_group, web_group) }}
+pm = {{ php_fpm_pm }}
+pm.max_children = {{ php_fpm_pm_max_children }}
+pm.start_servers = {{ php_fpm_pm_start_servers }}
+pm.min_spare_servers = {{ php_fpm_pm_min_spare_servers }}
+pm.max_spare_servers = {{ php_fpm_pm_max_spare_servers }}
+pm.max_requests = {{ php_fpm_pm_max_requests }}
+chdir = {{ www_root }}/
+php_flag[log_errors] = on
+php_flag[display_errors] = {{ php_display_errors }}
+php_admin_value[open_basedir] = {{ www_root }}/:/tmp
+{% if memcached_sessions %}
+php_value[session.save_handler] = memcached
+php_value[session.save_path] = "{{ memcached_listen_ip }}:{{ memcached_port }}"
+{% elif redis_sessions %}
+php_value[session.save_handler] = redis
+php_value[session.save_path] = "tcp://{{ redis_bind_interface }}:{{ redis_port }}?database={{ redis_sessions_database }}{% if redis_requirepass %}&auth={{ redis_requirepass }}{% endif %}"
+{% endif %}

@@ -1,0 +1,22 @@
+# ⚠ PLAINTEXT — TYLKO DEV LOCAL DEFAULTS ⚠
+# Te wartości są standardowymi placeholderami Trellis dla lokalnego Vagrant/dev.
+# NIE używaj ich na żadnym współdzielonym środowisku.
+#
+# Przed pierwszym deployem ZAWSZE:
+#   1. Wymień placeholdery na realne sekrety.
+#   2. Zaszyfruj plik: `ansible-vault encrypt trellis/group_vars/development/vault.yml`
+#      (używając tego samego hasła vault co `staging/vault.yml` i `production/vault.yml`).
+#   3. Zatwierdź zaszyfrowany plik (nagłówek `$ANSIBLE_VAULT;1.1;AES256`).
+#
+# Procedura: docs/security-runbook.md → "Trellis Vault — szyfrowanie i rotacja".
+# Documentation: https://roots.io/trellis/docs/vault/
+
+vault_mysql_root_password: devpw
+
+# Variables to accompany `group_vars/development/wordpress_sites.yml`
+# Note: the site name (`example.com`) must match up with the site name in the above file.
+vault_wordpress_sites:
+  example.com:
+    admin_password: admin
+    env:
+      db_password: example_dbpassword

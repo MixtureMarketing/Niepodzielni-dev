@@ -14,6 +14,7 @@ web/app/themes/twentytwentyfive/
 web/app/upgrade
 web/app/uploads/*
 !web/app/uploads/.gitkeep
+!web/app/uploads/.htaccess
 web/app/cache/*
 
 # WordPress
@@ -45,3 +46,8 @@ wp-cli.phar
 crawler.php
 full_performance_report.csv
 web/carbon-fields/
+
+# Trellis
+trellis/.vault_pass
+trellis/vendor/
+trellis/*.retry

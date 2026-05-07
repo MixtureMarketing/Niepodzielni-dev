@@ -1,0 +1,20 @@
+# Documentation: https://roots.io/trellis/docs/ssh-keys/
+admin_user: admin
+
+# Also define 'vault_users' (`group_vars/staging/vault.yml`, `group_vars/production/vault.yml`)
+users:
+  - name: "{{ web_user }}"
+    groups:
+      - "{{ web_group }}"
+    keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICHXu0wfh9+/BMSWLlA8QG6KpQzB05lTMJ0rLSOsPj4a trellis-niepodzielni"
+  - name: "{{ admin_user }}"
+    groups:
+      - sudo
+    keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICHXu0wfh9+/BMSWLlA8QG6KpQzB05lTMJ0rLSOsPj4a trellis-niepodzielni"
+
+web_user: web
+web_group: www-data
+web_sudoers:
+  - "/usr/sbin/service php{{ php_version }}-fpm *"

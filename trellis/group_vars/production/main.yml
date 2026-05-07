@@ -1,0 +1,26 @@
+mysql_root_password: "{{ vault_mysql_root_password }}"
+
+# PHP performance
+php_memory_limit: 256M
+php_max_execution_time: 60
+php_max_input_vars: 3000
+php_upload_max_filesize: 64M
+php_post_max_size: 64M
+
+# OPcache — production: validate timestamps off (deploy resets cache), JIT enabled
+php_opcache_validate_timestamps: 0
+php_opcache_revalidate_freq: 0
+php_opcache_max_accelerated_files: 10000
+php_opcache_memory_consumption: 256
+php_opcache_interned_strings_buffer: 16
+php_opcache_jit: tracing
+php_opcache_jit_buffer_size: 64M
+
+# Redis — 256 MB, evict LRU keys (object cache)
+redis_maxmemory: 256mb
+redis_maxmemory_policy: allkeys-lru
+
+# Nginx FastCGI cache
+nginx_cache_duration: 30s
+nginx_cache_inactive: 1h
+nginx_cache_size: 512m

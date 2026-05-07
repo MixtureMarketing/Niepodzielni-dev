@@ -31,6 +31,7 @@ class NpAiChat {
         this.isOpen      = false;
         this.isTyping    = false;
         this.unread      = 0;
+        this._fetchCtrl  = null;
 
         this._render();
         this._bindEvents();
@@ -252,11 +253,16 @@ class NpAiChat {
         // Tworzymy bąbelek odpowiedzi — będzie uzupełniany przez streaming
         const bubbleEl = this._createStreamBubble();
 
+        // Anuluj poprzedni request jeśli jest aktywny
+        this._fetchCtrl?.abort();
+        this._fetchCtrl = new AbortController();
+
         try {
             const response = await fetch(`${this.workerUrl}/chat`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify(payload),
+                signal:  this._fetchCtrl.signal,
             });
 
             if (! response.ok) throw new Error(`HTTP ${response.status}`);
@@ -298,12 +304,14 @@ class NpAiChat {
                 }
             });
 
-        } catch {
+        } catch (err) {
+            if (err?.name === 'AbortError') return; // nowa wiadomość anulowała poprzednią
             bubbleEl.classList.remove('np-chat__bubble--streaming');
             bubbleEl.classList.add('np-chat__bubble--error');
             bubbleEl.textContent = 'Przepraszam, nie mogę teraz odpowiedzieć. Spróbuj ponownie za chwilę.';
             this._appendContactFallback();
         } finally {
+            this._fetchCtrl = null;
             this._setTyping(false);
             this.input.focus();
         }

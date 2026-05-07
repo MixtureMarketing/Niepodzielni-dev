@@ -65,7 +65,7 @@ function np_reviews_handle_submit(\WP_REST_Request $request): \WP_REST_Response
     if (! $magicValid) {
         // Weryfikacja Cloudflare Turnstile
         $tsToken = sanitize_text_field((string) ($body['cf-turnstile-response'] ?? ''));
-        if (! np_reviews_verify_turnstile($tsToken, (string) ($_SERVER['REMOTE_ADDR'] ?? ''))) {
+        if (! np_cf_turnstile_verify($tsToken, (string) ($_SERVER['REMOTE_ADDR'] ?? ''))) {
             return new \WP_REST_Response([
                 'status'  => 'error',
                 'message' => 'Weryfikacja anty-spam nie powiodła się. Odśwież stronę i spróbuj ponownie.',
@@ -151,43 +151,6 @@ function np_reviews_handle_submit(\WP_REST_Request $request): \WP_REST_Response
 function np_reviews_generate_magic_token(string $email, int $postId): string
 {
     return hash_hmac('sha256', strtolower(trim($email)) . '|' . $postId, wp_salt('auth'));
-}
-
-// ─── Weryfikacja Turnstile ────────────────────────────────────────────────────
-
-function np_reviews_verify_turnstile(string $token, string $remoteIp = ''): bool
-{
-    $secret = '';
-    foreach (['NP_CF_TURNSTILE_SECRET', 'CF_TURNSTILE_SECRET_KEY'] as $const) {
-        if (defined($const) && constant($const)) {
-            $secret = (string) constant($const);
-            break;
-        }
-    }
-    if (! $secret) {
-        $secret = (string) get_option('np_cf_turnstile_secret', '');
-    }
-    if (! $secret) {
-        return true; // tryb deweloperski
-    }
-
-    $body = ['secret' => $secret, 'response' => $token];
-    if ($remoteIp) {
-        $body['remoteip'] = $remoteIp;
-    }
-
-    $response = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-        'timeout' => 10,
-        'body'    => $body,
-    ]);
-
-    if (is_wp_error($response)) {
-        return false;
-    }
-
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-
-    return (bool) ($data['success'] ?? false);
 }
 
 // ─── Weryfikacja wizyty Bookero ───────────────────────────────────────────────
@@ -280,12 +243,13 @@ function np_reviews_notify_psychologist(int $postId, int $commentId, string $aut
         return;
     }
 
-    $siteName  = get_bloginfo('name');
-    $postTitle = $post->post_title;
+    $siteName  = esc_html(get_bloginfo('name'));
+    $postTitle = esc_html($post->post_title);
+    $authorName_safe = esc_html($author->display_name);
     $stars     = str_repeat('★', $rating) . str_repeat('☆', 5 - $rating);
-    $adminLink = admin_url("edit-comments.php?p={$postId}&type=review");
+    $adminLink = esc_url(admin_url("edit-comments.php?p={$postId}&type=review"));
 
-    $body = "<p>Hej {$author->display_name},</p>"
+    $body = "<p>Hej {$authorName_safe},</p>"
           . "<p>Dodano nową opinię do Twojego profilu <strong>{$postTitle}</strong>.</p>"
           . "<table cellpadding=\"8\" style=\"border-collapse:collapse;border:1px solid #eee;\">"
           . "<tr><th style=\"background:#f6f6f6;text-align:left\">Od</th><td>" . esc_html($authorName) . "</td></tr>"

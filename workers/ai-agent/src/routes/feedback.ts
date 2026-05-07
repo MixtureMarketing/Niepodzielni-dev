@@ -1,37 +1,36 @@
 import type { Env } from '../types';
+import { requireBearer } from '../auth';
+import { rateLimit } from '../rateLimit';
+import { parseJsonBody } from '../jsonBody';
+import { validateFeedback } from '../schemas';
 
 export async function handleFeedback(request: Request, env: Env): Promise<Response> {
-    try {
-        const body = await request.json<{ value: number; type?: string }>();
-        const { value, type = 'conversation_rating' } = body;
+    const unauth = requireBearer(request, env.NP_AI_BOT_TOKEN);
+    if (unauth) return unauth;
 
-        if (typeof value !== 'number' || value < 1 || value > 5) {
-            return new Response(JSON.stringify({ error: 'Nieprawidłowa ocena' }), {
-                status: 400, headers: { 'Content-Type': 'application/json' },
-            });
-        }
+    const limited = await rateLimit(request, env, { bucket: 'feedback', limit: 30, windowSec: 60 });
+    if (limited) return limited;
 
-        console.log(JSON.stringify({ type, value, ts: Date.now() }));
+    const parsed = await parseJsonBody(request, validateFeedback, 4 * 1024);
+    if (!parsed.ok) return parsed.response;
+    const { value, type = 'conversation_rating' } = parsed.value;
 
-        // Zapisz do WordPress (fire-and-forget)
-        if (env.WP_API_URL && env.WP_BOT_TOKEN) {
-            fetch(`${env.WP_API_URL}/bot-feedback`, {
-                method:  'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key':    env.WP_BOT_TOKEN,
-                    'User-Agent':   'NiepodzielniBot/1.0',
-                },
-                body: JSON.stringify({ value, type }),
-            }).catch(() => {});
-        }
+    console.log(JSON.stringify({ event: 'bot_feedback', type, value, ts: Date.now() }));
 
-        return new Response(JSON.stringify({ ok: true }), {
-            headers: { 'Content-Type': 'application/json' },
-        });
-    } catch {
-        return new Response(JSON.stringify({ ok: false }), {
-            status: 400, headers: { 'Content-Type': 'application/json' },
-        });
+    // Zapisz do WordPress (fire-and-forget)
+    if (env.WP_API_URL && env.WP_BOT_TOKEN) {
+        fetch(`${env.WP_API_URL}/bot-feedback`, {
+            method:  'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key':    env.WP_BOT_TOKEN,
+                'User-Agent':   'NiepodzielniBot/1.0',
+            },
+            body: JSON.stringify({ value, type }),
+        }).catch(() => {});
     }
+
+    return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' },
+    });
 }

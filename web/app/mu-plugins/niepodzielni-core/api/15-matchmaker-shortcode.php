@@ -54,17 +54,28 @@ function np_matchmaker_build_data(): array
 {
     // ── Psycholodzy ────────────────────────────────────────────────────────────
     // Jeden WP_Query dla wszystkich + bulk meta cache → zero N+1.
+    $matchmakerLimit = (int) apply_filters('np_matchmaker_psy_limit', 500);
     $query = new WP_Query([
         'post_type'              => 'psycholog',
-        'posts_per_page'         => 200,
+        'posts_per_page'         => $matchmakerLimit,
         'post_status'            => 'publish',
         'orderby'                => 'title',
         'order'                  => 'ASC',
-        'no_found_rows'          => true,
+        'no_found_rows'          => false, // potrzebne `found_posts` dla canary log poniżej
         'update_post_meta_cache' => true,
         'update_post_term_cache' => true,
         // Brak meta_query: CF Meta_Query_Service zamieniałoby bookero_id_* na _bookero_id_*
     ]);
+
+    // Canary: jeśli liczba opublikowanych psychologów zbliża się do limitu,
+    // matchmaker ucina dane.  Filtr `np_matchmaker_psy_limit` pozwala go podnieść.
+    if ($query->found_posts >= (int) ($matchmakerLimit * 0.9)) {
+        error_log(sprintf(
+            '[np_matchmaker] Limit psy zbliża się do progu: %d/%d (filtr np_matchmaker_psy_limit).',
+            $query->found_posts,
+            $matchmakerLimit,
+        ));
+    }
 
     $defaultStawkaNisko = get_option('np_domyslna_stawka_nisko', '55 zł');
     $defaultStawkaPelno = get_option('np_domyslna_stawka_pelno', '145 zł');

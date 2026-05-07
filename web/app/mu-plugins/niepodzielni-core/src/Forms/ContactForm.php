@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Niepodzielni\Forms;
 
+use Niepodzielni\Forms\Helpers\CommonFields;
+
 /**
- * Formularz kontaktowy — przykładowa implementacja BaseFormHandler.
- *
- * Pola: imie, email, wiadomosc, zgoda (RODO).
- * Weryfikacja OTP wyłączona; zapis do DB i mail do admina włączone.
+ * Formularz kontaktowy — testuje pełny zakres pól frameworka.
  */
 class ContactForm extends BaseFormHandler
 {
@@ -24,31 +23,32 @@ class ContactForm extends BaseFormHandler
     protected function getFields(): array
     {
         return [
-            'imie' => [
-                'label'      => 'Imię i nazwisko',
-                'type'       => 'text',
-                'required'   => true,
-                'max_length' => 100,
-                'sanitize'   => 'sanitize_text_field',
-            ],
-            'email' => [
-                'label'    => 'Adres e-mail',
-                'type'     => 'email',
+            'imie'                => CommonFields::imie(),
+            'nazwisko'            => CommonFields::nazwisko(),
+            'kod_pocztowy'        => CommonFields::kodPocztowy(),
+            'miasto'              => CommonFields::miasto(),
+            'ulica'               => CommonFields::ulica(),
+            'telefon_prefix'      => CommonFields::telefonPrefix(),
+            'telefon'             => CommonFields::telefon(),
+            'email'               => CommonFields::email(),
+            'temat'               => CommonFields::temat([
+                'ogolne'     => 'Ogólne zapytania',
+                'wspolpraca' => 'Współpraca',
+                'pomoc'      => 'Pomoc psychologiczna',
+            ]),
+            'preferowany_kontakt' => [
+                'label'    => 'Preferowany kontakt',
+                'type'     => 'radio',
                 'required' => true,
-                'sanitize' => 'sanitize_email',
+                'options'  => [
+                    'email'   => 'E-mail',
+                    'telefon' => 'Telefon',
+                ],
             ],
-            'wiadomosc' => [
-                'label'      => 'Wiadomość',
-                'type'       => 'textarea',
-                'required'   => true,
-                'max_length' => 2000,
-                'sanitize'   => 'sanitize_textarea_field',
-            ],
-            'zgoda' => [
-                'label'    => 'Wyrażam zgodę na przetwarzanie danych osobowych',
-                'type'     => 'checkbox',
-                'required' => true,
-            ],
+            'wiadomosc'           => CommonFields::wiadomosc(),
+            'zgoda'               => CommonFields::zgoda(
+                'Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z Polityką prywatności.',
+            ),
         ];
     }
 

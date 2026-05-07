@@ -120,6 +120,30 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script('sage/events-listing.js', Vite::asset('resources/js/events-listing.js'), [], null, true);
     }
 
+    // Psychomapa — mapa ośrodków pomocy (Leaflet + MarkerCluster + własny JS)
+    if (is_page_template('template-psychomapa.blade.php') || is_singular('osrodek_pomocy')) {
+        wp_enqueue_style('leaflet', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css', [], null);
+        wp_enqueue_script('leaflet', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js', [], null, true);
+    }
+    if (is_page_template('template-psychomapa.blade.php')) {
+        wp_enqueue_style('leaflet-cluster', 'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css', ['leaflet'], null);
+        wp_enqueue_style('leaflet-cluster-default', 'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css', ['leaflet'], null);
+        wp_enqueue_script('leaflet-cluster', 'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.min.js', ['leaflet'], null, true);
+    }
+    if (is_page_template('template-psychomapa.blade.php') || is_singular('osrodek_pomocy')) {
+        $cluster_dep = is_page_template('template-psychomapa.blade.php') ? ['leaflet-cluster'] : ['leaflet'];
+        wp_enqueue_script('sage/psychomapa.js', Vite::asset('resources/js/psychomapa.js'), $cluster_dep, null, true);
+        // Wyłącz Cloudflare Rocket Loader dla tych skryptów — zmienia kolejność wykonania,
+        // co powoduje race condition między window.npPsychomapa a inicjalizacją mapy.
+        add_filter('script_loader_tag', function (string $tag, string $handle): string {
+            $handles = ['leaflet', 'leaflet-cluster', 'sage/psychomapa.js'];
+            if (in_array($handle, $handles, true) && !str_contains($tag, 'data-cfasync')) {
+                $tag = str_replace('<script ', '<script data-cfasync="false" ', $tag);
+            }
+            return $tag;
+        }, 10, 2);
+    }
+
     // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS
     $panel_templates = [
         'template-panel-dashboard.blade.php',

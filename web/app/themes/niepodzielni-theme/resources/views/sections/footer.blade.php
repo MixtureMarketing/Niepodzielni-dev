@@ -152,7 +152,7 @@
                 <a href="/regulamin-rezerwacji-wizyt-stacjonarnie-i-wizyt-online/">Regulamin konsultacji</a> |
                 <a href="/statut-fundacji/">Statut fundacji</a> |
                 <a href="/standardy-ochrony-maloletnich-fundacji-niepodzielni/">Standardy Ochrony Małoletnich</a> |
-                <a href="/1_5_procent/">Przekaż 1,5%</a>
+                <a href="/przekaz-15/">Przekaż 1,5%</a>
             </p>
         </div>
     </div>
