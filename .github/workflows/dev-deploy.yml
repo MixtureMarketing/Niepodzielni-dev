@@ -1,14 +1,22 @@
-name: Deploy to production
+# Deploy gałęzi `dev` na ten sam VPS co produkcja (185.201.113.217), ale jako
+# osobny vhost: dev.niepodzielni.com z osobną bazą i wyłączonym FastCGI cache.
+# Trellis multi-site obsługuje to natywnie — drugi klucz `dev.niepodzielni.com`
+# w trellis/group_vars/production/wordpress_sites.yml wskazuje branch: dev.
+#
+# Worker ai-agent dostaje osobną nazwę (niepodzielni-ai-agent-staging) żeby nie
+# zakłócać workera produkcyjnego.
+
+name: Deploy to dev (staging vhost)
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
 
 jobs:
   deploy:
-    name: Build & Deploy
+    name: Build & Deploy (dev.niepodzielni.com)
     runs-on: ubuntu-24.04
-    environment: production
+    environment: staging
 
     steps:
       - name: Checkout
@@ -29,6 +37,7 @@ jobs:
         working-directory: web/app/themes/niepodzielni-theme
         run: npm run build
 
+      # Re-use SSH key i vault — ten sam VPS produkcyjny, więc te same sekrety.
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
@@ -36,12 +45,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan 185.201.113.217 >> ~/.ssh/known_hosts
 
-      - name: Upload built assets to server shared dir
+      - name: Upload built assets to dev shared dir
         run: |
-          ssh root@185.201.113.217 "mkdir -p /srv/www/new.niepodzielni.com/shared/theme-build"
+          ssh root@185.201.113.217 "mkdir -p /srv/www/dev.niepodzielni.com/shared/theme-build"
           rsync -az --delete \
             web/app/themes/niepodzielni-theme/public/build/ \
-            root@185.201.113.217:/srv/www/new.niepodzielni.com/shared/theme-build/
+            root@185.201.113.217:/srv/www/dev.niepodzielni.com/shared/theme-build/
 
       - name: Write vault password
         run: echo "${{ secrets.ANSIBLE_VAULT_PASS }}" > trellis/.vault_pass
@@ -59,28 +68,21 @@ jobs:
         working-directory: trellis
         run: ansible-galaxy install -r galaxy.yml -p vendor/roles --force
 
+      # env=production bo VPS jest produkcyjny — Trellis wybiera site po kluczu
+      # w wordpress_sites.yml (dev.niepodzielni.com tam jest dorzucony obok prod).
       - name: Deploy
         working-directory: trellis
         run: |
           ansible-playbook deploy.yml \
             -e env=production \
-            -e site=new.niepodzielni.com \
+            -e site=dev.niepodzielni.com \
             --vault-password-file .vault_pass
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # Worker (Cloudflare ai-agent) deploy — uruchamiany po pomyślnym deployu WP.
-  # Zależność `needs: deploy` zapewnia że worker dostaje update tylko gdy WP
-  # release (Trellis) przeszedł — nie chcemy mieć rozjazdu API między WP i Workerem.
-  #
-  # Wymaga sekretów GitHub:
-  #   CLOUDFLARE_API_TOKEN   — token Workers Edit (Account: Workers Scripts:Edit)
-  #   CLOUDFLARE_ACCOUNT_ID  — ID konta Cloudflare
-  # ────────────────────────────────────────────────────────────────────────────
   worker-deploy:
-    name: Deploy Cloudflare Worker (production)
+    name: Deploy Cloudflare Worker (staging)
     needs: deploy
     runs-on: ubuntu-24.04
-    environment: production
+    environment: staging
 
     defaults:
       run:
@@ -100,11 +102,11 @@ jobs:
       - name: Install npm dependencies
         run: npm ci --ignore-scripts
 
-      # Domyślna nazwa workera (z wrangler.toml: niepodzielni-ai-agent) trafia na produkcję.
-      # Po merge PR #7 wrangler.toml dostanie sekcje [env.production]/[env.staging] —
-      # wtedy zmienić na: npx wrangler deploy --env production
-      - name: Wrangler deploy (production)
-        run: npx wrangler deploy
+      # --name override pozwala deployować na osobny worker bez sekcji [env.staging]
+      # w wrangler.toml. Po merge PR #7 (który dorzuci [env.staging]) zmienić na:
+      #   npx wrangler deploy --env staging
+      - name: Wrangler deploy (staging override)
+        run: npx wrangler deploy --name niepodzielni-ai-agent-staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
