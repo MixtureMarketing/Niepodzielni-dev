@@ -13,6 +13,16 @@
     state: link
     force: yes
 
+# Carbon Fields wymaga aby vendor/htmlburger/carbon-fields było dostępne pod URL
+# /carbon-fields/ (asset paths). Vendor jest poza DocumentRoot w Bedrocku, więc
+# symlinkujemy do web/carbon-fields. Bez tego metaboxy CF nie ładują się w admin.
+- name: Symlink Carbon Fields assets (vendor → web/carbon-fields)
+  file:
+    src: "{{ deploy_helper.new_release_path }}/vendor/htmlburger/carbon-fields"
+    dest: "{{ deploy_helper.new_release_path }}/web/carbon-fields"
+    state: link
+    force: yes
+
 - name: Run Acorn optimize
   command: wp acorn optimize
   args:

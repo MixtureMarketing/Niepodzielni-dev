@@ -66,9 +66,15 @@ add_action('wp_enqueue_scripts', function () {
     ]);
 
     $ai_worker_url = defined('NP_AI_WORKER_URL') && NP_AI_WORKER_URL ? NP_AI_WORKER_URL : '';
+    $ai_bot_token  = defined('NP_AI_BOT_TOKEN') && NP_AI_BOT_TOKEN ? (string) NP_AI_BOT_TOKEN : '';
     if ($ai_worker_url) {
         wp_localize_script('sage/app.js', 'npAiChat', [
             'workerUrl' => esc_url_raw($ai_worker_url),
+            // Bearer token dla worker /chat /feedback — wymagany od PR #7 (security).
+            // Token nie jest sekretem (każdy klient go widzi w źródle JS) — jego rolą
+            // jest jedynie ograniczyć spam z losowych adresów internetowych. Faktyczne
+            // bezpieczeństwo zapewnia rate limiting (KV) + CORS po stronie workera.
+            'botToken'  => $ai_bot_token,
             'contact'   => [
                 'phone'    => '+48 732 081 111',
                 'email'    => 'kontakt@niepodzielni.pl',
