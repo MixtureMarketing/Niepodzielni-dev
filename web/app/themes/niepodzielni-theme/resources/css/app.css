@@ -16,6 +16,8 @@
 @import './molecules/tags.css';
 @import './molecules/faq.css';
 @import './molecules/checklist.css';
+@import './molecules/wall-of-impact.css';
+@import './molecules/event-reminder.css';
 
 /* Organisms */
 @import './organisms/header.css';
@@ -47,6 +49,8 @@
 @import './templates/kontakt.css';
 @import './templates/psychon.css';
 @import './templates/wesprzyj.css';
+@import './templates/crisis.css';
+@import './templates/kalendarz.css';
 @import './templates/o-nas.css';
 @import './templates/osrodek.css';
 @import './templates/page.css';

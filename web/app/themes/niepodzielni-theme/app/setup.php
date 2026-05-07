@@ -121,7 +121,11 @@ add_action('wp_enqueue_scripts', function () {
     }
 
     // Psychomapa — mapa ośrodków pomocy (Leaflet + MarkerCluster + własny JS)
-    if (is_page_template('template-psychomapa.blade.php') || is_singular('osrodek_pomocy')) {
+    // Crisis Help Hub także używa Leaflet (bez clustering) na template Pomoc w kryzysie.
+    $needs_leaflet = is_page_template('template-psychomapa.blade.php')
+        || is_page_template('template-pomoc-kryzys.blade.php')
+        || is_singular('osrodek_pomocy');
+    if ($needs_leaflet) {
         wp_enqueue_style('leaflet', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css', [], null);
         wp_enqueue_script('leaflet', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js', [], null, true);
     }
@@ -142,6 +146,31 @@ add_action('wp_enqueue_scripts', function () {
             }
             return $tag;
         }, 10, 2);
+    }
+
+    // Crisis Help Hub — Esc handler + mini-mapa interwencyjna (Leaflet już załadowany powyżej)
+    if (is_page_template('template-pomoc-kryzys.blade.php')) {
+        wp_enqueue_script('sage/crisis-hide.js', Vite::asset('resources/js/crisis-hide.js'), [], null, true);
+        wp_enqueue_script('sage/crisis-map.js', Vite::asset('resources/js/crisis-map.js'), ['leaflet'], null, true);
+    }
+
+    // Wall of impact — countup animation na stronach z partialem partials.wall-of-impact
+    if (is_front_page() || is_page_template('template-o-nas.blade.php')) {
+        wp_enqueue_script('sage/countup.js', Vite::asset('resources/js/components/countup.js'), [], null, true);
+    }
+
+    // Calendar view — toggle list/calendar na /wydarzenia i /warsztaty-grupy
+    if (is_page_template(['template-wydarzenia.blade.php', 'template-warsztaty-grupy.blade.php'])) {
+        wp_enqueue_script('sage/event-calendar.js', Vite::asset('resources/js/components/event-calendar.js'), [], null, true);
+    }
+
+    // Event reminder form (T-24h opt-in) — single pages: wydarzenia, warsztaty, grupy-wsparcia
+    if (is_singular(['wydarzenia', 'warsztaty', 'grupy-wsparcia'])) {
+        wp_enqueue_script('sage/event-reminder.js', Vite::asset('resources/js/components/event-reminder.js'), [], null, true);
+        // Cloudflare Turnstile — wymagany dla anty-spam
+        if (defined('NP_CF_TURNSTILE_SITEKEY') || get_option('np_cf_turnstile_sitekey')) {
+            wp_enqueue_script('cf-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', [], null, true);
+        }
     }
 
     // Panel psychologa — dashboard wymaga JS+CSS, login tylko CSS

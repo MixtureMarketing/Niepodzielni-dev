@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\CalendarBuilder;
 use App\Services\EventsListingService;
 use App\Services\PsychologistListingService;
 use Roots\Acorn\Sage\SageServiceProvider;
@@ -22,6 +23,7 @@ class ThemeServiceProvider extends SageServiceProvider
         // korzysta z tego samego serwisu (np. TemplateWarsztatyGrupy + TemplateWydarzenia).
         $this->app->singleton(PsychologistListingService::class);
         $this->app->singleton(EventsListingService::class);
+        $this->app->singleton(CalendarBuilder::class);
     }
 
     /**

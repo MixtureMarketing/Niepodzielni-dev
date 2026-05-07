@@ -785,6 +785,25 @@
   line-height: 1.4;
 }
 
+.np-chat__crisis-cta {
+  display: block;
+  margin-top: 4px;
+  padding: 10px 14px;
+  background: #e63946;
+  color: #fff;
+  text-align: center;
+  border-radius: var(--mix-radius-medium);
+  font-weight: var(--mix-font-weight-bold);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.np-chat__crisis-cta:hover,
+.np-chat__crisis-cta:focus-visible {
+  background: #c0392b;
+  color: #fff;
+}
+
 /* ── Onboarding problem chips (zawijają się) ───────────────────────────────── */
 
 .np-chat__onboarding--problems .np-chat__quick-reply {

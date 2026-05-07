@@ -6,4 +6,8 @@
     'post_id' => $post_id,
     'label'   => 'Grupę poprowadzi',
   ])
+  @include('partials.event-reminder-form', [
+    'eventId'    => $post_id,
+    'eventTitle' => get_the_title($post_id),
+  ])
 @endsection

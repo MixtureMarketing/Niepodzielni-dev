@@ -170,4 +170,9 @@
 
 </div>{{-- /.nsingle-wrap --}}
 
+@include('partials.event-reminder-form', [
+  'eventId'    => $post_id,
+  'eventTitle' => $title,
+])
+
 @endsection
