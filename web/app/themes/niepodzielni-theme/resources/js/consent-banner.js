@@ -132,6 +132,7 @@ function bind(banner) {
     rejectAllBtn?.addEventListener('click', () => commit(ALL_DENIED));
     manageBtn?.addEventListener('click', () => {
         if (manageView) manageView.hidden = false;
+        manageBtn.setAttribute('aria-expanded', 'true');
         const firstCb = manageView?.querySelector('input[type="checkbox"]');
         if (firstCb instanceof HTMLElement) firstCb.focus();
     });

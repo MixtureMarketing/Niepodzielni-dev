@@ -29,6 +29,7 @@
   --mix-font-weight-thin: 200;
   --mix-font-weight-regular: 400;
   --mix-font-weight-medium: 500;
+  --mix-font-weight-semibold: 600;
   --mix-font-weight-bold: 700;
   --mix-font-weight-black: 900;
 
@@ -38,7 +39,15 @@
   --mix-spacing-base: 20px;
   --mix-header-height: 80px;
 
+  /* === STATUS / WALIDACJA === */
+  --mix-color-error: #c0392b;
+  --mix-color-error-bg: #fdf3f3;
+  --mix-color-error-border: #f5c6cb;
+  --mix-color-text-muted: #707070;
+
   /* === ZAOKRĄGLENIA === */
+  --mix-radius-xs: 8px;
+  --mix-radius-sm: 12px;
   --mix-radius-small: 5px;
   --mix-radius-medium: 15px;
   --mix-radius-large: 20px;
