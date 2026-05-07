@@ -39,27 +39,40 @@ plus ~30 min konfiguracji w przeglądarce (Cockpit, Better Stack, Sentry).
    Settings → Permissions → wyłącz `@everyone`, dodaj tylko siebie i
    ewentualnego programistę). Alerty zawierają fragmenty stack trace —
    nie powinno tego widzieć całe biuro.
-3. **Wygeneruj webhook**:
-   - Klik prawym na kanale → Edit Channel → Integrations → Webhooks → New Webhook.
-   - Nazwa: `Niepodzielni Monitoring`.
-   - **Copy Webhook URL** — coś typu `https://discord.com/api/webhooks/12345.../abcd...`.
-4. Trzymaj ten URL jako sekret. Trafi:
-   - Do `.env` w produkcji jako `NP_DISCORD_WEBHOOK_URL=...` (przez Trellis vault).
-   - Do GitHub Actions secrets jako `DISCORD_WEBHOOK_URL` (jeśli kiedyś
-     będziesz alertować z CI).
-   - Do Sentry / Better Stack / Netdata jako Discord integration URL.
+3. **Wygeneruj 4 webhooki** — po jednym dla każdego narzędzia, wszystkie
+   wskazują ten sam kanał `#alerts-niepodzielni`:
 
-> **Dlaczego osobny webhook dla każdego narzędzia, a nie jeden wspólny?**
-> Discord pozwala na nieograniczoną liczbę webhooków per kanał — wygenerowanie
-> 4 osobnych jest darmowe, a daje czytelniejsze nazwy bota („Sentry",
-> „Better Stack", „Netdata", „WordPress audit") i awatary w kanale. Wszystkie
-> wskazują ten sam `#alerts-niepodzielni`, więc widzisz je razem chronologicznie.
+   Dla każdego z 4 narzędzi:
+   - Klik prawym na kanale `#alerts-niepodzielni` → Edit Channel →
+     Integrations → Webhooks → **New Webhook**.
+   - Nadaj nazwę i awatar zgodnie z tabelą:
 
-> **Discord ma natywne wsparcie dla Slack-formatted webhooków**: jeśli
-> jakieś narzędzie generuje payload w formacie Slacka (np. starsze wersje
-> niektórych integracji), wystarczy do URL Discorda dopisać `/slack` na
-> końcu i Discord automatycznie przemapuje. Większość narzędzi (Sentry,
-> Better Stack, Netdata) ma jednak natywną integrację Discord — używaj jej.
+   | Nazwa bota                | Awatar (sugestia)              | Gdzie wkleić URL |
+   |---------------------------|--------------------------------|------------------|
+   | `Sentry`                  | logo Sentry (kolor purpurowy)  | Sentry → Settings → Integrations → Webhooks |
+   | `Better Stack`            | logo Better Stack              | Better Stack → Notifications → Discord |
+   | `Netdata`                 | logo Netdata (kolor zielony)   | Netdata Cloud → Settings → Notifications → Discord |
+   | `WordPress Audit`         | klasyczne logo WP             | `.env` na produkcji jako `NP_DISCORD_WEBHOOK_URL` |
+
+   - Klik **Copy Webhook URL** dla każdego — dostaniesz URL typu
+     `https://discord.com/api/webhooks/12345.../abcd...`.
+4. Trzymaj te URL-e jako sekrety. Tylko jeden trafi do `.env` w produkcji
+   (ten od audit digest, nazwany w sekcji 4.4 jako `NP_DISCORD_WEBHOOK_URL`)
+   — pozostałe trzy konfigurujesz w panelach SaaS-ów (Sentry / Better Stack /
+   Netdata) bez ich wpisywania nigdzie w repo.
+
+> **Dlaczego 4 osobne webhooki, a nie jeden wspólny?**
+> Discord pozwala na dowolną liczbę webhooków per kanał — wygenerowanie
+> 4 osobnych jest darmowe i daje czytelniejsze nazwy bota oraz awatary
+> przy każdej wiadomości. W kanale widzisz na pierwszy rzut oka czy alert
+> przyszedł od Sentry (nowy błąd kodu) czy od Better Stack (strona padła)
+> bez czytania treści. Wszystkie wskazują ten sam `#alerts-niepodzielni`,
+> więc historię masz razem chronologicznie.
+
+> **Wskazówka dla narzędzi bez natywnej integracji**: Discord rozumie
+> format Slacka — jeśli narzędzie generuje payload Slack-style (np.
+> Sentry przez „Webhooks" zamiast natywnego klienta), wystarczy do URL
+> Discorda dopisać `/slack` na końcu i Discord automatycznie przemapuje.
 
 ---
 
@@ -215,7 +228,7 @@ Install on Linux → kopiujesz pełne polecenie. Free tier do 5 nodes.
 **Discord integration**:
 
 - Netdata Cloud → Settings → Notifications → Add → **Discord**
-- Wklejasz webhook URL z punktu 2 (Krok 0).
+- Wklejasz webhook URL **„Netdata"** (z Krok 0, sekcja 2).
 - Wybierz alarmy: „Critical" + „Warning". Pomiń „Clear" (nie zalewaj
   kanału informacją że problem zniknął).
 
@@ -257,7 +270,7 @@ Install on Linux → kopiujesz pełne polecenie. Free tier do 5 nodes.
 2. Logs Tail → przy okazji włącz, dostajesz 1 GB darmowych logów.
 3. Uptime → Add Monitor → wpisujesz każdy URL z tabeli + asercję
    (Advanced → Expected response → Body should contain).
-4. Notifications → **Discord** → webhook z Krok 0.
+4. Notifications → **Discord** → webhook **„Better Stack"** (z Krok 0, sekcja 2).
 5. Status Page → Create → wybierz 7 monitorów, ustaw subdomain
    `status.niepodzielni.pl`. Better Stack pokaże Ci CNAME do dodania w DNS
    Cloudflare (`status` → `tatatatata.betteruptime.com`). Pamiętaj
@@ -375,8 +388,8 @@ Sentry **nie ma natywnej integracji z Discord** (ma Slack), ale dwie ścieżki
 są równie dobre:
 
 - **Opcja A — przez Slack-compatible webhook**: Sentry → Settings →
-  Integrations → Webhooks → Add → URL = `<DISCORD_WEBHOOK_URL>/slack`
-  (Discord zna format Slacka i przemapuje).
+  Integrations → Webhooks → Add → URL = webhook **„Sentry"** z Krok 0 +
+  doklej `/slack` na końcu (Discord zna format Slacka i przemapuje).
 - **Opcja B — przez bota typu MonitoBot albo własny mini-relay**: Sentry
   Webhook (generic) → mała funkcja Cloudflare Worker która tłumaczy
   format Sentry na Discord. Dla MVP Opcja A wystarczy.
@@ -505,7 +518,8 @@ register_deactivation_hook(__FILE__, static function (): void {
 Config::define('NP_DISCORD_WEBHOOK_URL', env('NP_DISCORD_WEBHOOK_URL') ?: '');
 ```
 
-2. `.env` (produkcja, przez Trellis vault):
+2. `.env` (produkcja, przez Trellis vault) — wklej webhook **„WordPress Audit"**
+   z Krok 0:
 
 ```
 NP_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/.../...
