@@ -39,6 +39,8 @@ import {
 
 import { debounce } from './utils/debounce.js';
 
+import { npTrack, getPageContext } from './lib/track.js';
+
 // ─── Dane z PHP (window.NP_MATCHMAKER ustawiane przez shortcode) ──────────────
 
 const MM_DATA    = window.NP_MATCHMAKER || {};
@@ -55,6 +57,9 @@ class NpMatchmaker {
         this._fullResultsCache = null;
         this._relaxedCache     = null;
         this._isFirstRender    = true;
+        this._trackedStarted   = false;
+        this._lastTrackedStep  = null;
+        this._lastTrackedListKey = null;
 
         // Priorytet przywracania stanu: URL > sessionStorage > domyślny
         const urlState     = restoreFromUrl();
@@ -64,6 +69,34 @@ class NpMatchmaker {
         // Zdarzenia podpinane RAZ — Event Delegation na this.el (nie na dzieciach)
         this._initEvents();
         this._render();
+
+        // matchmaker_started — wejście w widget (krok 1, raz na sesję widgetu)
+        if ( ! this._trackedStarted && this.state.step === 1 ) {
+            this._trackedStarted = true;
+            npTrack( 'matchmaker_started', {
+                ...getPageContext(),
+                step: 1,
+            } );
+        }
+    }
+
+    // ─── Tracking helpers ─────────────────────────────────────────────────────
+
+    /**
+     * Snapshot aktywnych filtrów (state) — payload dla analytics.
+     */
+    _filtersSnapshot() {
+        const s = this.state;
+        return {
+            who:           s.who           || null,
+            visitType:     s.visitType     || null,
+            pricing:       s.pricing       || null,
+            lang:          s.lang          || null,
+            onlyAvailable: !! s.onlyAvailable,
+            areas:         Array.isArray( s.areas ) ? [ ...s.areas ] : [],
+            primaryArea:   s.primaryArea   || null,
+            nurt:          s.nurt          || null,
+        };
     }
 
     // ─── Zarządzanie stanem ────────────────────────────────────────────────────
@@ -75,6 +108,21 @@ class NpMatchmaker {
     }
 
     _go( step ) {
+        const prevStep = this.state.step;
+        // Tracking: jeśli idziemy DO PRZODU — emit matchmaker_step_completed dla poprzedniego kroku.
+        // Step 1→2, 2→4 (krok 3 to widok wyników; "completed" emitujemy dla 1 i 2,
+        // a krok 3 śledzimy przez view_item_list).
+        if ( typeof prevStep === 'number' && step > prevStep && prevStep < 4 ) {
+            const completedStep = prevStep === 2 ? 2 : prevStep;
+            if ( this._lastTrackedStep !== completedStep ) {
+                this._lastTrackedStep = completedStep;
+                npTrack( 'matchmaker_step_completed', {
+                    ...getPageContext(),
+                    step:    completedStep,
+                    filters: this._filtersSnapshot(),
+                } );
+            }
+        }
         this._set( { step } );
     }
 
@@ -117,6 +165,25 @@ class NpMatchmaker {
             const suggestions = this._getRelaxedSuggestions();
             html += tplResults( this.state, results, fullResults, MM_DATA, suggestions, this._showAll );
             saveToUrl( this.state );
+
+            // view_item_list — krok 3 (wyniki). Emit raz per unikalna lista (cache key).
+            const listKey = `${ this._showAll ? 'all' : 'top' }:${ results.map( r => r.id ).join( ',' ) }`;
+            if ( results.length > 0 && this._lastTrackedListKey !== listKey ) {
+                this._lastTrackedListKey = listKey;
+                npTrack( 'view_item_list', {
+                    ...getPageContext(),
+                    step:           3,
+                    item_list_name: 'matchmaker_results',
+                    item_list_id:   'matchmaker',
+                    filters:        this._filtersSnapshot(),
+                    items: results.map( ( p, idx ) => ( {
+                        item_id:       String( p.id ),
+                        item_name:     p.title || '',
+                        item_category: 'psycholog',
+                        index:         idx,
+                    } ) ),
+                } );
+            }
         }
 
         this.el.innerHTML = html;
@@ -146,6 +213,34 @@ class NpMatchmaker {
 
         // ── Click delegation ──────────────────────────────────────────────────
         this.el.addEventListener( 'click', ( e ) => {
+
+            // 0. Tracking select_item — gdy user klika w kafelek psychologa
+            //    (link na profil LUB przycisk "Umów wizytę" / open-cal).
+            //    Zamknięcie kalendarza (.np-mm__cal-close) NIE liczy się jako select.
+            const psyCard = e.target.closest( '.np-mm__card' );
+            if ( psyCard && ! e.target.closest( '.np-mm__cal-close' ) ) {
+                const isLink   = !! e.target.closest( 'a[href]' );
+                const isOpenCal = !! e.target.closest( '[data-action="open-cal"]' );
+                if ( isLink || isOpenCal ) {
+                    const cards   = Array.from( this.el.querySelectorAll( '.np-mm__card' ) );
+                    const index   = cards.indexOf( psyCard );
+                    const itemId  = psyCard.dataset.pid || '';
+                    const nameEl  = psyCard.querySelector( '.np-mm__card-name' );
+                    npTrack( 'select_item', {
+                        ...getPageContext(),
+                        step:           3,
+                        item_list_name: 'matchmaker_results',
+                        item_list_id:   'matchmaker',
+                        action:         isOpenCal ? 'open_calendar' : 'open_profile',
+                        items: [ {
+                            item_id:       String( itemId ),
+                            item_name:     nameEl ? nameEl.textContent.trim() : '',
+                            item_category: 'psycholog',
+                            index:         index >= 0 ? index : 0,
+                        } ],
+                    } );
+                }
+            }
 
             // 1. Przyciski wyboru opcji (krok 1): who / visitType / pricing / lang
             const choiceBtn = e.target.closest( '.np-mm__choice-btn' );
