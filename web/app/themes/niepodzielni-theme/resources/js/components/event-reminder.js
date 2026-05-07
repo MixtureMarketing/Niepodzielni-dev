@@ -6,7 +6,23 @@
  * Błąd: pokazanie message w status div, formularz zostaje.
  */
 
+import { npTrack, getPageContext } from '../lib/track.js';
+
 const REST_URL = '/wp-json/niepodzielni/v1/calendar/reminder';
+
+const startedForms = new WeakSet();
+
+function fireReminderStarted(form) {
+    if (startedForms.has(form)) return;
+    startedForms.add(form);
+    const eventId = parseInt(form.dataset.eventId, 10) || null;
+    npTrack('form_started', {
+        ...getPageContext(),
+        form_id:   'event_reminder',
+        form_name: 'event_reminder',
+        item_id:   eventId ? String(eventId) : null,
+    });
+}
 
 function setStatus(form, message, type = 'info') {
     const el = form.querySelector('[data-np-event-reminder-status]');
@@ -51,6 +67,16 @@ async function submit(form) {
         const json = await res.json().catch(() => ({}));
 
         if (res.ok && json.status === 'ok') {
+            try {
+                npTrack('generate_lead', {
+                    ...getPageContext(),
+                    form_id:   'event_reminder',
+                    form_name: 'event_reminder',
+                    item_id:   String(eventId),
+                });
+            } catch {
+                // noop
+            }
             // Zamień form na success message
             form.innerHTML = `
                 <p class="np-event-reminder__success" role="status">
@@ -90,6 +116,11 @@ function escapeHtml(value) {
 
 function init() {
     document.querySelectorAll('[data-np-event-reminder]').forEach((form) => {
+        const emailInput = form.querySelector('input[name="email"]');
+        if (emailInput) {
+            emailInput.addEventListener('focus', () => fireReminderStarted(form));
+            emailInput.addEventListener('input', () => fireReminderStarted(form), { once: true });
+        }
         form.addEventListener('submit', (event) => {
             event.preventDefault();
             submit(form);

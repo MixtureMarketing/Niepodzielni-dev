@@ -3,6 +3,8 @@
  * Vanilla JS ES2022+. Podpina się pod [data-niepodzielni-form].
  */
 
+import { npTrack, getPageContext } from './lib/track.js';
+
 class NiepodzielniForms {
     /** @type {string} */
     #apiBase;
@@ -28,9 +30,23 @@ class NiepodzielniForms {
         const formId = form.dataset.niepodzielniForm;
         if (! formId) return;
 
+        // form_started — emit raz na pierwsze focus/keystroke w polu formularza
+        let formStartedFired = false;
+        const fireFormStarted = () => {
+            if (formStartedFired) return;
+            formStartedFired = true;
+            npTrack('form_started', {
+                ...getPageContext(),
+                form_id:   formId,
+                form_name: `niepodzielni_${formId}`,
+            });
+        };
+
         form.querySelectorAll('input, textarea, select').forEach(field => {
+            field.addEventListener('focus', fireFormStarted, { once: false });
             field.addEventListener('blur',  () => this.#validateField(field));
             field.addEventListener('input', () => {
+                fireFormStarted();
                 this.#applyMask(field);
                 this.#clearFieldError(field);
             });
@@ -308,6 +324,7 @@ class NiepodzielniForms {
             const result = await response.json();
 
             if (result.status === 'success') {
+                this.#trackLead(formId);
                 this.#showSuccess(form, result.message);
             } else if (result.status === 'requires_verification') {
                 this.#showVerificationStep(form, formId, result.submission_id, result.message);
@@ -393,6 +410,7 @@ class NiepodzielniForms {
                 const data = await res.json();
 
                 if (data.status === 'success') {
+                    this.#trackLead(formId);
                     section.remove();
                     this.#showSuccess(form, data.message);
                 } else {
@@ -492,6 +510,18 @@ class NiepodzielniForms {
 
     #getNonce() {
         return window.NpFormsConfig?.nonce ?? '';
+    }
+
+    #trackLead(formId) {
+        try {
+            npTrack('generate_lead', {
+                ...getPageContext(),
+                form_id:   formId,
+                form_name: `niepodzielni_${formId}`,
+            });
+        } catch {
+            // noop
+        }
     }
 }
 
