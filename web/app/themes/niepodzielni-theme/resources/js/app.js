@@ -3,6 +3,11 @@ import.meta.glob([
   '../fonts/**',
 ]);
 
+// Tracking foundation — ładowane jak najwcześniej, żeby consent default
+// (denied) został ustawiony zanim cokolwiek wystartuje npTrack().
+import { setConsentDefault } from './lib/track.js';
+setConsentDefault();
+
 import './components/slider.js';
 import './components/dynamic-content.js';
 import './components/appointment-widget.js';
