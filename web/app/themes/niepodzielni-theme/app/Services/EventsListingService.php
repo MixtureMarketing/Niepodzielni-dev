@@ -11,9 +11,10 @@ namespace App\Services;
  *   - bazowy rekord (id, title, link, thumb, thumb_tag, excerpt)
  *   - WP_Query z bulk meta + term cache (eliminacja N+1)
  *
- * Każdy listing dokleja własne pola w `$mapper` przekazanym do `buildList()`.
+ * Wspólne mechanizmy w {@see AbstractListingService}; każdy listing dokleja własne
+ * pola w `$mapper` przekazanym do `buildList()`.
  */
-class EventsListingService
+class EventsListingService extends AbstractListingService
 {
     private const CACHE_GROUP = 'np_events_listing';
 
@@ -27,91 +28,19 @@ class EventsListingService
     ];
 
     /**
-     * Odczytuje wynik z Object Cache → transient, a jeśli brak — wywołuje $builder
-     * i zapisuje wynik do obu warstw cache.
+     * Wrapper na {@see AbstractListingService::withCache()} — używa per-service
+     * cache group i 1h TTL, mapując krótki klucz na transient z {@see CACHE_MAP}.
      *
      * @template T of array
      * @param callable(): T $builder
      * @return T
      */
-    private function withCache(string $cacheKey, callable $builder): array
+    private function cached(string $cacheKey, callable $builder): array
     {
         $transientKey = self::CACHE_MAP[$cacheKey][0]
             ?? throw new \InvalidArgumentException("Unknown cache key: {$cacheKey}");
 
-        $cached = wp_cache_get($cacheKey, self::CACHE_GROUP);
-        if (is_array($cached)) {
-            return $cached;
-        }
-
-        $cached = get_transient($transientKey);
-        if (is_array($cached)) {
-            wp_cache_set($cacheKey, $cached, self::CACHE_GROUP, HOUR_IN_SECONDS);
-
-            return $cached;
-        }
-
-        $data = $builder();
-
-        set_transient($transientKey, $data, HOUR_IN_SECONDS);
-        wp_cache_set($cacheKey, $data, self::CACHE_GROUP, HOUR_IN_SECONDS);
-
-        return $data;
-    }
-
-    /**
-     * Wspólne pola listingowe.  Każdy listing dorzuca własne extra przez merge.
-     *
-     * @param array<int, string> $thumbMetaKeys lista kluczy Carbon Fields dla obrazka
-     * @return array<string, mixed>
-     */
-    private function commonRecord(\WP_Post $post, array $thumbMetaKeys = [], string $title = ''): array
-    {
-        $title ??= $post->post_title;
-
-        return [
-            'id'        => $post->ID,
-            'title'     => $title !== '' ? $title : $post->post_title,
-            'link'      => get_the_permalink($post->ID),
-            'thumb'     => np_get_post_image_url($post->ID, $thumbMetaKeys, 'medium_large')
-                ?: (string) get_the_post_thumbnail_url($post->ID, 'medium_large'),
-            'thumb_tag' => np_get_post_image_tag($post->ID, $thumbMetaKeys, 'medium_large', ['alt' => $title]),
-            'excerpt'   => $post->post_excerpt ?: wp_trim_words($post->post_content, 20),
-        ];
-    }
-
-    /**
-     * Wspólny pipeline: WP_Query → mapowanie → opcjonalny sort.
-     *
-     * @param array<string, mixed>                          $queryArgs   override WP_Query
-     * @param callable(\WP_Post): array<string, mixed>      $mapper
-     * @param ?callable(array<string, mixed>, array<string, mixed>): int $sorter
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildList(array $queryArgs, callable $mapper, ?callable $sorter = null): array
-    {
-        $defaults = [
-            'posts_per_page'         => -1,
-            'post_status'            => 'publish',
-            'no_found_rows'          => true,
-            'update_post_meta_cache' => true,
-            'update_post_term_cache' => false,
-        ];
-
-        $query = new \WP_Query(array_merge($defaults, $queryArgs));
-
-        $data = array_map($mapper, $query->posts);
-
-        if ($sorter !== null) {
-            usort($data, $sorter);
-        }
-
-        return $data;
-    }
-
-    private static function sortByDate(array $a, array $b): int
-    {
-        return strcmp($a['sort_date'] ?? '', $b['sort_date'] ?? '');
+        return $this->withCache($cacheKey, $transientKey, self::CACHE_GROUP, HOUR_IN_SECONDS, $builder);
     }
 
     // ─── 1. Warsztaty + Grupy wsparcia ──────────────────────────────────────────
@@ -121,7 +50,7 @@ class EventsListingService
      */
     public function getWorkshopsData(): array
     {
-        return $this->withCache('workshops', function (): array {
+        return $this->cached('workshops', function (): array {
             $today = current_time('Y-m-d');
 
             // Prefetch meta prowadzących (psycholog CPT) — eliminuje N+1 w np_get_event_leader_name().
@@ -177,7 +106,7 @@ class EventsListingService
      */
     public function getWydarzeniaData(): array
     {
-        return $this->withCache('wydarzenia', function (): array {
+        return $this->cached('wydarzenia', function (): array {
             $today = current_time('Y-m-d');
 
             return $this->buildList(
@@ -210,7 +139,7 @@ class EventsListingService
      */
     public function getAktualnosciData(): array
     {
-        return $this->withCache('aktualnosci', function (): array {
+        return $this->cached('aktualnosci', function (): array {
             return $this->buildList(
                 [
                     'post_type' => 'aktualnosci',
@@ -232,7 +161,7 @@ class EventsListingService
      */
     public function getPsychoedukacjaData(): array
     {
-        return $this->withCache('psychoedukacja', function (): array {
+        return $this->cached('psychoedukacja', function (): array {
             return $this->buildList(
                 [
                     'post_type'              => 'post',
@@ -256,7 +185,7 @@ class EventsListingService
      */
     public function getPsychoedukacjaTags(): array
     {
-        return $this->withCache('psychoedukacja_tags', function (): array {
+        return $this->cached('psychoedukacja_tags', function (): array {
             $tags = get_tags(['hide_empty' => true, 'orderby' => 'name', 'order' => 'ASC']);
 
             return array_map(static fn($t) => ['value' => $t->slug, 'label' => $t->name], $tags);
