@@ -8,7 +8,7 @@
   $m = [];
   $keys = [
     'temat','tekst_-_wstep','opis','jesli_doswiadczasz','temat_718','tekst_dodatkowy',
-    'data','godzina','godzina_zakonczenia','lokalizacja','typ','ulica_i_numer',
+    'data','godzina','godzina_rozpoczecia','godzina_zakonczenia','lokalizacja','typ','ulica_i_numer',
     'cena','cena_-_rodzaj','cena_rodzaj',
     'prowadzacy_id','stanowisko','nurt','opis_117',
     // pola ręczne — fallback gdy prowadzacy_id nie ustawiony
@@ -18,6 +18,10 @@
   foreach ($keys as $k) {
     $m[$k] = get_post_meta($post_id, $k, true);
   }
+
+  // Etap 3 refactoru: ujednolicony klucz `godzina_rozpoczecia`.
+  // Fallback na stary `godzina` na czas migracji DB.
+  $m['godzina'] = $m['godzina_rozpoczecia'] ?: $m['godzina'];
 
   $title  = $m['temat'] ?: get_the_title($post_id);
   $bg_tag = np_get_post_image_tag($post_id, ['zdjecie_glowne'], 'full', [

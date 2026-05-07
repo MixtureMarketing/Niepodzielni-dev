@@ -79,10 +79,13 @@ class EventsListingService extends AbstractListingService
                     $date  = (string) get_post_meta($pid, 'data', true);
                     $title = (string) get_post_meta($pid, 'temat', true) ?: $post->post_title;
 
+                    // Etap 3 refactoru: ujednolicone klucze (godzina_rozpoczecia/cena).
+                    // Fallback na stare klucze (godzina) na czas migracji DB.
                     return $this->commonRecord($post, ['zdjecie_glowne', 'zdjecie'], $title) + [
                         'post_type'   => $post->post_type,
                         'date'        => $date,
-                        'time'        => get_post_meta($pid, 'godzina', true),
+                        'time'        => get_post_meta($pid, 'godzina_rozpoczecia', true)
+                            ?: get_post_meta($pid, 'godzina', true),
                         'time_end'    => get_post_meta($pid, 'godzina_zakonczenia', true),
                         'lokalizacja' => get_post_meta($pid, 'lokalizacja', true),
                         'status'      => get_post_meta($pid, 'status', true),
@@ -115,13 +118,19 @@ class EventsListingService extends AbstractListingService
                     $pid  = $post->ID;
                     $date = (string) get_post_meta($pid, 'data', true);
 
+                    // Etap 3 refactoru: ujednolicony klucz `cena`.
+                    // Fallback na stary `koszt` na czas migracji DB.
+                    // 'koszt' w wyniku zachowane dla backward-compat z blade card (variant=event).
+                    $cena = get_post_meta($pid, 'cena', true) ?: get_post_meta($pid, 'koszt', true);
+
                     return $this->commonRecord($post, ['zdjecie', 'zdjecie_tla']) + [
                         'date'        => $date,
                         'time_start'  => get_post_meta($pid, 'godzina_rozpoczecia', true),
                         'time_end'    => get_post_meta($pid, 'godzina_zakonczenia', true),
                         'miasto'      => get_post_meta($pid, 'miasto', true),
                         'lokalizacja' => get_post_meta($pid, 'lokalizacja', true),
-                        'koszt'       => get_post_meta($pid, 'koszt', true),
+                        'cena'        => $cena,
+                        'koszt'       => $cena,
                         'opis'        => wp_trim_words((string) get_post_meta($pid, 'opis', true) ?: $post->post_excerpt, 20),
                         'is_upcoming' => $date !== '' && $date >= $today,
                         'sort_date'   => $date !== '' ? $date : '9999-12-31',
