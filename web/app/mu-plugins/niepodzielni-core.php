@@ -80,6 +80,7 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/16-security-headers.php';          
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';
+require_once NIEPODZIELNI_CORE_PATH . 'misc/2-cache-invalidation.php';
 
 // 5. SERWISY OOP (require_once — poza PSR-4 z src/)
 require_once NIEPODZIELNI_CORE_PATH . 'services/GeocodingService.php';

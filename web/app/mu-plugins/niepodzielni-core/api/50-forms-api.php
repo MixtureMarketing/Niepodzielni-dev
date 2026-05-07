@@ -241,13 +241,19 @@ function np_forms_enqueue_assets(): void
     // flag-icons — wymagane przez custom prefix dropdown w polu telefonu
     if (! wp_style_is('flag-icons', 'enqueued')) {
         wp_enqueue_style('flag-icons', 'https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css', [], null);
+        // Preconnect dla cdn.jsdelivr.net — skraca DNS+TLS handshake (~100-300 ms na mobile).
+        // Setup motywu rejestruje preconnect tylko na single-psycholog/listingach; tu
+        // pokrywamy strony z formularzem (np. /kontakt/) gdzie też ładujemy flag-icons.
+        add_action('wp_head', static function () {
+            echo '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>' . "\n";
+        }, 2);
     }
 
     wp_enqueue_script(
         'niepodzielni-forms',
         $jsUrl,
         [],
-        (string) filemtime($jsPath),
+        np_asset_version($jsPath, '1.0.0'),
         true,
     );
 
