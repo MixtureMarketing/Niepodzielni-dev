@@ -25,6 +25,7 @@ class NpAiChat {
         this.root        = root;
         this.cfg         = window.npAiChat || {};
         this.workerUrl   = this.cfg.workerUrl || '';
+        this.botToken    = this.cfg.botToken  || '';
         this.contact     = this.cfg.contact   || {};
         this.messages    = this._loadHistory();
         this.consultType = localStorage.getItem(CONSULT_KEY) || 'pelno';
@@ -260,7 +261,10 @@ class NpAiChat {
         try {
             const response = await fetch(`${this.workerUrl}/chat`, {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type':  'application/json',
+                    ...(this.botToken ? { 'Authorization': `Bearer ${this.botToken}` } : {}),
+                },
                 body:    JSON.stringify(payload),
                 signal:  this._fetchCtrl.signal,
             });
@@ -555,7 +559,10 @@ class NpAiChat {
         try {
             await fetch(`${this.workerUrl}/feedback`, {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type':  'application/json',
+                    ...(this.botToken ? { 'Authorization': `Bearer ${this.botToken}` } : {}),
+                },
                 body:    JSON.stringify({ value, type: 'conversation_rating' }),
             });
         } catch {}
