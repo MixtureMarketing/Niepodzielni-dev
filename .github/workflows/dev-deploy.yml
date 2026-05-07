@@ -37,13 +37,17 @@ jobs:
         working-directory: web/app/themes/niepodzielni-theme
         run: npm run build
 
-      # Re-use SSH key i vault — ten sam VPS produkcyjny, więc te same sekrety.
-      - name: Set up SSH key
+      # SSH klucz przez ssh-agent — nigdy nie ląduje na dysku.
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Trust dev VPS host
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan 185.201.113.217 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 185.201.113.217 >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Upload built assets to dev shared dir
         run: |
@@ -52,9 +56,6 @@ jobs:
             web/app/themes/niepodzielni-theme/public/build/ \
             root@185.201.113.217:/srv/www/dev.niepodzielni.com/shared/theme-build/
 
-      - name: Write vault password
-        run: echo "${{ secrets.ANSIBLE_VAULT_PASS }}" > trellis/.vault_pass
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -62,7 +63,7 @@ jobs:
           cache: pip
 
       - name: Install Ansible
-        run: pip install ansible>=2.10.0
+        run: pip install 'ansible>=2.10.0'
 
       - name: Install Ansible Galaxy roles
         working-directory: trellis
@@ -70,13 +71,16 @@ jobs:
 
       # env=production bo VPS jest produkcyjny — Trellis wybiera site po kluczu
       # w wordpress_sites.yml (dev.niepodzielni.com tam jest dorzucony obok prod).
+      # Vault password przez `--vault-password-file <(...)` — nie zapisuje na dysk.
       - name: Deploy
         working-directory: trellis
+        env:
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASS }}
         run: |
           ansible-playbook deploy.yml \
             -e env=production \
             -e site=dev.niepodzielni.com \
-            --vault-password-file .vault_pass
+            --vault-password-file <(printf '%s' "$ANSIBLE_VAULT_PASSWORD")
 
   worker-deploy:
     name: Deploy Cloudflare Worker (staging)
@@ -102,11 +106,10 @@ jobs:
       - name: Install npm dependencies
         run: npm ci --ignore-scripts
 
-      # --name override pozwala deployować na osobny worker bez sekcji [env.staging]
-      # w wrangler.toml. Po merge PR #7 (który dorzuci [env.staging]) zmienić na:
-      #   npx wrangler deploy --env staging
-      - name: Wrangler deploy (staging override)
-        run: npx wrangler deploy --name niepodzielni-ai-agent-staging
+      # PR #7 dodał sekcje [env.staging] do wrangler.toml — używamy --env staging
+      # zamiast --name override. Worker name z wrangler.toml: niepodzielni-ai-agent-staging.
+      - name: Wrangler deploy (staging)
+        run: npx wrangler deploy --env staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
