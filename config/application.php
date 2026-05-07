@@ -175,6 +175,11 @@ Config::define('NP_AI_BOT_TOKEN', env('NP_AI_BOT_TOKEN') ?: '');
 Config::define('NP_CF_TURNSTILE_SECRET', env('NP_CF_TURNSTILE_SECRET') ?: '');
 Config::define('NP_CF_TURNSTILE_SITE_KEY', env('NP_CF_TURNSTILE_SITE_KEY') ?: '');
 
+// Discord webhook „WordPress Audit" — daily audit digest (admin/17-audit-digest.php)
+// + brute-force burst alert (admin/19-lockout-burst-alert.php). Pusty = wysyłany
+// tylko email do admin_email. Patrz docs/monitoring-runbook.md sekcja 2.
+Config::define('NP_DISCORD_WEBHOOK_URL', env('NP_DISCORD_WEBHOOK_URL') ?: '');
+
 /**
  * Custom Settings
  */
