@@ -83,8 +83,10 @@ id      = "4201695d4dfe41e6a38a8ebe15d62372"
 GATEWAY_BASE_URL = "https://gateway.ai.cloudflare.com/v1/f26ca3db380d36db86160d7f35e3968e/niepodzielni-ai-gateway/compat"
 CHAT_MODEL       = "openai/gpt-4o-mini"
 EMBED_MODEL      = "@cf/baai/bge-m3"
-WP_API_URL       = "https://niepodzielni.pl/wp-json/niepodzielni/v1"
-WP_CRISIS_URL    = "https://niepodzielni.pl/pomoc-w-kryzysie/"
+# new.niepodzielni.com — aktualna nowa wersja produkcyjna (CF route'uje do niej część ruchu;
+# niepodzielni.com / niepodzielni.pl zostaje na starym hostingu Emetor i nie jest dotykany).
+WP_API_URL       = "https://new.niepodzielni.com/wp-json/niepodzielni/v1"
+WP_CRISIS_URL    = "https://new.niepodzielni.com/pomoc-w-kryzysie/"
 
 [env.staging]
 name = "niepodzielni-ai-agent-staging"
