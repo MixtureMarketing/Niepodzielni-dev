@@ -671,21 +671,55 @@ wyższy consent rate, zdarzenia nie blokują głównego wątku.
 | Meta Pixel ID      | Ustawiony w Cloudflare Dashboard     |
 | Trigger            | Zaraz Custom Event (każde `zaraz.track()`) |
 
-### Zdarzenia śledzenia Bookero
+### Wspólny helper trackingu — `lib/track.js`
 
-Zdarzenia są emitowane przez [bookero-init.js](../web/app/themes/niepodzielni-theme/resources/js/bookero-init.js).
+Wszystkie eventy (Bookero, AI chat, formularze) idą przez `npTrack(name, props)`
+z [resources/js/lib/track.js](../web/app/themes/niepodzielni-theme/resources/js/lib/track.js).
+Kanały (priorytet malejąco):
 
-> **WAŻNE**: Nazwy zdarzeń używają **myślników**, nie podkreśleń.
-> W dashboardzie Zaraz i w GA4 konfiguruj dokładnie te wartości.
+1. `window.zaraz.track(name, props)` — primary, server-side przez Cloudflare Zaraz.
+2. `window.dataLayer.push({ event: name, ...props })` — GTM-compat fallback.
+3. `navigator.sendBeacon('/__np_track', payload)` — tylko dla eventów krytycznych
+   (`purchase`, `donation`, `generate_lead`) gdy oba kanały powyżej zawiodą.
 
-| Zdarzenie JS (Bookero)                        | Nazwa w Zaraz / GA4               | Kiedy odpala                        |
-|-----------------------------------------------|-----------------------------------|-------------------------------------|
-| `bookero-plugin:tracking:form-loaded`         | `bookero_form-loaded`             | Widget kalendarza załadowany        |
-| `bookero-plugin:tracking:add-to-cart`         | `bookero_add-to-cart`             | Wybór godziny i przejście do koszyka|
-| `bookero-plugin:tracking:start-checkout`      | `bookero_start-checkout`          | Wypełnienie formularza rezerwacji   |
-| `bookero-plugin:tracking:purchase`            | `purchase`                        | Zakończona rezerwacja (płatność)    |
-| `bookero-plugin:tracking:failed-purchase`     | `bookero_failed-purchase`         | Nieudana płatność                   |
-| `bookero-plugin:tracking:waiting-purchase`    | `bookero_waiting-purchase`        | Oczekująca rezerwacja (nisko free)  |
+Helper automatycznie dodaje:
+- `event_id` (UUID v4) — wymagany do deduplikacji Meta CAPI ↔ Pixel.
+- `timestamp` (epoch ms).
+
+### Zdarzenia — mapowanie JS → GA4 → Meta
+
+Zdarzenia Bookero są emitowane przez [bookero-init.js](../web/app/themes/niepodzielni-theme/resources/js/bookero-init.js)
+(po standaryzacji na GA4 Ecommerce nazwy). AI chat — [components/ai-chat.js](../web/app/themes/niepodzielni-theme/resources/js/components/ai-chat.js).
+
+| Event JS (Zaraz)              | GA4 (CF dashboard)   | Meta Pixel (CF dashboard) | Trigger                              |
+|-------------------------------|----------------------|---------------------------|--------------------------------------|
+| `view_item` (`source=bookero`) | `view_item`          | `ViewContent`             | bookero `form-loaded`                |
+| `add_to_cart`                 | `add_to_cart`        | `AddToCart`               | bookero `add-to-cart`                |
+| `begin_checkout`              | `begin_checkout`     | `InitiateCheckout`        | bookero `start-checkout`             |
+| `purchase`                    | `purchase`           | `Purchase`                | bookero `purchase` (potwierdzona)    |
+| `purchase_failed`             | (custom)             | (custom)                  | bookero `failed-purchase`            |
+| `purchase_pending`            | (custom)             | (custom)                  | bookero `waiting-purchase`           |
+| `chat_opened`                 | (custom)             | (none)                    | ai-chat otwarty                      |
+| `message_sent`                | (custom)             | (none)                    | ai-chat user submit                  |
+| `psychologist_card_clicked`   | `select_item`        | (custom)                  | klik kafelka psychologa w czacie     |
+| `booking_intent`              | (custom)             | (custom)                  | klik CTA „umów" z karty psychologa   |
+| `conversation_rated`          | (custom)             | (none)                    | thumbs up/down w czacie              |
+
+Mapa Bookero browser event → nazwa GA4 jest w `BOOKERO_EVENT_MAP` w
+[bookero-init.js:179](../web/app/themes/niepodzielni-theme/resources/js/bookero-init.js).
+
+### Consent Mode v2 — sygnalizacja
+
+`lib/track.js` eksportuje `setConsentDefault()` i `updateConsent({ analytics, ads })`.
+
+- `setConsentDefault()` — wywoływany w `app.js` na samym początku, ustawia
+  `window.zaraz.consent.setAll(false)` (default-denied). Eventy są kolejkowane
+  po stronie Zaraz Consent Manager dopóki user nie wyrazi zgody.
+- `updateConsent({ analytics: true, ads: true })` — wywoływany przez CMP po
+  akceptacji zgody (CMP UI to osobny PR).
+- Eventy krytyczne (`purchase`, `donation`, `generate_lead`) mają zachowanie
+  „anonymous ping" przez Zaraz Consent Mode v2 — Cloudflare wysyła je nawet bez
+  zgody (zgodnie z GA4/Meta conversion modeling). Lokalnie nie blokujemy.
 
 ### Payload zdarzenia `purchase`
 

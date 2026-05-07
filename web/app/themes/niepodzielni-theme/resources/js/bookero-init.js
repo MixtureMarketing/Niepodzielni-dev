@@ -1,13 +1,15 @@
 /**
- * bookero-init.js v5.1
+ * bookero-init.js v5.2
  * Reads plugin IDs from window.niepodzielniBookero (via wp_localize_script).
- * Adds GTM dataLayer forwarding for Bookero tracking events.
+ * Forwards Bookero tracking events to Cloudflare Zaraz (with GTM dataLayer fallback).
  *
  * This file is loaded as type="module" (see filters.php → script_loader_tag).
  * ES modules are implicitly deferred — the browser executes them after DOM
  * parsing but BEFORE DOMContentLoaded fires. DOM is therefore available
  * immediately; no DOMContentLoaded wrapper is needed.
  */
+
+import { npTrack, getPageContext } from './lib/track.js';
 
 // ─── BOOKERO API INTERCEPTOR ─────────────────────────────────────────────────
 // Przechwytuje odpowiedzi Bookero API i zapisuje dane do WP — fire-and-forget.
@@ -174,35 +176,21 @@ const trackingEvents = [
     'bookero-plugin:tracking:waiting-purchase',
 ];
 
-function getPageContext() {
-    const postIdMatch = document.body.className.match(/postid-(\d+)/);
-    const urlParams   = new URLSearchParams(window.location.search);
-    const consultType = urlParams.get('konsultacje') || 'pelno';
-    const nameEl      = document.querySelector('.psy-name-h1');
-    return {
-        postId:      postIdMatch ? parseInt(postIdMatch[1]) : null,
-        consultType: consultType,
-        psychName:   nameEl ? nameEl.textContent.trim() : null,
-    };
-}
-
-/**
- * Wysyła event do Cloudflare Zaraz (primary) lub GTM dataLayer (fallback).
- * @param {string} name  Nazwa eventu, np. 'purchase', 'bookero_add_to_cart'
- * @param {Object} props Właściwości eventu
- */
-function npTrack(name, props) {
-    if (window.zaraz && typeof window.zaraz.track === 'function') {
-        window.zaraz.track(name, props);
-    } else if (window.dataLayer) {
-        window.dataLayer.push(Object.assign({ event: name }, props));
-    }
-}
+// Mapowanie Bookero browser events → GA4 Ecommerce standard names.
+// Zaraz/GA4 używają snake_case, więc unikamy myślników w nazwach destination.
+const BOOKERO_EVENT_MAP = {
+    'bookero-plugin:tracking:form-loaded':      'view_item',         // GA4 standard
+    'bookero-plugin:tracking:add-to-cart':      'add_to_cart',       // GA4 standard
+    'bookero-plugin:tracking:start-checkout':   'begin_checkout',    // GA4 standard
+    'bookero-plugin:tracking:purchase':         'purchase',          // GA4 standard
+    'bookero-plugin:tracking:failed-purchase':  'purchase_failed',   // custom
+    'bookero-plugin:tracking:waiting-purchase': 'purchase_pending',  // custom
+};
 
 trackingEvents.forEach(function (eventName) {
     document.body.addEventListener(eventName, function (e) {
-        const data    = (e.detail && e.detail.data) || {};
-        const eventGA = eventName.replace('bookero-plugin:tracking:', 'bookero_');
+        const data      = (e.detail && e.detail.data) || {};
+        const mappedGA  = BOOKERO_EVENT_MAP[eventName] || eventName.replace('bookero-plugin:tracking:', 'bookero_');
 
         if (eventName === 'bookero-plugin:tracking:purchase') {
             const ctx      = getPageContext();
@@ -240,10 +228,13 @@ trackingEvents.forEach(function (eventName) {
                 bookero_psychologist: ctx.psychName,
             });
         } else {
-            npTrack(eventGA, Object.assign(
-                { bookeroInstanceId: e.detail && e.detail.instanceID },
+            const ctx   = getPageContext();
+            const props = Object.assign(
+                { bookeroInstanceId: e.detail && e.detail.instanceID, source: 'bookero' },
+                ctx,
                 data,
-            ));
+            );
+            npTrack(mappedGA, props);
         }
     });
 });

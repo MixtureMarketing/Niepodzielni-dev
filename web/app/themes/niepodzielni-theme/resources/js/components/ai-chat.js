@@ -6,6 +6,8 @@
  * Onboarding: typ konsultacji → kategoria problemu → rozmowa.
  */
 
+import { npTrack } from '../lib/track.js';
+
 const STORAGE_KEY  = 'np_ai_chat_history';
 const CONSULT_KEY  = 'np_ai_consult_type';
 const PANEL_KEY    = 'np_ai_panel_items';
@@ -810,11 +812,7 @@ class NpAiChat {
 
     _track(event, props = {}) {
         try {
-            if (typeof zaraz !== 'undefined') {
-                zaraz.track(event, props);
-            } else if (window.dataLayer) {
-                window.dataLayer.push({ event, ...props });
-            }
+            npTrack(event, props);
         } catch {}
     }
 
