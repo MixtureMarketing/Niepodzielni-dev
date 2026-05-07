@@ -12,6 +12,11 @@ on:
   push:
     branches: [dev]
 
+# Default permissions: read-only code clone. SSH/wrangler/ansible używają
+# własnych sekretów (DEPLOY_SSH_KEY, CLOUDFLARE_API_TOKEN, ANSIBLE_VAULT_PASS).
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Build & Deploy (dev.niepodzielni.com)

@@ -26,8 +26,9 @@ export async function handleSync(request: Request, env: Env): Promise<Response> 
     // Flatten tags (dla artykułów, warsztatów, grup)
     const flatTags = payload.tags?.filter(Boolean).join(', ') ?? '';
 
+    // ReDoS guard: capujemy input zanim trafi do regex'a (CodeQL js/polynomial-redos).
     const contentSnippet = payload.content
-        ? payload.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+        ? payload.content.slice(0, 50_000).replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).join(' ').slice(0, 200)
         : '';
 
     const sharedMetadata = {
