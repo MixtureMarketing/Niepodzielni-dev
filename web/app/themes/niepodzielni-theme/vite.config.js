@@ -42,6 +42,19 @@ export default defineConfig({
 
     wordpressPlugin(),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Split heavy 3rd-party deps into separate chunks so the main app.js
+        // stays small and feature-specific bundles aren't shipped to pages
+        // that don't need them.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('node_modules/swiper')) return 'vendor-swiper';
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@scripts': '/resources/js',
