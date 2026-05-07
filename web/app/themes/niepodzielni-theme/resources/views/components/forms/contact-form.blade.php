@@ -5,8 +5,7 @@
 ])
 
 @php
-    $cfSiteKey = $siteKey
-        ?? (defined('NP_CF_TURNSTILE_SITE_KEY') ? NP_CF_TURNSTILE_SITE_KEY : get_option('np_cf_turnstile_site_key', ''));
+    $cfSiteKey = $siteKey ?? np_get_turnstile_site_key();
     
     $prefixes = \Niepodzielni\Forms\Helpers\PhonePrefixes::getAll();
 @endphp

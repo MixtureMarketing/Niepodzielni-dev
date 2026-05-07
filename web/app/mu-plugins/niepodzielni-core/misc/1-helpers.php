@@ -299,15 +299,17 @@ function np_get_sortable_date(string $date_string): string
  *   Zawsze zapisuje do np_bookero_error_log — do podglądu w panelu WP Admin
  *   niezależnie od ustawień debugowania środowiska.
  *
- * @param string $context  Akcja API (np. 'getMonth', 'init', 'cron')
- * @param string $msg      Opis błędu
+ * @param string       $context  Akcja API (np. 'getMonth', 'init', 'cron')
+ * @param string|array $msg      Opis błędu lub tablica kontekstu (serializowana do JSON)
  */
-function np_bookero_log_error(string $context, string $msg): void
+function np_bookero_log_error(string $context, string|array $msg): void
 {
+    $msgStr = is_array($msg) ? (string) wp_json_encode($msg) : $msg;
+
     // Apache / Bedrock: natywny error_log gdy debugowanie aktywne.
     // error_log() używa php.ini error_log directive → Apache error log lub WP_DEBUG_LOG.
     if (defined('WP_DEBUG') && WP_DEBUG) {
-        error_log(sprintf('[BOOKERO API] [Action: %s] %s', $context, $msg));
+        error_log(sprintf('[BOOKERO API] [Action: %s] %s', $context, $msgStr));
     }
 
     // DB ring buffer — panel WP Admin → Bookero → Log błędów
@@ -319,7 +321,7 @@ function np_bookero_log_error(string $context, string $msg): void
     array_unshift($log, [
         'ts'      => time(),
         'context' => $context,
-        'msg'     => $msg,
+        'msg'     => $msgStr,
     ]);
 
     update_option('np_bookero_error_log', array_slice($log, 0, 30), false);
@@ -520,4 +522,42 @@ function np_clear_psy_listing_cache(): void
         $version = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1';
         delete_transient('np_matchmaker_t_' . $version);
     }
+}
+
+/**
+ * Zwraca klucz witryny Cloudflare Turnstile (site key).
+ * Priorytet: stała NP_CF_TURNSTILE_SITE_KEY → CF_TURNSTILE_SITE_KEY → WP option.
+ * Centralizuje logikę powielaną wcześniej w 4 miejscach.
+ */
+function np_get_turnstile_site_key(): string
+{
+    foreach ([ 'NP_CF_TURNSTILE_SITE_KEY', 'CF_TURNSTILE_SITE_KEY' ] as $const) {
+        if (defined($const) && constant($const)) {
+            return (string) constant($const);
+        }
+    }
+
+    return (string) get_option('np_cf_turnstile_site_key', '');
+}
+
+/**
+ * Wysyła e-mail HTML przez wp_mail() ze stałym filtrem content-type.
+ *
+ * Naprawia bug z anonimową closure w add/remove_filter: closure zdefiniowana raz
+ * w $filter jest tą samą instancją przy add i remove — filtr faktycznie jest usuwany.
+ *
+ * @param string   $to       Adres odbiorcy
+ * @param string   $subject  Temat wiadomości
+ * @param string   $body     Treść HTML
+ * @param string[] $headers  Dodatkowe nagłówki mail (opcjonalne)
+ * @return bool    Wynik wp_mail()
+ */
+function np_send_html_mail(string $to, string $subject, string $body, array $headers = []): bool
+{
+    $filter = static fn(): string => 'text/html';
+    add_filter('wp_mail_content_type', $filter);
+    $sent = wp_mail($to, $subject, $body, $headers);
+    remove_filter('wp_mail_content_type', $filter);
+
+    return $sent;
 }

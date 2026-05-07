@@ -130,18 +130,13 @@ class EventReminderService
             'siteName'      => $siteName,
         ]);
 
-        $htmlFilter = static fn(): string => 'text/html';
-        add_filter('wp_mail_content_type', $htmlFilter);
-
-        $result = wp_mail($email, $subject, $html);
-
-        remove_filter('wp_mail_content_type', $htmlFilter);
+        $result = np_send_html_mail($email, $subject, $html);
 
         if (! $result && defined('WP_DEBUG') && WP_DEBUG) {
             error_log("[EventReminder] wp_mail failed for {$email} (event {$eventId})");
         }
 
-        return (bool) $result;
+        return $result;
     }
 
     private function renderTemplate(array $data): string

@@ -210,7 +210,7 @@ function np_forms_handle_verify(\WP_REST_Request $request): \WP_REST_Response
     $verified = $handler->verifyOTP($submissionId, $otpCode);
 
     if (! $verified) {
-        set_transient($attemptKey, $attempts + 1, 15 * MINUTE_IN_SECONDS);
+        set_transient($attemptKey, $attempts + 1, \Niepodzielni\Forms\BaseFormHandler::OTP_TTL);
         return new \WP_REST_Response([
             'status'  => 'error',
             'message' => 'Kod jest nieprawidłowy lub wygasł. Spróbuj ponownie.',
@@ -257,9 +257,7 @@ function np_forms_enqueue_assets(): void
         true,
     );
 
-    $siteKey = defined('NP_CF_TURNSTILE_SITE_KEY')
-        ? (string) NP_CF_TURNSTILE_SITE_KEY
-        : (string) get_option('np_cf_turnstile_site_key', '');
+    $siteKey = np_get_turnstile_site_key();
 
     wp_localize_script('niepodzielni-forms', 'NpFormsConfig', [
         'apiBase'          => esc_url_raw(rest_url('niepodzielni/v1/forms')),

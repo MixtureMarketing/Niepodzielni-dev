@@ -54,11 +54,7 @@
         && hash_equals(np_reviews_generate_magic_token($rvw_email, $post_id), $magic_token);
 
     // CF Turnstile site key
-    $cf_site_key = '';
-    foreach (['NP_CF_TURNSTILE_SITE_KEY', 'CF_TURNSTILE_SITE_KEY'] as $_c) {
-        if (defined($_c) && constant($_c)) { $cf_site_key = (string) constant($_c); break; }
-    }
-    if (!$cf_site_key) $cf_site_key = (string) get_option('np_cf_turnstile_site_key', '');
+    $cf_site_key = np_get_turnstile_site_key();
 
     // Helper: gwiazdki HTML
     $stars_html = function(float $rating, string $class = '') use (&$stars_html): string {
