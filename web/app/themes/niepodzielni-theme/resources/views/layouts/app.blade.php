@@ -30,6 +30,10 @@
       @include('sections.footer')
     </div>
 
+    @unless(is_page_template('template-pomoc-kryzys.blade.php'))
+      @include('partials.consent-banner')
+    @endunless
+
     @php(do_action('get_footer'))
     @php(wp_footer())
   </body>

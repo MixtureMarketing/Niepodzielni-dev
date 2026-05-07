@@ -1,0 +1,164 @@
+/**
+ * Consent Mode v2 — banner CMP.
+ * Styl celowo minimalny: utrzymuje JS bundle <5KB gz i łatwo skaluje
+ * do brand-tokens (var(--np-...)) gdy tylko w atoms/variables.css się pojawią.
+ */
+
+.np-consent {
+    position: fixed;
+    inset: auto 1rem 1rem 1rem;
+    z-index: 9000;
+    max-width: 720px;
+    margin-inline: auto;
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    padding: 1.25rem 1.25rem 1rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.np-consent[hidden] {
+    display: none;
+}
+
+.np-consent__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+}
+
+.np-consent__desc {
+    margin: 0 0 0.875rem;
+}
+
+.np-consent__desc a {
+    text-decoration: underline;
+}
+
+.np-consent__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.np-consent__btn {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0.55rem 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.2;
+    font: inherit;
+}
+
+.np-consent__btn--primary {
+    background: #111827;
+    color: #ffffff;
+}
+
+.np-consent__btn--primary:hover,
+.np-consent__btn--primary:focus-visible {
+    background: #000000;
+}
+
+.np-consent__btn--secondary {
+    background: #ffffff;
+    color: #111827;
+    border-color: #d1d5db;
+}
+
+.np-consent__btn--secondary:hover,
+.np-consent__btn--secondary:focus-visible {
+    background: #f3f4f6;
+}
+
+.np-consent__btn--ghost {
+    background: transparent;
+    color: #374151;
+    text-decoration: underline;
+    padding-inline: 0.25rem;
+}
+
+.np-consent__btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.np-consent__manage {
+    margin-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.875rem;
+}
+
+.np-consent__manage[hidden] {
+    display: none;
+}
+
+.np-consent__group {
+    border: 0;
+    padding: 0;
+    margin: 0 0 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.np-consent__legend {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    padding: 0;
+}
+
+.np-consent__option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+    background: #f9fafb;
+    cursor: pointer;
+}
+
+.np-consent__option input[type="checkbox"] {
+    margin-top: 0.2rem;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+.np-consent__hint {
+    display: block;
+    font-size: 0.85rem;
+    color: #4b5563;
+    font-weight: 400;
+}
+
+.np-consent__manage-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+    .np-consent {
+        inset: auto 0.5rem 0.5rem 0.5rem;
+        padding: 1rem;
+    }
+
+    .np-consent__actions .np-consent__btn {
+        flex: 1 1 auto;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .np-consent {
+        animation: np-consent-enter 200ms ease-out;
+    }
+    @keyframes np-consent-enter {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+}

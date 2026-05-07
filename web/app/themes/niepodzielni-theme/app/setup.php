@@ -57,6 +57,12 @@ add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('sage/app.css', Vite::asset('resources/css/app.css'), false, null);
     wp_enqueue_script('sage/app.js', Vite::asset('resources/js/app.js'), [], null, true);
 
+    // Consent Mode v2 — banner CMP. Pomijamy Crisis Hub (privacy-by-default,
+    // ten template w ogóle nie tracukje, więc CMP byłby tylko hałasem).
+    if (! is_page_template('template-pomoc-kryzys.blade.php')) {
+        wp_enqueue_script('sage/consent-banner.js', Vite::asset('resources/js/consent-banner.js'), [], null, true);
+    }
+
     // Globalny obiekt konfiguracyjny dla skryptów JS (ajaxUrl, nonce, globalne hashe Bookero)
     wp_localize_script('sage/app.js', 'niepodzielniBookero', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
