@@ -12,7 +12,7 @@ namespace Niepodzielni\Bookero;
  *   - Timeout (cURL error 28)     — objaw przeciążenia lub rate limitingu IP
  *
  * Wychwytywany przez circuit breaker w np_bookero_worker_sync_oop():
- * ustawia transient blokady (BOOKERO_LOCKOUT_KEY) na 15 minut i
+ * ustawia transient blokady (BOOKERO_LOCKOUT_PREFIX . postId) na 5 minut i
  * natychmiast zatrzymuje pętlę crona.
  *
  * W SharedCalendarService traktowany jak zwykły błąd API — graceful degradation

@@ -16,16 +16,28 @@ namespace Niepodzielni\Bookero;
  *   GET  /getMonthDay — dostępne godziny w konkretnym dniu
  *   GET  /init        — konfiguracja konta (services, payments)
  *   POST /add         — tworzenie rezerwacji
+ *
+ * Retry policy (tylko GET, nie POST):
+ *   Maksymalnie 2 powtórzenia z backoffem Fibonacciego (1s, 3s).
+ *   Retry wyzwalany wyłącznie przez: CURLE_OPERATION_TIMEDOUT (errno 28)
+ *   oraz HTTP 5xx. HTTP 429 i inne błędy propagują się natychmiast.
  */
 class BookeroApiClient
 {
     private const BASE_URL   = 'https://plugin.bookero.pl/plugin-api/v2/';
     private const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
+    /** Backoff w sekundach między kolejnymi próbami (Fibonacci: 1, 3). */
+    private const RETRY_DELAYS = [1, 3];
+
     // ─── Publiczne metody API ──────────────────────────────────────────────────────
 
     /**
      * Pobiera dostępne dni dla pracownika w danym miesiącu.
+     *
+     * Timeout zwiększony do 25 s (z 15 s) — getMonth odpytuje wolniejszą
+     * synchronizację Bookero i regularnie potrzebuje więcej czasu.
+     * Retry Fibonacci na timeout i HTTP 5xx (max 2 próby).
      *
      * @return array<array{date: string, hour: string}>  Tylko dni z valid_day > 0
      * @throws BookeroApiException
@@ -36,7 +48,7 @@ class BookeroApiClient
         int    $serviceId,
         int    $plusMonths,
     ): array {
-        $body = $this->get('getMonth', [
+        $body = $this->getWithRetry('getMonth', [
             'bookero_id'         => $calHash,
             'worker'             => $workerId,
             'service'            => $serviceId,
@@ -46,13 +58,16 @@ class BookeroApiClient
             'periodicity_id'     => 0,
             'custom_duration_id' => 0,
             'plugin_comment'     => wp_json_encode([ 'data' => [ 'parameters' => [] ] ]),
-        ], timeout: 15);
+        ], timeout: 25);
 
         return $this->normalizeSlots($body);
     }
 
     /**
      * Pobiera dostępne godziny dla pracownika w konkretnym dniu.
+     *
+     * Timeout zmniejszony do 5 s (z 10 s) — getMonthDay jest używane
+     * w pre-warm cache i froncie; fail-fast lepsze niż długie oczekiwanie.
      *
      * @return string[]  np. ['09:00', '10:00', '11:30']
      * @throws BookeroApiException
@@ -76,7 +91,7 @@ class BookeroApiClient
             'phone'              => '',
             'email'              => '',
             'plugin_comment'     => wp_json_encode([ 'data' => [ 'parameters' => (object) [] ] ]),
-        ], timeout: 10);
+        ], timeout: 5);
 
         $hours = [];
         foreach (($body['data']['hours'] ?? []) as $slot) {
@@ -164,6 +179,9 @@ class BookeroApiClient
      * Zamienia N sekwencyjnych requestów HTTP w jeden równoległy batch.
      * Czas odpowiedzi ≈ najwolniejszy pojedynczy request zamiast sumy wszystkich.
      *
+     * C2: Explicit obsługa CURLE_OPERATION_TIMEDOUT (errno 28) — wyróżniona
+     * od pozostałych błędów cURL dla precyzyjnego logowania i metryk.
+     *
      * @param  array<string, int> $workerServiceMap  workerId → serviceId
      * @return array<string, string[]|null>  workerId → godziny (null = błąd API)
      */
@@ -195,7 +213,7 @@ class BookeroApiClient
             $ch = curl_init(self::BASE_URL . 'getMonthDay?' . $params);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 10,
+                CURLOPT_TIMEOUT        => 5,
                 CURLOPT_USERAGENT      => self::USER_AGENT,
                 CURLOPT_HTTPHEADER     => [ 'Accept: application/json' ],
             ]);
@@ -208,7 +226,12 @@ class BookeroApiClient
         do {
             $status = curl_multi_exec($mh, $running);
             if ($running > 0) {
-                curl_multi_select($mh, 0.05);
+                $selectResult = curl_multi_select($mh, 0.05);
+                // curl_multi_select może zwrócić -1 przy błędzie systemowym (np. EINTR).
+                // Krótkie uśpienie zapobiega busy-loop w takim przypadku.
+                if ($selectResult === -1) {
+                    usleep(5_000); // 5 ms
+                }
             }
         } while ($running > 0 && $status === CURLM_OK);
 
@@ -218,11 +241,23 @@ class BookeroApiClient
             $raw      = curl_multi_getcontent($ch);
             $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $errno    = curl_errno($ch);
+            $errMsg   = curl_error($ch);
             curl_multi_remove_handle($mh, $ch);
             curl_close($ch);
 
-            if ($errno !== 0 || $httpCode !== 200 || ! $raw) {
-                $results[ $workerId ] = null; // błąd — caller użyje negative cache
+            if ($errno !== 0) {
+                // C2: Rozróżnij timeout od pozostałych błędów cURL dla precyzyjniejszego logowania.
+                if ($errno === CURLE_OPERATION_TIMEDOUT) {
+                    error_log("[Bookero] getMonthDayBatch timeout worker={$workerId}: CURLE_OPERATION_TIMEDOUT (errno 28)");
+                } else {
+                    error_log("[Bookero] getMonthDayBatch cURL error worker={$workerId}: errno={$errno} {$errMsg}");
+                }
+                $results[ $workerId ] = null;
+                continue;
+            }
+
+            if ($httpCode !== 200 || ! $raw) {
+                $results[ $workerId ] = null;
                 continue;
             }
 
@@ -299,6 +334,53 @@ class BookeroApiClient
     }
 
     // ─── Prywatne metody transportowe ─────────────────────────────────────────────
+
+    /**
+     * Wykonuje żądanie GET z Fibonacci retry przy timeout i HTTP 5xx.
+     *
+     * Retry policy:
+     *   - Wyzwalacze: CURLE_OPERATION_TIMEDOUT (errno 28) lub HTTP 5xx
+     *   - Maksymalnie 2 powtórzenia (łącznie 3 próby)
+     *   - Backoff: RETRY_DELAYS = [1 s, 3 s]
+     *   - HTTP 429 i pozostałe błędy propagują się NATYCHMIAST (bez retry)
+     *
+     * @param  array<string, mixed> $params
+     * @return array<string, mixed>
+     * @throws BookeroApiException
+     */
+    private function getWithRetry(string $endpoint, array $params, int $timeout): array
+    {
+        $delays = [0, ...self::RETRY_DELAYS];
+        $maxAttempt = count($delays) - 1;
+
+        foreach ($delays as $attempt => $delay) {
+            if ($delay > 0) {
+                sleep($delay);
+            }
+
+            try {
+                return $this->get($endpoint, $params, $timeout);
+            } catch (BookeroRateLimitException $e) {
+                // HTTP 429 — nie rób retry, propaguj od razu do circuit breakera.
+                // Timeout (errno 28) też trafia tutaj — retry jest dozwolony.
+                if ($this->isRateLimitHttp429($e)) {
+                    throw $e;
+                }
+                // Timeout — ostatnia próba: propaguj; inaczej: kolejna iteracja
+                if ($attempt === $maxAttempt) {
+                    throw $e;
+                }
+            } catch (BookeroApiException $e) {
+                // HTTP 5xx — retry dozwolony; inne błędy propagują natychmiast
+                if (! $this->isHttp5xx($e) || $attempt === $maxAttempt) {
+                    throw $e;
+                }
+            }
+        }
+
+        // Niedostępny — foreach zawsze kończy przez throw lub return powyżej.
+        throw new BookeroApiException($endpoint, 'Retry exhausted');
+    }
 
     /**
      * Wykonuje żądanie GET i zwraca zdekodowane ciało odpowiedzi.
@@ -400,6 +482,28 @@ class BookeroApiClient
         }
 
         return $body;
+    }
+
+    /**
+     * Sprawdza, czy wyjątek pochodzi od HTTP 429 (a nie od timeoutu).
+     *
+     * BookeroRateLimitException jest rzucany zarówno dla HTTP 429 jak i timeoutu.
+     * Retry jest dozwolony TYLKO dla timeoutu — HTTP 429 propaguje natychmiast.
+     */
+    private function isRateLimitHttp429(BookeroRateLimitException $e): bool
+    {
+        return str_contains($e->getMessage(), 'HTTP 429');
+    }
+
+    /**
+     * Sprawdza, czy wyjątek pochodzi od HTTP 5xx.
+     *
+     * Używane przez getWithRetry() — 5xx kwalifikuje się do retry.
+     */
+    private function isHttp5xx(BookeroApiException $e): bool
+    {
+        $msg = $e->getMessage();
+        return (bool) preg_match('/HTTP 5\d\d/', $msg);
     }
 
     /**
