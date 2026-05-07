@@ -28,10 +28,10 @@ function np_public_stats_invalidate(): void
 }
 
 // Inwalidacja przy zapisie postów wpływających na liczniki.
-add_action('save_post_psycholog',       'np_public_stats_invalidate');
-add_action('save_post_grupy-wsparcia',  'np_public_stats_invalidate');
+add_action('save_post_psycholog', 'np_public_stats_invalidate');
+add_action('save_post_grupy-wsparcia', 'np_public_stats_invalidate');
 add_action('save_post_artykul_psychoedu', 'np_public_stats_invalidate');
-add_action('save_post_post',            'np_public_stats_invalidate');
+add_action('save_post_post', 'np_public_stats_invalidate');
 
 // Recenzje wpływają na średnią ocenę — invalidate przy zmianach.
 add_action('wp_insert_comment', 'np_public_stats_invalidate_on_comment', 10, 2);

@@ -340,7 +340,7 @@ function np_calendar_reminder_subscribe(\WP_REST_Request $request): \WP_REST_Res
              ON DUPLICATE KEY UPDATE created_at = created_at",
             $email,
             $eventId,
-        )
+        ),
     );
 
     if ($result === false) {

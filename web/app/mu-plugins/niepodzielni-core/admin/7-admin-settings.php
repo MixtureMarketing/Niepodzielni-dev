@@ -98,11 +98,11 @@ function np_register_settings(): void
 
     // ─── Donations / Stripe ──────────────────────────────────────────────────
     register_setting('np_settings_group', 'np_stripe_publishable_key', ['sanitize_callback' => 'sanitize_text_field']);
-    register_setting('np_settings_group', 'np_stripe_secret_key',      ['sanitize_callback' => 'sanitize_text_field']);
-    register_setting('np_settings_group', 'np_stripe_webhook_secret',  ['sanitize_callback' => 'sanitize_text_field']);
-    register_setting('np_settings_group', 'np_fundacja_krs',           ['sanitize_callback' => 'sanitize_text_field']);
-    register_setting('np_settings_group', 'np_fundacja_name',          ['sanitize_callback' => 'sanitize_text_field']);
-    register_setting('np_settings_group', 'np_pit_season_active',      ['sanitize_callback' => 'rest_sanitize_boolean', 'default' => false]);
+    register_setting('np_settings_group', 'np_stripe_secret_key', ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_stripe_webhook_secret', ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_fundacja_krs', ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_fundacja_name', ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('np_settings_group', 'np_pit_season_active', ['sanitize_callback' => 'rest_sanitize_boolean', 'default' => false]);
 
     add_settings_section('np_donations_section', 'Darowizny i Stripe', function () {
         echo '<p>Klucze testowe Stripe (<code>pk_test_</code>, <code>sk_test_</code>, <code>whsec_</code>) lub produkcyjne. ';
@@ -110,23 +110,39 @@ function np_register_settings(): void
     }, 'niepodzielni-settings');
 
     add_settings_field('np_stripe_publishable_key', 'Publishable Key', function () use ($env_field) {
-        $env_field('', 'np_stripe_publishable_key', 'NP_STRIPE_PUBLISHABLE_KEY',
-            'pk_test_… (sandbox) lub pk_live_… (produkcja).');
+        $env_field(
+            '',
+            'np_stripe_publishable_key',
+            'NP_STRIPE_PUBLISHABLE_KEY',
+            'pk_test_… (sandbox) lub pk_live_… (produkcja).',
+        );
     }, 'niepodzielni-settings', 'np_donations_section');
 
     add_settings_field('np_stripe_secret_key', 'Secret Key', function () use ($env_field) {
-        $env_field('', 'np_stripe_secret_key', 'NP_STRIPE_SECRET_KEY',
-            'sk_test_… lub sk_live_… — używany serwerowo, nigdy w przeglądarce.');
+        $env_field(
+            '',
+            'np_stripe_secret_key',
+            'NP_STRIPE_SECRET_KEY',
+            'sk_test_… lub sk_live_… — używany serwerowo, nigdy w przeglądarce.',
+        );
     }, 'niepodzielni-settings', 'np_donations_section');
 
     add_settings_field('np_stripe_webhook_secret', 'Webhook Signing Secret', function () use ($env_field) {
-        $env_field('', 'np_stripe_webhook_secret', 'NP_STRIPE_WEBHOOK_SECRET',
-            'whsec_… — z Stripe Dashboard → Developers → Webhooks.');
+        $env_field(
+            '',
+            'np_stripe_webhook_secret',
+            'NP_STRIPE_WEBHOOK_SECRET',
+            'whsec_… — z Stripe Dashboard → Developers → Webhooks.',
+        );
     }, 'niepodzielni-settings', 'np_donations_section');
 
     add_settings_field('np_fundacja_krs', 'KRS Fundacji', function () use ($env_field) {
-        $env_field('', 'np_fundacja_krs', 'NP_FUNDACJA_KRS',
-            'Numer KRS używany w generatorze PDF dla 1,5% PIT.');
+        $env_field(
+            '',
+            'np_fundacja_krs',
+            'NP_FUNDACJA_KRS',
+            'Numer KRS używany w generatorze PDF dla 1,5% PIT.',
+        );
     }, 'niepodzielni-settings', 'np_donations_section');
 
     add_settings_field('np_fundacja_name', 'Nazwa Fundacji', function () {

@@ -47,7 +47,9 @@ class CalendarBuilder
         $byDate = [];
         foreach ($events as $event) {
             $date = (string) ($event['date'] ?? '');
-            if ($date === '') continue;
+            if ($date === '') {
+                continue;
+            }
             $byDate[$date][] = $this->normalizeEvent($event);
         }
 

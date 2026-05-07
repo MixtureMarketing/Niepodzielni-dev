@@ -96,7 +96,7 @@ class IcalGenerator
         }
 
         $startTime = isset($event['time_start']) ? (string) $event['time_start'] : '';
-        $endTime   = isset($event['time_end'])   ? (string) $event['time_end']   : '';
+        $endTime   = isset($event['time_end']) ? (string) $event['time_end'] : '';
 
         $location    = (string) ($event['location']    ?? '');
         $description = (string) ($event['description'] ?? '');

@@ -81,7 +81,7 @@ function np_event_reminders_handle_unsubscribe(): void
         $wpdb->prepare(
             "SELECT id, email FROM {$table} WHERE event_post_id = %d",
             $eventId,
-        )
+        ),
     );
 
     $service = new \Niepodzielni\Calendar\EventReminderService();

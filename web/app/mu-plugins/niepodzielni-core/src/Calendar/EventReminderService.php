@@ -91,7 +91,9 @@ class EventReminderService
     private function sendOne(string $email, int $eventId): bool
     {
         $post = get_post($eventId);
-        if (! $post) return false;
+        if (! $post) {
+            return false;
+        }
 
         $title    = $post->post_title;
         $url      = (string) get_permalink($eventId);
@@ -165,7 +167,9 @@ class EventReminderService
 
     private function formatDatePl(string $date): string
     {
-        if ($date === '') return '';
+        if ($date === '') {
+            return '';
+        }
         return date_i18n('j F Y', strtotime($date) ?: time());
     }
 }

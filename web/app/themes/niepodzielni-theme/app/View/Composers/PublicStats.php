@@ -132,7 +132,7 @@ class PublicStats extends Composer
         $sum = $wpdb->get_var(
             "SELECT COALESCE(SUM(CAST(meta_value AS UNSIGNED)), 0)
              FROM {$wpdb->postmeta}
-             WHERE meta_key = '_reviews_count'"
+             WHERE meta_key = '_reviews_count'",
         );
         return (int) $sum;
     }
@@ -144,7 +144,7 @@ class PublicStats extends Composer
             "SELECT AVG(CAST(meta_value AS DECIMAL(3,1)))
              FROM {$wpdb->postmeta}
              WHERE meta_key = '_average_rating'
-               AND CAST(meta_value AS DECIMAL(3,1)) > 0"
+               AND CAST(meta_value AS DECIMAL(3,1)) > 0",
         );
 
         if ($avg === null || $avg === '') {
