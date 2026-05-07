@@ -9,7 +9,7 @@
   $keys = [
     'temat','tekst_-_wstep','opis','jesli_doswiadczasz','temat_718','tekst_dodatkowy',
     'data','godzina','godzina_zakonczenia','lokalizacja','typ','ulica_i_numer',
-    'cena','cena_-_rodzaj',
+    'cena','cena_-_rodzaj','cena_rodzaj',
     'prowadzacy_id','stanowisko','nurt','opis_117',
     // pola ręczne — fallback gdy prowadzacy_id nie ustawiony
     'imie_i_nazwisko','zdjecie_prowadzacego','link_do_psychologa',
@@ -234,8 +234,13 @@
           </p>
         @else
           <p class="nsingle-price-box__amount">{{ esc_html($m['cena']) }} zł</p>
-          @if($m['cena_-_rodzaj'])
-            <p class="nsingle-price-box__note">{{ esc_html($m['cena_-_rodzaj']) }}</p>
+          @php
+            // Carbon Fields zapisuje pod 'cena_rodzaj' (nowy klucz). Stare wpisy z meta 'cena_-_rodzaj' wciąż żyją w DB
+            // — fallback aż do migracji DB w Etap 3 refactoru.
+            $cenaRodzaj = $m['cena_rodzaj'] ?: $m['cena_-_rodzaj'];
+          @endphp
+          @if($cenaRodzaj)
+            <p class="nsingle-price-box__note">{{ esc_html($cenaRodzaj) }}</p>
           @endif
           <p class="nsingle-price-box__note" style="color:#888;font-size:.78rem;">
             Możliwość płatności w ratach przez Klarna.

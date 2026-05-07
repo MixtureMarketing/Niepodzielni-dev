@@ -506,7 +506,8 @@ class PsychologistRepository
 
     private function isNisko(string $typ): bool
     {
-        return in_array($typ, [ 'nisko', 'niskoplatny', 'niskoplatne' ], true);
+        // Helper z misc/1-helpers.php — centralny punkt decyzji "nisko vs pelno".
+        return np_bookero_is_nisko_typ($typ);
     }
 
     private function nearestDateMetaKey(string $typ): string

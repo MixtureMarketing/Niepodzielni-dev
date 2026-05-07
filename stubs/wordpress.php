@@ -296,6 +296,13 @@ if (! function_exists('np_bookero_cal_id_for')) {
     }
 }
 
+if (! function_exists('np_bookero_is_nisko_typ')) {
+    function np_bookero_is_nisko_typ(string $typ): bool
+    {
+        return false;
+    }
+}
+
 if (! function_exists('np_bookero_log_error')) {
     function np_bookero_log_error(string $context, string $msg): void {}
 }
