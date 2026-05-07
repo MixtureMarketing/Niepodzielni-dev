@@ -3,6 +3,7 @@
  */
 import { filterPsychologists, esc } from './utils/listing.js';
 import { debounce } from './utils/debounce.js';
+import { npTrack, getPageContext } from './lib/track.js';
 
 /** Strip HTML tags — używane przed substring() na biogramach z bazy */
 function stripHtml(html) {
@@ -29,6 +30,7 @@ function stripHtml(html) {
 
         let currentPage = 1;
         const perPage = 10;
+        let lastTrackedListKey = null;
 
         function refreshList() {
             const searchText = (searchInput) ? searchInput.value.toLowerCase() : '';
@@ -188,6 +190,29 @@ function stripHtml(html) {
                     });
                 });
                 renderPagination(filteredData.length);
+
+                // Tracking view_item_list — emit raz na unikalną listę widocznych wyników
+                // (top N na bieżącej stronie). Dedup po composite key page+ids zapobiega
+                // floodowi zdarzeń przy każdym filtrze/zmianie strony, jeśli wynik się nie zmienił.
+                if (pageData.length > 0) {
+                    const listKey = `${currentPage}:${pageData.map(p => p.id).join(',')}`;
+                    if (lastTrackedListKey !== listKey) {
+                        lastTrackedListKey = listKey;
+                        npTrack('view_item_list', {
+                            ...getPageContext(),
+                            item_list_name: 'psychologists_listing',
+                            item_list_id:   'psy_listing',
+                            page:           currentPage,
+                            items: pageData.slice(0, 10).map((p, idx) => ({
+                                item_id:       String(p.id),
+                                item_name:     p.title || '',
+                                item_category: 'psycholog',
+                                index:         idx,
+                                price:         p.stawka || '',
+                            })),
+                        });
+                    }
+                }
             }
         }
 
@@ -257,6 +282,36 @@ function stripHtml(html) {
                 closeAllDropdowns();
                 if (openLabel) openLabel.focus();
             }
+        });
+
+        // Tracking select_item — kliknięcie w kartę psychologa (link "Zobacz profil"
+        // lub dowolny anchor wewnątrz karty). Klik w tag-more / tag-small NIE liczy się
+        // jako select (pomijamy gdy najbliższym anchorem jest .psy-tag-more).
+        listTarget.addEventListener('click', (e) => {
+            const link = e.target.closest('a[href]');
+            if (!link) return;
+            const card = link.closest('.psy-card-item');
+            if (!card) return;
+            const cards = Array.from(listTarget.querySelectorAll('.psy-card-item'));
+            const index = cards.indexOf(card);
+            const nameEl = card.querySelector('.psy-card-name');
+            const priceEl = card.querySelector('.psy-meta-price');
+            // Korelacja po nazwie do oryginalnego rekordu z window.allPsycholodzy
+            // (potrzebujemy item_id = WP post ID; w DOM go nie zapisujemy).
+            const name = nameEl ? nameEl.textContent.trim() : '';
+            const rec  = name ? data.find(p => p.title === name) : null;
+            npTrack('select_item', {
+                ...getPageContext(),
+                item_list_name: 'psychologists_listing',
+                item_list_id:   'psy_listing',
+                items: [{
+                    item_id:       rec ? String(rec.id) : '',
+                    item_name:     name,
+                    item_category: 'psycholog',
+                    index:         index >= 0 ? index : 0,
+                    price:         rec ? (rec.stawka || '') : (priceEl ? priceEl.textContent.trim() : ''),
+                }],
+            });
         });
 
         // Toggle tagów (Show More / Less) z animacją

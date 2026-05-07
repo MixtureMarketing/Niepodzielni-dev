@@ -105,6 +105,12 @@ add_action('wp_enqueue_scripts', function () {
         wp_enqueue_script('sage/bk-shared-calendar.js', Vite::asset('resources/js/bk-shared-calendar.js'), [], null, true);
     }
 
+    // Tracking view_item — tylko na pojedynczym profilu psychologa.
+    // Crisis Hub (template-pomoc-kryzys) nie korzysta z tego skryptu — privacy.
+    if (is_singular('psycholog')) {
+        wp_enqueue_script('sage/single-psy-track.js', Vite::asset('resources/js/single-psy-track.js'), [], null, true);
+    }
+
     // Matchmaker — na stronach z shortcodem [matchmaker] lub [np_matchmaker]
     $post = get_post();
     $has_matchmaker = $post && (

@@ -5,6 +5,16 @@
  * Supported types: 'warsztaty' | 'wydarzenia' | 'aktualnosci' | 'artykuly'
  */
 import { esc, formatDate, buildBadge, filterData } from './utils/listing.js';
+import { npTrack, getPageContext } from './lib/track.js';
+
+// Mapowanie typu listingu na item_category dla GA4/Meta CAPI.
+// 'warsztaty' obejmuje też grupy-wsparcia (post_type rozpoznawany per item).
+const TYPE_TO_CATEGORY = {
+    warsztaty:    'warsztat',
+    wydarzenia:   'wydarzenie',
+    aktualnosci:  'aktualnosc',
+    artykuly:     'artykul',
+};
 
 (function () {
     'use strict';
@@ -30,6 +40,40 @@ import { esc, formatDate, buildBadge, filterData } from './utils/listing.js';
 
         let currentPage = 1;
         let currentTab  = 'all';
+        let lastTrackedListKey = null;
+
+        // Pomocniczy resolver kategorii — dla 'warsztaty' rozróżniamy warsztat vs grupa wsparcia.
+        const resolveCategory = (item) => {
+            if (type === 'warsztaty') {
+                return item.post_type === 'grupy-wsparcia' ? 'grupa_wsparcia' : 'warsztat';
+            }
+            return TYPE_TO_CATEGORY[type] || type;
+        };
+
+        // Cena (jeśli dostępna) — w zależności od typu różne pola.
+        const resolvePrice = (item) => item.cena || item.koszt || '';
+
+        const trackList = (listName, items) => {
+            if (!items || items.length === 0) return;
+            const ids = items.map(i => i.id);
+            const listKey = `${listName}:${currentTab}:${currentPage}:${ids.join(',')}`;
+            if (lastTrackedListKey === listKey) return;
+            lastTrackedListKey = listKey;
+            npTrack('view_item_list', {
+                ...getPageContext(),
+                item_list_name: listName,
+                item_list_id:   type,
+                tab:            currentTab,
+                page:           currentPage,
+                items: items.slice(0, 10).map((it, idx) => ({
+                    item_id:       String(it.id),
+                    item_name:     it.title || '',
+                    item_category: resolveCategory(it),
+                    index:         idx,
+                    price:         resolvePrice(it),
+                })),
+            });
+        };
 
         // --------------------------------------------------------
         // Tab change
@@ -80,6 +124,8 @@ import { esc, formatDate, buildBadge, filterData } from './utils/listing.js';
             }
 
             renderPagination(total, gridEl.parentElement);
+
+            trackList(`${type}_listing`, page);
         }
 
         // Active + inactive sections (warsztaty/grupy)
@@ -99,6 +145,9 @@ import { esc, formatDate, buildBadge, filterData } from './utils/listing.js';
                 const inactiveGrid = inactiveEl.querySelector('.nlisting-grid');
                 if (inactiveGrid) inactiveGrid.innerHTML = inactive.map(renderCard).join('');
             }
+
+            // Trackujemy aktywne (priorytet) — to jest "główny" listing widoczny userowi.
+            trackList(`${type}_listing`, active);
         }
 
         // --------------------------------------------------------
@@ -238,6 +287,43 @@ import { esc, formatDate, buildBadge, filterData } from './utils/listing.js';
         function iconPin() {
             return '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1C4.34 1 3 2.34 3 4c0 2.25 3 7 3 7s3-4.75 3-7c0-1.66-1.34-3-3-3z" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="4" r="1" fill="currentColor"/></svg>';
         }
+
+        // --------------------------------------------------------
+        // Tracking select_item — klik w link karty (CTA / media / tytuł)
+        // --------------------------------------------------------
+        const trackSelect = (e) => {
+            const link = e.target.closest('a[href]');
+            if (!link) return;
+            const card = link.closest('.nlisting-card');
+            if (!card) return;
+
+            // Dopasuj rekord po linku (link w danych zawiera URL bez żadnych dodatkowych params).
+            const href = link.getAttribute('href') || '';
+            const item = data.find(it => it.link === href)
+                || data.find(it => href && it.link && href.startsWith(it.link));
+            if (!item) return;
+
+            // Index w aktualnie widocznym DOM listingu.
+            const allCards = Array.from((card.parentElement || document).querySelectorAll('.nlisting-card'));
+            const index = allCards.indexOf(card);
+
+            npTrack('select_item', {
+                ...getPageContext(),
+                item_list_name: `${type}_listing`,
+                item_list_id:   type,
+                tab:            currentTab,
+                items: [{
+                    item_id:       String(item.id),
+                    item_name:     item.title || '',
+                    item_category: resolveCategory(item),
+                    index:         index >= 0 ? index : 0,
+                    price:         resolvePrice(item),
+                }],
+            });
+        };
+        [gridEl, activeEl, inactiveEl].forEach(el => {
+            if (el) el.addEventListener('click', trackSelect);
+        });
 
         // --------------------------------------------------------
         // Init render
