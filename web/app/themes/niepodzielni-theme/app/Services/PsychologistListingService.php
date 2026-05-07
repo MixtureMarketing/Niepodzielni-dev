@@ -8,122 +8,114 @@ namespace App\Services;
  * Enkapsuluje zapytanie WP_Query + prefetch taksonomii + logikę cache transientów.
  * Poprzednio proceduralna funkcja get_psy_listing_json_data() w app/psy-listing.php.
  *
+ * Wspólne mechanizmy (cache L0/L1, WP_Query pipeline) w {@see AbstractListingService}.
+ *
  * Rejestruje własne hooki czyszczenia cache — nie wymaga osobnego pliku.
  */
-class PsychologistListingService
+class PsychologistListingService extends AbstractListingService
 {
+    private const CACHE_GROUP = 'np_psy_listing';
+    private const TTL         = 15 * MINUTE_IN_SECONDS;
+
     /**
      * Zwraca listę psychologów dla danego typu konta (nisko|pelno).
      *
-     * L1: transient cache (15 min) — wersjonowany przez NP_PSY_LISTING_VERSION.
+     * Cache wersjonowany przez NP_PSY_LISTING_VERSION (invalidation hooks z PR #17).
      *
      * @param  string $rodzaj  'nisko' | 'pelno'
      * @return array<int, array<string, mixed>>
      */
     public function getData(string $rodzaj = 'nisko'): array
     {
-        $version     = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.2';
-        $cache_key   = 'psy_listing_' . $rodzaj . '_' . $version;
-        $cache_group = 'np_psy_listing';
+        $version      = self::version();
+        $cacheKey     = 'psy_listing_' . $rodzaj . '_' . $version;
+        $transientKey = 'psy_listing_data_' . $rodzaj . '_' . $version;
 
-        // L0: WP Object Cache (Redis) — zero SQL przy trafieniu
-        $cached = wp_cache_get($cache_key, $cache_group);
-        if (is_array($cached)) {
-            return $cached;
-        }
+        return $this->withCache(
+            $cacheKey,
+            $transientKey,
+            self::CACHE_GROUP,
+            self::TTL,
+            fn(): array => $this->fetchAll($rodzaj),
+        );
+    }
 
-        // L1: transient (fallback dla środowisk bez Redis — cache w DB)
-        $transient_key = 'psy_listing_data_' . $rodzaj . '_' . $version;
-        $cached        = get_transient($transient_key);
-        if (is_array($cached)) {
-            // Przepisz do Object Cache żeby kolejne requesty nie trafiały do DB
-            wp_cache_set($cache_key, $cached, $cache_group, 15 * MINUTE_IN_SECONDS);
-            return $cached;
-        }
+    /**
+     * Buduje surową listę psychologów (bez cache) dla danego typu konta.
+     *
+     * Brak meta_query celowy: Carbon_Fields\Service\Meta_Query_Service przechwytuje WP_Query
+     * i zamienia klucze CF (bookero_id_niski / bookero_id_pelny) na format _klucz,
+     * co powoduje 0 wyników. Filtrowanie po pustym workerId wykonywane jest w pętli PHP
+     * (update_post_meta_cache ładuje ALL meta w jednym IN() — zero dodatkowych SQL).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchAll(string $rodzaj): array
+    {
+        $metaIdKey  = np_bk_id_meta_key($rodzaj);
+        $metaTermin = np_bk_meta_key($rodzaj);
+        $metaStawka = ($rodzaj === 'nisko') ? 'stawka_niskoplatna' : 'stawka_wysokoplatna';
+        $flagMap    = np_get_flag_map();
 
-        $all_psy_data = [];
-        $meta_id_key  = np_bk_id_meta_key($rodzaj);
-        $meta_termin  = np_bk_meta_key($rodzaj);
-        $meta_stawka  = ($rodzaj === 'nisko') ? 'stawka_niskoplatna' : 'stawka_wysokoplatna';
+        $today = date('Ymd');
 
-        $flagMap = np_get_flag_map();
+        return array_values(array_filter($this->buildList(
+            [
+                'post_type'              => 'psycholog',
+                'update_post_term_cache' => true,
+            ],
+            function (\WP_Post $post) use ($rodzaj, $metaIdKey, $metaTermin, $metaStawka, $flagMap, $today): ?array {
+                $pid = $post->ID;
 
-        // update_post_meta_cache + update_post_term_cache eliminują N+1:
-        //   SQL 1: SELECT ID FROM posts WHERE ... (WP_Query)
-        //   SQL 2: SELECT meta_key,meta_value FROM postmeta WHERE post_id IN (...)
-        //   SQL 3: SELECT t.*,tt.* FROM terms JOIN term_taxonomy JOIN term_relationships WHERE object_id IN (...)
-        // Bez tych flag każde get_post_meta() i get_the_terms() generowałoby osobne zapytanie SQL.
-        //
-        // Brak meta_query celowy: Carbon_Fields\Service\Meta_Query_Service przechwytuje WP_Query
-        // i zamienia klucze CF (bookero_id_niski / bookero_id_pelny) na format _klucz,
-        // co powoduje 0 wyników. Filtrowanie po pustym workerId wykonywane jest w pętli PHP
-        // (update_post_meta_cache ładuje ALL meta w jednym IN() — zero dodatkowych SQL).
-        $query = new \WP_Query([
-            'post_type'              => 'psycholog',
-            'posts_per_page'         => -1,
-            'post_status'            => 'publish',
-            'no_found_rows'          => true,
-            'update_post_meta_cache' => true,
-            'update_post_term_cache' => true,
-        ]);
+                if (empty(get_post_meta($pid, $metaIdKey, true))) {
+                    return null;
+                }
 
-        foreach ($query->posts as $post) {
-            $pid = $post->ID;
+                $termin     = get_post_meta($pid, $metaTermin, true);
+                $cleanDate  = bookero_sanitize_date($termin);
+                $hasTermin  = $cleanDate && np_get_sortable_date($cleanDate) >= $today;
+                $sortDate   = np_get_sortable_date($hasTermin ? $cleanDate : '');
 
-            if (empty(get_post_meta($pid, $meta_id_key, true))) {
-                continue;
-            }
+                $obszarTerms = get_the_terms($pid, 'obszar-pomocy') ?: [];
+                $specTerms   = get_the_terms($pid, 'specjalizacja') ?: [];
+                $jezykTerms  = get_the_terms($pid, 'jezyk') ?: [];
+                $nurtTerms   = get_the_terms($pid, 'nurt') ?: [];
 
-            $termin = get_post_meta($pid, $meta_termin, true);
+                $jezykiData = [];
+                foreach ($jezykTerms as $jt) {
+                    $jezykiData[] = [
+                        'slug' => $jt->slug,
+                        'name' => $jt->name,
+                        'flag' => $flagMap[$jt->slug] ?? '',
+                    ];
+                }
 
-            $clean_date = bookero_sanitize_date($termin);
-            $has_termin = $clean_date && np_get_sortable_date($clean_date) >= date('Ymd');
-            $sort_date  = np_get_sortable_date($has_termin ? $clean_date : '');
-
-            $obszar_terms = get_the_terms($pid, 'obszar-pomocy') ?: [];
-            $spec_terms   = get_the_terms($pid, 'specjalizacja') ?: [];
-            $jezyk_terms  = get_the_terms($pid, 'jezyk') ?: [];
-            $nurt_terms   = get_the_terms($pid, 'nurt') ?: [];
-
-            $jezyki_data = [];
-            foreach ($jezyk_terms as $jt) {
-                $jezyki_data[] = [
-                    'slug' => $jt->slug,
-                    'name' => $jt->name,
-                    'flag' => $flagMap[$jt->slug] ?? '',
+                return [
+                    'id'         => $pid,
+                    'title'      => $post->post_title,
+                    'link'       => get_the_permalink($pid) . '?konsultacje=' . $rodzaj,
+                    'thumb'      => get_the_post_thumbnail_url($pid, 'medium_large'),
+                    'termin'     => $termin ?: 'Brak wolnych terminów',
+                    'sort_date'  => $sortDate,
+                    'has_termin' => $hasTermin,
+                    'stawka'     => get_post_meta($pid, $metaStawka, true)
+                        ?: get_option(
+                            ($rodzaj === 'nisko') ? 'np_domyslna_stawka_nisko' : 'np_domyslna_stawka_pelno',
+                            ($rodzaj === 'nisko') ? '55 zł' : '145 zł',
+                        ),
+                    'wizyta'     => get_post_meta($pid, 'rodzaj_wizyty', true),
+                    'has_pelno'  => ! empty(get_post_meta($pid, 'bookero_id_pelny', true)),
+                    'has_nisko'  => ! empty(get_post_meta($pid, 'bookero_id_niski', true)),
+                    'bio'        => get_post_meta($pid, 'biogram', true),
+                    'obszary'    => wp_list_pluck($obszarTerms, 'slug'),
+                    'obszary_n'  => wp_list_pluck($obszarTerms, 'name'),
+                    'spec'       => wp_list_pluck($specTerms, 'slug'),
+                    'nurty'      => wp_list_pluck($nurtTerms, 'slug'),
+                    'jezyki'     => $jezykiData,
+                    'rola'       => $specTerms ? $specTerms[0]->name : 'Psycholog',
                 ];
-            }
-
-            $all_psy_data[] = [
-                'id'         => $pid,
-                'title'      => $post->post_title,
-                'link'       => get_the_permalink($pid) . '?konsultacje=' . $rodzaj,
-                'thumb'      => get_the_post_thumbnail_url($pid, 'medium_large'),
-                'termin'     => $termin ?: 'Brak wolnych terminów',
-                'sort_date'  => $sort_date,
-                'has_termin' => $has_termin,
-                'stawka'     => get_post_meta($pid, $meta_stawka, true)
-                    ?: get_option(
-                        ($rodzaj === 'nisko') ? 'np_domyslna_stawka_nisko' : 'np_domyslna_stawka_pelno',
-                        ($rodzaj === 'nisko') ? '55 zł' : '145 zł',
-                    ),
-                'wizyta'     => get_post_meta($pid, 'rodzaj_wizyty', true),
-                'has_pelno'  => ! empty(get_post_meta($pid, 'bookero_id_pelny', true)),
-                'has_nisko'  => ! empty(get_post_meta($pid, 'bookero_id_niski', true)),
-                'bio'        => get_post_meta($pid, 'biogram', true),
-                'obszary'    => wp_list_pluck($obszar_terms, 'slug'),
-                'obszary_n'  => wp_list_pluck($obszar_terms, 'name'),
-                'spec'       => wp_list_pluck($spec_terms, 'slug'),
-                'nurty'      => wp_list_pluck($nurt_terms, 'slug'),
-                'jezyki'     => $jezyki_data,
-                'rola'       => $spec_terms ? $spec_terms[0]->name : 'Psycholog',
-            ];
-        }
-
-        set_transient($transient_key, $all_psy_data, 15 * MINUTE_IN_SECONDS);
-        wp_cache_set($cache_key, $all_psy_data, $cache_group, 15 * MINUTE_IN_SECONDS);
-
-        return $all_psy_data;
+            },
+        )));
     }
 
     /**
@@ -132,13 +124,17 @@ class PsychologistListingService
      */
     public static function clearCache(): void
     {
-        $v     = defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.2';
-        $group = 'np_psy_listing';
+        $version = self::version();
 
         foreach (['nisko', 'pelno'] as $rodzaj) {
-            delete_transient('psy_listing_data_' . $rodzaj . '_' . $v);
-            wp_cache_delete('psy_listing_' . $rodzaj . '_' . $v, $group);
+            delete_transient('psy_listing_data_' . $rodzaj . '_' . $version);
+            wp_cache_delete('psy_listing_' . $rodzaj . '_' . $version, self::CACHE_GROUP);
         }
+    }
+
+    private static function version(): string
+    {
+        return defined('NP_PSY_LISTING_VERSION') ? NP_PSY_LISTING_VERSION : '1.0.2';
     }
 }
 
