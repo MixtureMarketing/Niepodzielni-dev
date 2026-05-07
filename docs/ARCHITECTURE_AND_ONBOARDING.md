@@ -863,6 +863,79 @@ Jeśli mock **nie jest aktywny lokalnie**, sprawdź że `zaraz-dev-mock.php` ist
 `web/app/mu-plugins/` — plik jest w `.gitignore` i nie zostanie sklonowany z repo.
 Skopiuj go z `docs/` lub utwórz ręcznie.
 
+### S2S Conversion API — Meta CAPI + GA4 Measurement Protocol
+
+Dla krytycznych eventów (`purchase`, `generate_lead`, `sign_up`) wysyłamy **dodatkowo**
+po stronie serwera do GA4 MP + Meta CAPI. Daje lepszą atrybucję gdy klient blokuje
+3rd-party JS / cookies. `event_id` jest **wspólny** z Zaraz client-side → Meta
+deduplikuje (Pixel+CAPI muszą mieć ten sam `event_id`).
+
+**Flow:**
+
+```
+[Browser]                                     [Cloudflare Edge]      [Origin / WordPress]
+   │                                                  │                       │
+   ├─ npTrack('purchase', {…})                        │                       │
+   │   ├── window.zaraz.track() ─────────────────────►│                       │
+   │   │                                             GA4 + Meta Pixel         │
+   │   │                                             (client-side, edge)      │
+   │   │                                                                     │
+   │   └── navigator.sendBeacon('/wp-json/np/v1/track') ─────────────────────►│
+   │                                                                         │
+   │                                                          [mu-plugin np-conversion-api]
+   │                                                          ├── verify nonce + rate limit
+   │                                                          ├── hash PII (SHA-256)
+   │                                                          ├── POST GA4 MP    (non-blocking)
+   │                                                          └── POST Meta CAPI (non-blocking)
+   │                                                                         │
+   └─◄─ 200 { ok: true, ga4: 'queued', meta: 'queued' }
+```
+
+**Pliki:**
+
+- `web/app/mu-plugins/np-conversion-api/np-conversion-api.php` — endpoint REST + senders.
+- `web/app/mu-plugins/np-conversion-api.php` — loader stub (Bedrock auto-load top-level only).
+- `web/app/themes/niepodzielni-theme/resources/js/lib/track.js` — funkcja `sendS2S()`.
+- `config/application.php` — constants `NP_GA4_*`, `NP_META_*` z `env()`.
+- `trellis/group_vars/production/wordpress_sites.yml` — env mapping z vault.
+
+**Wymagane zmienne env (vault — operator dodaje sam):**
+
+| Klucz vault                        | Cel                                            |
+|------------------------------------|------------------------------------------------|
+| `np_ga4_measurement_id`            | GA4 Measurement ID (np. `G-XXXXXXXXXX`)        |
+| `np_ga4_api_secret`                | GA4 MP API Secret (Admin → Data Streams → MP)  |
+| `np_meta_pixel_id`                 | Meta Pixel ID                                  |
+| `np_meta_capi_token`               | Meta CAPI System User Access Token             |
+
+Brak wartości = endpoint zwraca `200 { ga4: 'skipped_no_config', meta: 'skipped_no_config' }`
+(non-fatal). Tracking client-side (Zaraz) nadal działa.
+
+**Bezpieczeństwo / privacy:**
+
+- PII (`email`, `phone`, `first_name`, `last_name`, `city`, `zip`, `country`, IP) hashowane
+  SHA-256 (lower-case, trim) przed wysyłką do GA4 / Meta.
+- `client_ip_address` + `client_user_agent` Meta przyjmuje raw (server-side standard).
+- Nonce `wp_rest` + rate limit 60/min/IP (transient `np_s2s_rl_<md5(ip)>`).
+- Crisis Hub (`/pomoc-w-kryzysie/*`) — białą listą JS pomija fetch S2S.
+- HTTP do GA4/Meta = `wp_remote_post(blocking: false)` — fire-and-forget; <50ms p99 endpoint.
+
+**Test plan:**
+
+1. **Unit (Pest)**: hashing PII (lower-case + trim + SHA-256) — assertion że `email`
+   `JOHN.DOE@example.com ` → znany SHA-256 hash; phone `+48 600 123 456` → `48600123456`.
+2. **Integration**: POST `/wp-json/np/v1/track` bez nonce → 403; z nonce + nieobsługiwany
+   event → 400 (`event_not_allowed`); z legalnym payloadem → 200 (`ga4: skipped_no_config`
+   gdy ENV puste).
+3. **Rate limit**: 61 requestów w <1 min → 429.
+4. **Browser smoke (staging)**: w DevTools → Network filter "track" — po sukcesie
+   Bookero powinien być sendBeacon do `/wp-json/np/v1/track` (status 0 lub 200).
+   `event_id` w request body = ten sam co w Zaraz event w konsoli.
+5. **Meta Events Manager**: zakładka "Test Events" → po wpisaniu test code w `custom_data.test_event_code`
+   sprawdź że Pixel + CAPI events z tym samym `event_id` są zaznaczone jako "Deduplicated".
+6. **GA4 DebugView**: ustaw `debug_mode: true` w `custom_data` → event powinien pojawić się
+   w Realtime → DebugView z parametrami GA4.
+
 ---
 
 ## 9. Proponowany Backlog Techniczny

@@ -16,6 +16,70 @@
 
 const CRITICAL_EVENTS = new Set(['purchase', 'donation', 'generate_lead']);
 
+/**
+ * Eventy wysyłane dodatkowo do mu-plugin np-conversion-api (Server-to-Server):
+ * GA4 Measurement Protocol + Meta CAPI. event_id wspólny z client-side Zaraz
+ * → Meta deduplikuje. Lepsza atrybucja gdy klient blokuje JS / 3rd-party.
+ *
+ * UWAGA: Crisis Hub strony — zero S2S, zero PII. Lista jest hard-coded niżej.
+ */
+const S2S_EVENTS = new Set(['purchase', 'generate_lead', 'sign_up']);
+
+/**
+ * Wysyła event do REST endpointu /wp-json/np/v1/track (S2S Conversion API).
+ * Używa sendBeacon (nieblokujące, działa przy zamykaniu karty); fallback fetch.
+ *
+ * @param {string} name
+ * @param {Object} enriched  Event z event_id + timestamp.
+ */
+function sendS2S(name, enriched) {
+    if (!S2S_EVENTS.has(name)) return;
+    // Crisis Hub blacklist — zero S2S na tych stronach (privacy).
+    if (typeof window !== 'undefined' && /\/pomoc-w-kryzysie/.test(window.location?.pathname || '')) {
+        return;
+    }
+    const cfg = window.NP_S2S;
+    if (!cfg || !cfg.url || !cfg.nonce) return;
+
+    const { event_id, timestamp, user_data, ...customData } = enriched;
+    const payload = {
+        event_name: name,
+        event_id,
+        user_data: user_data || {},
+        custom_data: { ...customData, timestamp },
+        source_url: window.location?.href || '',
+    };
+
+    try {
+        const body = JSON.stringify(payload);
+        // sendBeacon nie pozwala ustawić nagłówków → nonce w URL query.
+        if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+            const url = cfg.url + (cfg.url.includes('?') ? '&' : '?') + '_wpnonce=' + encodeURIComponent(cfg.nonce);
+            const blob = new Blob([body], { type: 'application/json' });
+            if (navigator.sendBeacon(url, blob)) {
+                return;
+            }
+        }
+        // Fallback: fetch keepalive z X-WP-Nonce.
+        if (typeof fetch === 'function') {
+            fetch(cfg.url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': cfg.nonce,
+                },
+                body,
+                keepalive: true,
+                credentials: 'same-origin',
+            }).catch(() => {
+                // noop — S2S to redundancja, błąd nie jest krytyczny
+            });
+        }
+    } catch {
+        // noop
+    }
+}
+
 function uuidv4() {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
         return crypto.randomUUID();
@@ -39,6 +103,10 @@ export function npTrack(name, props = {}) {
         timestamp: props.timestamp || Date.now(),
         ...props,
     };
+
+    // S2S Conversion API — równolegle z Zaraz (deduplikacja przez event_id).
+    // Tylko dla krytycznych eventów (purchase / generate_lead / sign_up).
+    sendS2S(name, enriched);
 
     if (window.zaraz && typeof window.zaraz.track === 'function') {
         try {
