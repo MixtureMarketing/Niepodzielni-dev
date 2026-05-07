@@ -57,21 +57,9 @@
     margin-top: 2px;
 }
 
-.social-icons {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-}
-
-.social-icons a {
-    display: block;
-    line-height: 0;
-    transition: transform 0.2s ease;
-}
-
-.social-icons a:hover {
-    transform: scale(1.1);
-}
+/* .social-icons — base styles in organisms/mega-menu.css (shared with footer).
+   Footer override only differs in gap (12px → 15px). */
+.site-footer .social-icons { gap: 15px; }
 
 .emergency-col {
     display: flex;

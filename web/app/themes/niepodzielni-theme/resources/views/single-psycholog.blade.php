@@ -141,7 +141,7 @@
             </div>
         </header>
 
-        <div id="doswiadczenie" class="psy-tab-content is-active" style="display: block;">
+        <div id="doswiadczenie" class="psy-tab-content is-active">
             <h4>O mnie</h4>
             <div class="psy-bio-text">
                 {!! do_shortcode('[opis_psychologa word_limit="60"]') !!}
@@ -235,7 +235,7 @@
                 @endforeach
                 </ul>
             @else
-                <p style="color:var(--mix-color-text-subtle);margin-bottom:32px;">Brak opinii. Bądź pierwszy!</p>
+                <p class="u-text-muted u-mb-32">Brak opinii. Bądź pierwszy!</p>
             @endif
 
             {{-- Formularz dodawania opinii --}}
@@ -251,7 +251,7 @@
                 >
                     {{-- Gwiazdki --}}
                     <div class="rvw-star-group">
-                        <span class="rvw-star-group__label">Twoja ocena <span style="color:#c0392b">*</span></span>
+                        <span class="rvw-star-group__label">Twoja ocena <span class="u-required-mark">*</span></span>
                         <div class="rvw-star-row" role="group" aria-label="Wybierz ocenę">
                             @for($i = 1; $i <= 5; $i++)
                                 <button
@@ -276,7 +276,7 @@
                     {{-- E-mail --}}
                     <div class="form-field rvw-email-field">
                         <label class="form-field__label" for="rvw-email">
-                            Adres e-mail <span style="color:#c0392b">*</span>
+                            Adres e-mail <span class="u-required-mark">*</span>
                         </label>
                         <input
                             type="email"

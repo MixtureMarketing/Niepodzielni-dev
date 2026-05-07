@@ -11,7 +11,7 @@
                     <div class="specialist-info">
                         <h3 class="specialist-name">{{ $slide['title'] }}</h3>
                         {!! $slide['rodzaj_wizyty_html'] !!}
-                        <div class="psy-availability-box" style="margin-bottom: 10px; margin-top: 10px; padding: 5px 10px; align-self: flex-start; border-radius: 10px; font-size: 0.85rem;">
+                        <div class="psy-availability-box">
                             <span class="availability-label">Termin:</span>
                             <span class="availability-date">{{ $slide['termin'] }}</span>
                         </div>

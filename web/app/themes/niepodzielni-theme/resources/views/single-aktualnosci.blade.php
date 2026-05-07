@@ -16,14 +16,14 @@
 @if($hero_url)
 <div class="nsingle-hero nsingle-hero--medium">
   <img class="nsingle-hero__bg" src="{{ esc_url($hero_url) }}" alt="{{ esc_attr(get_the_title()) }}">
-  <div class="nsingle-hero__overlay" style="background:linear-gradient(to bottom,rgba(0,0,0,.25) 0%,rgba(0,0,0,.05) 100%);"></div>
+  <div class="nsingle-hero__overlay nsingle-hero__overlay--vignette"></div>
 </div>
 @endif
 
 {{-- 2. GALLERY (zdjecia_dodatkowe) --}}
 @if(!empty($gallery_ids))
 <div class="nsingle-wrap">
-  <div class="nsingle-gallery" style="margin-top:32px;">
+  <div class="nsingle-gallery u-mt-32">
     @foreach($gallery_ids as $gid)
       @php($gurl = wp_get_attachment_image_url(trim($gid), 'medium_large'))
       @if($gurl)

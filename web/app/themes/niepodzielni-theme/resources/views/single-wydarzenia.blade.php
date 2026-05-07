@@ -34,7 +34,7 @@
   @if($bg_url)
     <img class="nsingle-hero__bg" src="{{ esc_url($bg_url) }}" alt="{{ esc_attr($title) }}">
   @else
-    <div class="nsingle-hero__bg" style="background: var(--mix-color-brand-secondary);"></div>
+    <div class="nsingle-hero__bg nsingle-hero__bg--brand"></div>
   @endif
   <div class="nsingle-hero__overlay"></div>
 
@@ -60,7 +60,7 @@
     <div class="nsingle-hero__title-wrap">
       <div>
         @if($subtitle)
-          <p style="color:rgba(255,255,255,0.75);text-align:center;font-size:.9rem;text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;">
+          <p class="nsingle-hero__subtitle">
             {{ esc_html($subtitle) }}
           </p>
         @endif
@@ -71,7 +71,7 @@
     {{-- bottom --}}
     <div class="nsingle-hero__bottom-left">
       @if($m['opis_-_na_zdjecie'])
-        <p style="color:rgba(255,255,255,.85);font-size:.9rem;max-width:500px;">
+        <p class="nsingle-hero__caption">
           {{ esc_html($m['opis_-_na_zdjecie']) }}
         </p>
       @endif
@@ -123,7 +123,7 @@
   {{-- 3. OPIS --}}
   @if($m['opis'])
   <div class="nsingle-section">
-    <div class="nsingle-content-block__content" style="max-width:800px;">
+    <div class="nsingle-content-block__content nsingle-content-block__content--narrow">
       {!! wp_kses_post(wpautop($m['opis'])) !!}
     </div>
   </div>

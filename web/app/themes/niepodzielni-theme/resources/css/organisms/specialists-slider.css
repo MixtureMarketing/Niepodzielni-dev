@@ -67,6 +67,15 @@
     transform: rotate(180deg);
 }
 
+.psy-availability-box {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 5px 10px;
+    align-self: flex-start;
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+
 .slider-nav-control .swiper-button-prev::after,
 .slider-nav-control .swiper-button-next::after {
     content: '';

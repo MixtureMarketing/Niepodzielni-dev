@@ -55,7 +55,7 @@
             <p class="adhd-why__intro">Badania pokazują, że u większości osób zdiagnozowanych w dzieciństwie ADHD utrzymuje się przez całe życie. Jednak wielu dorosłych nie wie, czy to zaburzenie jest przyczyną ich problemów. Objawy u dorosłych mogą być inne niż u dzieci i mniej widoczne. Niektóre cechy ADHD występują u każdego, np. impulsywność, ale nie zawsze oznacza to chorobę. Gdy jednak zaburzenie jest obecne, utrudnia codzienne funkcjonowanie. Dlatego ważna jest diagnoza u specjalisty, który zna odpowiednie kryteria choroby.</p>
             <p class="adhd-why__intro">Każda opłacona konsultacja to nie tylko krok ku własnemu dobrostanowi – to również realne wsparcie dla kogoś, kto w danym momencie nie może sobie na to pozwolić. Wspólnie tworzymy krąg pomocy.</p>
 
-            <h2 class="section-title" style="margin-top: 60px;">Jak wygląda proces diagnozy ADHD w Fundacji Niepodzielni?</h2>
+            <h2 class="section-title u-mt-60">Jak wygląda proces diagnozy ADHD w Fundacji Niepodzielni?</h2>
             <div class="adhd-process__layout">
                 <div class="adhd-process__steps">
                     <div class="adhd-step">

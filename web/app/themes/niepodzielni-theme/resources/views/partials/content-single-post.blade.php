@@ -13,7 +13,7 @@
   @if($bg_url)
     <img class="nsingle-hero__bg" src="{{ esc_url($bg_url) }}" alt="{{ esc_attr(get_the_title()) }}">
   @else
-    <div class="nsingle-hero__bg" style="background: linear-gradient(135deg, var(--mix-color-brand-secondary) 0%, #0b009e 100%);"></div>
+    <div class="nsingle-hero__bg nsingle-hero__bg--brand-gradient"></div>
   @endif
   <div class="nsingle-hero__overlay"></div>
 

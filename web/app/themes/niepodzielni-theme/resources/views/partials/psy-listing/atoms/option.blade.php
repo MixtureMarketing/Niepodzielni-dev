@@ -12,7 +12,7 @@
         <input type="checkbox" name="{{ $tax }}" value="{{ $term->slug }}">
         <span class="opt-label-text">
             @if($tax === 'jezyk' && isset($flagMap[$term->slug]))
-                <span class="fi fi-{{ $flagMap[$term->slug] }}" style="margin-right: 10px;"></span>
+                <span class="fi fi-{{ $flagMap[$term->slug] }}"></span>
             @endif
             <span class="opt-name">{{ $term->name }}</span>
         </span>
