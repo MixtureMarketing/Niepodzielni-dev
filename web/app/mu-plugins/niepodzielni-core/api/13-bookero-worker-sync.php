@@ -25,11 +25,17 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-/** Klucz transienta blokady circuit breaker (globalny — blokuje cały cron). */
-define('BOOKERO_LOCKOUT_KEY', 'bookero_api_lockout');
+/**
+ * Prefiks klucza transienta blokady circuit breaker (per-request).
+ *
+ * Klucz pełny: BOOKERO_LOCKOUT_PREFIX . $postId
+ * Blokuje konkretny request (worker), nie cały cron globalnie.
+ * Przy HTTP 429 (globalny rate-limit) używamy klucza z postId=0.
+ */
+define('BOOKERO_LOCKOUT_PREFIX', 'bookero_lockout_');
 
-/** TTL blokady — 15 minut po otrzymaniu HTTP 429 lub Timeout. */
-define('BOOKERO_LOCKOUT_TTL', 15 * MINUTE_IN_SECONDS);
+/** TTL blokady — 5 minut po otrzymaniu HTTP 429 lub Timeout (per-request). */
+define('BOOKERO_LOCKOUT_TTL', 5 * MINUTE_IN_SECONDS);
 
 /** Liczba psychologów przetwarzanych w jednym przebiegu crona. */
 define('BOOKERO_SYNC_PER_RUN', 5);
@@ -49,9 +55,10 @@ add_action(BOOKERO_CRON_HOOK, 'np_bookero_worker_sync_oop', 10);
  */
 function np_bookero_worker_sync_oop(): void
 {
-    // ── Circuit Breaker: sprawdź lockout ──────────────────────────────────────
-    // Jeśli poprzedni przebieg otrzymał HTTP 429 lub Timeout, daj Bookero odpocząć.
-    if (get_transient(BOOKERO_LOCKOUT_KEY)) {
+    // ── Circuit Breaker: sprawdź globalny lockout (HTTP 429) ─────────────────
+    // Globalny lockout (klucz postId=0) ustawiany przy HTTP 429 — blokuje cały cron.
+    $global_lockout_key = BOOKERO_LOCKOUT_PREFIX . '0';
+    if (get_transient($global_lockout_key)) {
         // Czas wygaśnięcia: przy Redis transiencie _transient_timeout_ nie istnieje w DB,
         // więc liczymy od czasu ustawienia lockoutu przechowywanego w osobnej opcji.
         $lockout_since = (int) get_option('np_bookero_lockout_since', 0);
@@ -59,7 +66,7 @@ function np_bookero_worker_sync_oop(): void
         $remaining     = $lockout_until > time() ? gmdate('i:s', $lockout_until - time()) . ' min' : 'wygasa wkrótce';
         np_bookero_log_error(
             'cron',
-            'Circuit breaker aktywny — pozostało ~' . $remaining . '. Pominięto przebieg.',
+            'Circuit breaker aktywny (HTTP 429) — pozostało ~' . $remaining . '. Pominięto przebieg.',
         );
         return;
     }
@@ -118,27 +125,49 @@ function np_bookero_worker_sync_oop(): void
     $synced_count = 0;
 
     foreach ($to_sync as $postId) {
+        // Per-request lockout: pomiń workera zablokowanego przez poprzedni timeout.
+        // Klucz: BOOKERO_LOCKOUT_PREFIX . $postId — nie blokuje innych workerów.
+        $worker_lockout_key = BOOKERO_LOCKOUT_PREFIX . (int) $postId;
+        if (get_transient($worker_lockout_key)) {
+            np_bookero_log_error(
+                'cron',
+                'Per-request lockout aktywny — pomijam postId=' . $postId . '.',
+            );
+            continue;
+        }
+
         usleep(BOOKERO_SYNC_DELAY_US); // 0.3s — ochrona przed throttlingiem Bookero
 
         try {
             $service->syncSingleWorker((int) $postId);
             $synced_count++;
         } catch (\Niepodzielni\Bookero\BookeroRateLimitException $e) {
-            // HTTP 429 lub Timeout — Bookero prosi o backoff.
-            // Zatrzymaj pętlę i zablokuj cron na BOOKERO_LOCKOUT_TTL minut.
+            $isHttp429 = str_contains($e->getMessage(), 'HTTP 429');
+            error_log('[Bookero] RateLimit cron postId=' . $postId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+
+            if ($isHttp429) {
+                // HTTP 429 — globalny rate-limit: zatrzymaj cały cron na TTL.
+                np_bookero_log_error(
+                    'cron',
+                    'Circuit breaker (HTTP 429) — globalny lockout na ' . (BOOKERO_LOCKOUT_TTL / 60) . ' min. Przyczyna: ' . $e->getMessage(),
+                );
+                set_transient(BOOKERO_LOCKOUT_PREFIX . '0', 1, BOOKERO_LOCKOUT_TTL);
+                update_option('np_bookero_lockout_since', time(), false);
+
+                // Zainwaliduj listing cache nawet przy przerwaniu — część batcha mogła zmienić daty
+                if ($synced_count > 0) {
+                    do_action('niepodzielni_bookero_batch_synced');
+                }
+                return;
+            }
+
+            // Timeout — per-request lockout: zablokuj tylko tego workera, kontynuuj z kolejnymi.
             np_bookero_log_error(
                 'cron',
-                'Circuit breaker wyzwolony — ustawiam lockout na ' . (BOOKERO_LOCKOUT_TTL / 60) . ' min. Przyczyna: ' . $e->getMessage(),
+                'Timeout — per-request lockout postId=' . $postId . ' na ' . (BOOKERO_LOCKOUT_TTL / 60) . ' min. Przyczyna: ' . $e->getMessage(),
             );
-            error_log('[Bookero] RateLimit cron postId=' . $postId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-            set_transient(BOOKERO_LOCKOUT_KEY, 1, BOOKERO_LOCKOUT_TTL);
-            update_option('np_bookero_lockout_since', time(), false);
-
-            // Zainwaliduj listing cache nawet przy przerwaniu — część batcha mogła zmienić daty
-            if ($synced_count > 0) {
-                do_action('niepodzielni_bookero_batch_synced');
-            }
-            return;
+            set_transient($worker_lockout_key, 1, BOOKERO_LOCKOUT_TTL);
+            continue;
         } catch (\Exception $e) {
             // Nieoczekiwany błąd — izoluj do pojedynczego psychologa.
             // Loguj z pełnym stack trace i kontynuuj z kolejnym.
