@@ -3,6 +3,7 @@ import { requireBearer } from '../auth';
 import { rateLimit } from '../rateLimit';
 import { parseJsonBody } from '../jsonBody';
 import { validateFeedback } from '../schemas';
+import { fetchWithTimeout } from '../fetchWithTimeout';
 
 export async function handleFeedback(request: Request, env: Env): Promise<Response> {
     const unauth = requireBearer(request, env.NP_AI_BOT_TOKEN);
@@ -19,7 +20,7 @@ export async function handleFeedback(request: Request, env: Env): Promise<Respon
 
     // Zapisz do WordPress (fire-and-forget)
     if (env.WP_API_URL && env.WP_BOT_TOKEN) {
-        fetch(`${env.WP_API_URL}/bot-feedback`, {
+        fetchWithTimeout(`${env.WP_API_URL}/bot-feedback`, {
             method:  'POST',
             headers: {
                 'Content-Type': 'application/json',
