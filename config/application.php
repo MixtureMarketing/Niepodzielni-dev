@@ -175,18 +175,16 @@ Config::define('NP_AI_BOT_TOKEN', env('NP_AI_BOT_TOKEN') ?: '');
 Config::define('NP_CF_TURNSTILE_SECRET', env('NP_CF_TURNSTILE_SECRET') ?: '');
 Config::define('NP_CF_TURNSTILE_SITE_KEY', env('NP_CF_TURNSTILE_SITE_KEY') ?: '');
 
-<<<<<<< HEAD
 // Discord webhook „WordPress Audit" — daily audit digest (admin/17-audit-digest.php)
 // + brute-force burst alert (admin/19-lockout-burst-alert.php). Pusty = wysyłany
 // tylko email do admin_email. Patrz docs/monitoring-runbook.md sekcja 2.
 Config::define('NP_DISCORD_WEBHOOK_URL', env('NP_DISCORD_WEBHOOK_URL') ?: '');
-=======
+
 // Sentry — error tracking. Pusty DSN = Sentry pominięty (lokalny dev).
 // Patrz mu-plugins/niepodzielni-core/admin/18-sentry-init.php oraz
 // docs/monitoring-runbook.md sekcja 4.3.
 Config::define('SENTRY_DSN', env('SENTRY_DSN') ?: '');
 Config::define('NP_RELEASE', env('NP_RELEASE') ?: 'dev');
->>>>>>> 91bd0cc (feat(monitoring): Sentry — error tracking PHP + Worker (with PII filter))
 
 /**
  * Custom Settings
