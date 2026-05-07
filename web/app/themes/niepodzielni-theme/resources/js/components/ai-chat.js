@@ -64,7 +64,7 @@ class NpAiChat {
     <span class="np-chat__badge" hidden aria-label="Nowe wiadomości">0</span>
 </button>
 
-<div class="np-chat__window" role="dialog" aria-label="Asystent Niepodzielni" hidden>
+<div class="np-chat__window" role="dialog" aria-modal="true" aria-label="Asystent Niepodzielni" hidden>
     <div class="np-chat__header">
         <div class="np-chat__header-info">
             <span class="np-chat__avatar" aria-hidden="true">🤝</span>
@@ -183,6 +183,25 @@ class NpAiChat {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen) this._toggle();
         });
+
+        // WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap — Tab cycle wewnątrz okna czatu
+        this.window.addEventListener('keydown', (e) => {
+            if (e.key !== 'Tab' || ! this.isOpen) return;
+            const focusables = this.window.querySelectorAll(
+                'button:not([disabled]):not([hidden]), [href], input:not([disabled]), select, textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+            const visible = Array.from(focusables).filter(el => !el.hidden && el.offsetParent !== null);
+            if (! visible.length) return;
+            const first = visible[0];
+            const last  = visible[visible.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (! e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        });
     }
 
     _toggle() {
@@ -202,6 +221,9 @@ class NpAiChat {
             } else {
                 this.input.focus();
             }
+        } else {
+            // WCAG 2.4.3 — po close focus wraca na trigger
+            this.toggleBtn.focus();
         }
     }
 
@@ -313,6 +335,7 @@ class NpAiChat {
         } catch (err) {
             if (err?.name === 'AbortError') return; // nowa wiadomość anulowała poprzednią
             bubbleEl.classList.remove('np-chat__bubble--streaming');
+                            bubbleEl.setAttribute('aria-busy', 'false');
             bubbleEl.classList.add('np-chat__bubble--error');
             bubbleEl.textContent = 'Przepraszam, nie mogę teraz odpowiedzieć. Spróbuj ponownie za chwilę.';
             this._appendContactFallback();
@@ -328,7 +351,8 @@ class NpAiChat {
     _createStreamBubble() {
         const div = document.createElement('div');
         div.className = 'np-chat__message np-chat__message--assistant';
-        div.innerHTML = '<div class="np-chat__bubble np-chat__bubble--streaming"></div>';
+        // WCAG 4.1.2 — aria-busy zapobiega spamowi SR podczas streamingu tokenów
+        div.innerHTML = '<div class="np-chat__bubble np-chat__bubble--streaming" aria-busy="true"></div>';
         this.messagesEl.appendChild(div);
         this._scrollToBottom();
         return div.querySelector('.np-chat__bubble');
@@ -361,6 +385,7 @@ class NpAiChat {
                             streaming = true;
                             this.typingEl.hidden = true;
                             bubbleEl.classList.remove('np-chat__bubble--streaming');
+                            bubbleEl.setAttribute('aria-busy', 'false');
                         }
                         bubbleEl.innerHTML += this._escapeHtml(event.token).replace(/\n/g, '<br>');
                         this._scrollToBottom();
@@ -375,6 +400,7 @@ class NpAiChat {
                         if (event.farewell) {
                             // Zachowaj bąbelek z pożegnaniem i pokaż widget oceny
                             bubbleEl.classList.remove('np-chat__bubble--streaming');
+                            bubbleEl.setAttribute('aria-busy', 'false');
                             if (event.reply) bubbleEl.innerHTML = this._renderMarkdown(event.reply);
                             this._renderRatingWidget();
                             onDone({ ...event, suggestions: [], quick_replies: [] });
@@ -382,6 +408,7 @@ class NpAiChat {
                         }
                         // Pełny tekst z markdown — zawsze podmień innerHTML (nadpisuje błędnie zaStreamowane nazwy narzędzi)
                         bubbleEl.classList.remove('np-chat__bubble--streaming');
+                            bubbleEl.setAttribute('aria-busy', 'false');
                         if (event.reply) {
                             bubbleEl.innerHTML = this._renderMarkdown(event.reply);
                         } else {
@@ -390,6 +417,7 @@ class NpAiChat {
                         onDone(event);
                     } else if (event.type === 'error') {
                         bubbleEl.classList.remove('np-chat__bubble--streaming');
+                            bubbleEl.setAttribute('aria-busy', 'false');
                         bubbleEl.classList.add('np-chat__bubble--error');
                         bubbleEl.textContent = 'Przepraszam, wystąpił błąd.';
                     }
