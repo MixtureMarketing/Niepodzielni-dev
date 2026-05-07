@@ -131,16 +131,6 @@
     text-decoration: none;
 }
 
-.help-areas-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 8px;
-    padding: 20px 0;
-    overflow: hidden;
-    transition: max-height var(--mix-transition-duration-slow) var(--mix-transition-timing-ease);
-}
-
 @media (max-width: 1400px) {
     .specialist-card {
         flex-direction: column;

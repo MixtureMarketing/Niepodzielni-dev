@@ -86,7 +86,7 @@
   @if($bg_tag)
     {!! $bg_tag !!}
   @else
-    <div class="nsingle-hero__bg" style="background: var(--mix-color-brand-secondary);"></div>
+    <div class="nsingle-hero__bg nsingle-hero__bg--brand"></div>
   @endif
   <div class="nsingle-hero__overlay"></div>
 
@@ -149,7 +149,7 @@
         @endif
 
         @if(!empty($symptoms))
-          <h3 class="nsingle-section-heading" style="font-size:1rem;">Jeśli doświadczasz…</h3>
+          <h3 class="nsingle-section-heading u-fs-base">Jeśli doświadczasz…</h3>
           <ul class="nsingle-symptom-list">
             @foreach($symptoms as $s)
               @if($s)
@@ -160,7 +160,7 @@
         @endif
 
         @if($m['opis'])
-          <div class="nsingle-content-block__content" style="margin-top:16px;">
+          <div class="nsingle-content-block__content u-mt-16">
             {!! wp_kses_post(wpautop($m['opis'])) !!}
           </div>
         @endif
@@ -180,7 +180,7 @@
             <p class="nsingle-facilitator-card__role">{{ esc_html($fac_stanowisko) }}</p>
           @endif
           @if($fac_nurt)
-            <p class="nsingle-facilitator-card__role" style="font-style:italic;">{{ esc_html($fac_nurt) }}</p>
+            <p class="nsingle-facilitator-card__role u-italic">{{ esc_html($fac_nurt) }}</p>
           @endif
           @if($fac_bio)
             <p class="nsingle-facilitator-card__bio">{{ esc_html($fac_bio) }}</p>
@@ -215,7 +215,7 @@
       <span class="nsingle-start-bar__label">Miejsce</span>
       <span class="nsingle-start-bar__value">
         @if($m['typ']){{ esc_html($m['typ']) }} – @endif{{ esc_html($m['lokalizacja']) }}
-        @if($m['ulica_i_numer'])<br><small style="font-weight:400;opacity:.85;">{{ esc_html($m['ulica_i_numer']) }}</small>@endif
+        @if($m['ulica_i_numer'])<br><small class="nsingle-start-bar__address">{{ esc_html($m['ulica_i_numer']) }}</small>@endif
       </span>
     </div>
     @endif
@@ -246,7 +246,7 @@
           @if($cenaRodzaj)
             <p class="nsingle-price-box__note">{{ esc_html($cenaRodzaj) }}</p>
           @endif
-          <p class="nsingle-price-box__note" style="color:#888;font-size:.78rem;">
+          <p class="nsingle-price-box__note nsingle-price-box__note--small">
             Możliwość płatności w ratach przez Klarna.
           </p>
         @endif
@@ -255,12 +255,12 @@
       {{-- RIGHT: topics --}}
       <div>
         @if($m['tekst_dodatkowy'])
-          <p style="color:var(--mix-color-text-subtle);font-size:.95rem;line-height:1.6;margin-bottom:20px;">
+          <p class="u-text-muted u-fs-sm u-mb-20" style="line-height:1.6;">
             {!! wp_kses_post(wpautop($m['tekst_dodatkowy'])) !!}
           </p>
         @endif
         @if(!empty($topics))
-          <h3 class="nsingle-section-heading" style="font-size:1rem;">Poruszane tematy</h3>
+          <h3 class="nsingle-section-heading u-fs-base">Poruszane tematy</h3>
           <ul class="nsingle-topic-list">
             @foreach($topics as $topic)
               <li class="nsingle-topic-list__item">

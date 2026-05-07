@@ -609,3 +609,39 @@
 
   .nsingle-post-hero__inner { padding: 20px 16px; }
 }
+
+/* Hero subtitle / caption / opis box (zamienniki inline style) */
+.nsingle-hero__subtitle {
+    color: rgba(255, 255, 255, 0.75);
+    text-align: center;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 10px;
+}
+.nsingle-hero__caption {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    max-width: 500px;
+}
+.nsingle-content-block__content--narrow { max-width: 800px; }
+
+/* Hero background fallback warianty (gdy brak zdjęcia) */
+.nsingle-hero__bg--brand { background: var(--mix-color-brand-secondary); }
+.nsingle-hero__bg--brand-gradient {
+    background: linear-gradient(135deg, var(--mix-color-brand-secondary) 0%, #0b009e 100%);
+}
+.nsingle-hero__overlay--vignette {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.05) 100%);
+}
+
+/* Drobny adres pod info-bar */
+.nsingle-start-bar__address {
+    font-weight: 400;
+    opacity: 0.85;
+}
+/* Notka pod ceną — szare 11px */
+.nsingle-price-box__note--small {
+    color: #888;
+    font-size: 0.78rem;
+}

@@ -23,7 +23,7 @@
             <p class="panel-login__subtitle">Zaloguj się aby zarządzać swoim profilem</p>
 
             @if ($login_error === 'failed')
-                <div class="panel-toast panel-toast--error" style="margin-bottom:16px">
+                <div class="panel-toast panel-toast--error u-mb-16">
                     Nieprawidłowy login lub hasło.
                 </div>
             @endif

@@ -28,6 +28,7 @@
     flex-wrap: wrap;
     gap: 8px;
     align-items: flex-start;
+    padding: 20px 0;
     overflow: hidden;
     transition: max-height 0.35s ease;
 }

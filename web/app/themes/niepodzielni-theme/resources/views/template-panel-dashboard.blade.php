@@ -52,7 +52,7 @@
                 <h2>Twoje konto nie jest powiązane z profilem psychologa</h2>
                 <p>Skontaktuj się z administratorem fundacji aby powiązać Twoje konto z odpowiednim profilem.</p>
                 @if ($is_admin)
-                    <p style="font-size:13px;color:#666;margin-top:20px">
+                    <p class="panel-admin-note u-mt-20">
                         <strong>Tryb admin:</strong> dodaj <code>?post_id=ID</code> do URL aby edytować dowolny profil psychologa testowo.
                     </p>
                 @endif
@@ -177,7 +177,7 @@
                 {{-- ── Sekcja: Opinie ───────────────────────────────────── --}}
                 <section class="panel-section" id="panel-opinie-section">
                     <h2 class="panel-section__title">Opinie pacjentów</h2>
-                    <p class="panel-help" style="margin-bottom:20px;">
+                    <p class="panel-help u-mb-20">
                         Poniżej znajdziesz opinie wystawione Twojemu profilowi. Możesz odpowiedzieć na każdą z nich.
                     </p>
                     <div id="panel-reviews-list">

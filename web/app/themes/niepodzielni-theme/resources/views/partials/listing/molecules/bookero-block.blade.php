@@ -22,7 +22,7 @@
     @else
         {!! $calendar_html !!}
         {{-- JS fallback: gdy widget Bookero nie wyrenderuje treści po 8s --}}
-        <div id="bookero-fallback" class="nsingle-zapisy-zakonczone" style="display:none;">
+        <div id="bookero-fallback" class="nsingle-zapisy-zakonczone u-hidden-init">
             <p class="nsingle-zapisy-zakonczone__icon">🔒</p>
             <p class="nsingle-zapisy-zakonczone__title">Zapisy zakończone</p>
             <p class="nsingle-zapisy-zakonczone__desc">Rejestracja na to wydarzenie jest już zamknięta.</p>
