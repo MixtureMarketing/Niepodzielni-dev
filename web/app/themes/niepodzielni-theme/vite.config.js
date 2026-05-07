@@ -29,6 +29,7 @@ export default defineConfig({
         'resources/css/editor.css',
         'resources/js/editor.js',
         'resources/js/matchmaker.js',
+        'resources/js/single-psy-track.js',
         'resources/js/panel.js',
         'resources/js/psychomapa.js',
         'resources/js/crisis-hide.js',
