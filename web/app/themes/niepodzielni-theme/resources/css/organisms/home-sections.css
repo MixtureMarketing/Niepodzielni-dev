@@ -80,12 +80,12 @@
 }
 
 .hero-tax-actions .psy-btn-green {
-    background-color: #01BE4A !important;
+    background-color: var(--mix-color-brand-primary-accessible) !important;
     color: #ffffff !important;
 }
 
 .hero-tax-actions .psy-btn-green:hover {
-    background-color: #01a040 !important;
+    background-color: var(--mix-color-brand-primary-accessible-hover) !important;
 }
 
 .hero-tax-krs {

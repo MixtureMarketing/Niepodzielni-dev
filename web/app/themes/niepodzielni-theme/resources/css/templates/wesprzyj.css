@@ -205,7 +205,7 @@
 }
 .wesprzyj-donor-card__link {
     font-size: 15px;
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     text-decoration: none;
     display: flex;
     align-items: center;

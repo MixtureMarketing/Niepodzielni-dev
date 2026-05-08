@@ -4,7 +4,7 @@
     left: -9999px;
     z-index: 999;
     padding: 1rem 1.5rem;
-    background: var(--mix-color-brand-primary);
+    background: var(--mix-color-brand-primary-accessible);
     color: #fff;
     text-decoration: none;
     border-radius: 0 0 8px 0;
@@ -128,13 +128,13 @@ html {
 
 /* --- ATOMS BUTTONS --- */
 .psy-btn { padding: 14px 35px; border-radius: 50px; font-weight: 700; text-transform: uppercase; font-size: 12px; text-decoration: none; transition: 0.3s; display: inline-block; cursor: pointer; border: none; letter-spacing: 1px; text-align: center; }
-.psy-btn-green, .psy-btn-card { background: var(--mix-color-brand-primary); color: #fff !important; }
+.psy-btn-green, .psy-btn-card { background: var(--mix-color-brand-primary-accessible); color: #fff !important; }
 .psy-btn-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(1,190,74,0.3); }
-.psy-btn-green:hover { background: #01a040; color: #fff !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(1,190,74,0.3); }
-.psy-btn-outline { border: 2px solid var(--mix-color-brand-primary); color: var(--mix-color-brand-primary) !important; background: transparent; }
-.psy-btn-outline:hover { background: var(--mix-color-brand-primary); color: #fff !important; }
+.psy-btn-green:hover { background: var(--mix-color-brand-primary-accessible-hover); color: #fff !important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(1,190,74,0.3); }
+.psy-btn-outline { border: 2px solid var(--mix-color-brand-primary-accessible); color: var(--mix-color-brand-primary-accessible) !important; background: transparent; }
+.psy-btn-outline:hover { background: var(--mix-color-brand-primary-accessible); color: #fff !important; }
 .psy-btn-white { border: 2px solid #fff; color: #fff !important; background: transparent; }
-.psy-btn-white:hover { background: #fff; color: var(--mix-color-brand-primary) !important; }
+.psy-btn-white:hover { background: #fff; color: var(--mix-color-brand-primary-accessible) !important; }
 
 /* ==========================================================================
    PAGE NAV — pigułkowe przyciski nawigacji wewnątrz strony
@@ -152,12 +152,12 @@ html {
 .page-nav__btn {
     display: inline-block;
     padding: 10px 20px;
-    border: 2px solid var(--mix-color-brand-primary);
+    border: 2px solid var(--mix-color-brand-primary-accessible);
     border-radius: 36px;
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.04em;
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     text-decoration: none;
     background: transparent;
     transition: background 0.2s, color 0.2s;
@@ -165,7 +165,7 @@ html {
 
 .page-nav__btn:hover,
 .page-nav__btn--active {
-    background: var(--mix-color-brand-primary);
+    background: var(--mix-color-brand-primary-accessible);
     color: #fff !important;
 }
 
@@ -178,7 +178,7 @@ html {
 .page-nav--on-dark .page-nav__btn:hover,
 .page-nav--on-dark .page-nav__btn--active {
     background: #fff;
-    color: var(--mix-color-brand-primary) !important;
+    color: var(--mix-color-brand-primary-accessible) !important;
 }
 
 /* ==========================================================================

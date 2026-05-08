@@ -90,7 +90,7 @@
 
 .osrodek-tag--rodzaj {
   background: var(--mix-color-brand-primary-10);
-  color: var(--mix-color-brand-primary);
+  color: var(--mix-color-brand-primary-accessible);
   border: 1px solid var(--mix-color-brand-primary-25);
 }
 
@@ -161,7 +161,7 @@
 }
 
 .osrodek-contact-list a:hover {
-  color: var(--mix-color-brand-primary);
+  color: var(--mix-color-brand-primary-accessible);
 }
 
 /* Social */
@@ -424,8 +424,8 @@
 }
 
 .pm-dropdown__trigger.has-value {
-    border-color: var(--mix-color-brand-primary);
-    color: var(--mix-color-brand-primary);
+    border-color: var(--mix-color-brand-primary-accessible);
+    color: var(--mix-color-brand-primary-accessible);
     background: rgba(1,190,74,0.06);
     font-weight: 500;
 }
@@ -695,7 +695,7 @@
     transition: color 0.15s;
 }
 
-.pm-card__phone a:hover { color: var(--mix-color-brand-primary); }
+.pm-card__phone a:hover { color: var(--mix-color-brand-primary-accessible); }
 
 /* Tags row */
 .pm-card__tags {
@@ -750,8 +750,8 @@
 }
 
 .pm-btn--ghost:hover {
-    border-color: var(--mix-color-brand-primary);
-    color: var(--mix-color-brand-primary);
+    border-color: var(--mix-color-brand-primary-accessible);
+    color: var(--mix-color-brand-primary-accessible);
 }
 
 .pm-btn--outline {
@@ -836,7 +836,7 @@
 }
 
 .pm-popup__phone a {
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     text-decoration: none;
 }
 

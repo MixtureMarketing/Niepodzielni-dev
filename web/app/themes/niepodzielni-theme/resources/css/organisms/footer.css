@@ -52,7 +52,7 @@
 }
 
 .footer-contact-list li a:hover {
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
 }
 
 .footer-icon {
@@ -150,7 +150,7 @@
 }
 
 .footer-bottom-bar a:hover {
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
 }
 
 @media (max-width: 1024px) {

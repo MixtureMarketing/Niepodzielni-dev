@@ -196,7 +196,7 @@
 }
 
 .nlisting-card__cta:hover {
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
 }
 
 /* --- Badges --- */

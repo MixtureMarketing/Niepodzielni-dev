@@ -231,7 +231,7 @@ body[data-bookero] #np-ai-chat {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: var(--mix-color-brand-primary);
+  background: var(--mix-color-brand-primary-accessible);
   color: #fff;
   flex-shrink: 0;
 }
@@ -335,7 +335,7 @@ body[data-bookero] #np-ai-chat {
 }
 
 .np-chat__message--user .np-chat__bubble {
-  background: var(--mix-color-brand-primary);
+  background: var(--mix-color-brand-primary-accessible);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -453,8 +453,8 @@ body[data-bookero] #np-ai-chat {
 
 .np-chat__quick-reply {
   background: #fff;
-  border: 1.5px solid var(--mix-color-brand-primary);
-  color: var(--mix-color-brand-primary);
+  border: 1.5px solid var(--mix-color-brand-primary-accessible);
+  color: var(--mix-color-brand-primary-accessible);
   border-radius: var(--mix-radius-pill);
   padding: 6px 12px;
   font-size: 12px;
@@ -466,7 +466,7 @@ body[data-bookero] #np-ai-chat {
 }
 
 .np-chat__quick-reply:hover:not(:disabled) {
-  background: var(--mix-color-brand-primary);
+  background: var(--mix-color-brand-primary-accessible);
   color: #fff;
 }
 
@@ -557,7 +557,7 @@ body[data-bookero] #np-ai-chat {
 
 .np-chat__psy-date {
   font-size: 11px;
-  color: var(--mix-color-brand-primary);
+  color: var(--mix-color-brand-primary-accessible);
   font-weight: var(--mix-font-weight-bold);
   display: flex;
   align-items: center;
@@ -573,7 +573,7 @@ body[data-bookero] #np-ai-chat {
   flex-shrink: 0;
   font-size: 11px;
   font-weight: var(--mix-font-weight-bold);
-  color: var(--mix-color-brand-primary);
+  color: var(--mix-color-brand-primary-accessible);
   white-space: nowrap;
   margin-top: 2px;
 }
@@ -646,7 +646,7 @@ body[data-bookero] #np-ai-chat {
   font-size: 10px;
   font-weight: var(--mix-font-weight-bold);
   color: #fff;
-  background: var(--mix-color-brand-primary);
+  background: var(--mix-color-brand-primary-accessible);
   border-radius: var(--mix-radius-small);
   padding: 2px 6px;
   text-transform: uppercase;
@@ -872,7 +872,7 @@ body[data-bookero] #np-ai-chat {
 .np-chat__farewell-thanks {
   font-size: 13px;
   font-weight: var(--mix-font-weight-bold);
-  color: var(--mix-color-brand-primary);
+  color: var(--mix-color-brand-primary-accessible);
   margin: 0;
 }
 
