@@ -32,6 +32,53 @@
     display: none !important;
 }
 
+/* Crisis hub link — wyraźny, ale nie nachalny (czerwony tekst, brak pełnego tła). */
+.header-crisis-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1.5px solid #c0392b;
+    border-radius: var(--mix-radius-pill);
+    color: #c0392b;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    line-height: 1;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.header-crisis-link:hover,
+.header-crisis-link:focus-visible {
+    background: #c0392b;
+    color: #fff;
+}
+
+.header-crisis-link:focus-visible {
+    outline: 2px solid #c0392b;
+    outline-offset: 2px;
+}
+
+.header-crisis-link__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #c0392b;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.header-crisis-link:hover .header-crisis-link__icon,
+.header-crisis-link:focus-visible .header-crisis-link__icon {
+    background: #fff;
+    color: #c0392b;
+}
+
 @media (max-width: 768px) {
     .header-flex { padding: 0 15px; }
     .header-logo img { max-height: 35px; }
@@ -43,4 +90,24 @@
         font-size: 12px;
         font-weight: 700;
     }
+    /* Crisis link — schowaj label na mobile, zachowaj ikonkę. */
+    .header-crisis-link {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    .header-crisis-link__label {
+        display: none;
+    }
+}
+
+/* Crisis link w stopce — subtelne podkreślenie czerwonym akcentem */
+.footer-crisis-link {
+    color: var(--mix-color-text-light, #fff);
+    font-weight: 700;
+}
+
+.footer-crisis-link:hover,
+.footer-crisis-link:focus-visible {
+    color: #ffb3aa;
+    text-decoration: underline;
 }

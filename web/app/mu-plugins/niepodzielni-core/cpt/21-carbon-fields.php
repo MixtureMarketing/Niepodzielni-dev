@@ -101,7 +101,58 @@ function np_cf_register_all_fields(): void
     np_cf_wydarzenia();
     np_cf_aktualnosci();
     np_cf_seo_meta();
+    np_cf_article_eeat();
+    np_cf_page_faq();
     np_cf_theme_options();
+}
+
+// ─── E-E-A-T: author + medical reviewer dla artykułów (post / aktualnosci) ───
+// Trust signals dla MedicalScholarlyArticle (psychoedukacja, YMYL).
+// Klucze post_meta odczytywane przez seo.php Section F.
+
+function np_cf_article_eeat(): void
+{
+    Container::make('post_meta', 'np_article_eeat', __('Autor i recenzja merytoryczna', 'niepodzielni'))
+        ->where('post_type', 'IN', ['post', 'aktualnosci'])
+        ->set_context('side')
+        ->set_priority('default')
+        ->add_fields([
+            Field::make('association', 'author_psycholog_id', __('Autor (psycholog)', 'niepodzielni'))
+                ->set_types([['type' => 'post', 'post_type' => 'psycholog']])
+                ->set_max(1)
+                ->set_help_text('Psycholog będący autorem treści — emisja jako Person w schema.org Article.'),
+
+            Field::make('association', 'medical_reviewer_psycholog_id', __('Medical Reviewer (psycholog)', 'niepodzielni'))
+                ->set_types([['type' => 'post', 'post_type' => 'psycholog']])
+                ->set_max(1)
+                ->set_help_text('Psycholog który zweryfikował treść artykułu (E-E-A-T trust signal dla YMYL).'),
+        ]);
+}
+
+// ─── FAQPage: pytania i odpowiedzi (per-page) ────────────────────────────────
+// Carbon Field complex; emisja jako schema.org FAQPage przez seo.php Section H.
+
+function np_cf_page_faq(): void
+{
+    Container::make('post_meta', 'np_page_faq', __('FAQ (Pytania i odpowiedzi)', 'niepodzielni'))
+        ->where('post_type', '=', 'page')
+        ->set_context('normal')
+        ->set_priority('low')
+        ->add_fields([
+            Field::make('complex', 'faq_items', __('Pytania i odpowiedzi', 'niepodzielni'))
+                ->set_layout('tabbed-vertical')
+                ->setup_labels([
+                    'plural_name'   => 'Pytania',
+                    'singular_name' => 'Pytanie',
+                ])
+                ->add_fields([
+                    Field::make('text', 'question', __('Pytanie', 'niepodzielni'))
+                        ->set_required(true),
+                    Field::make('rich_text', 'answer', __('Odpowiedź', 'niepodzielni'))
+                        ->set_required(true),
+                ])
+                ->set_help_text('Pytania emitowane są jako schema.org FAQPage (rich snippets w Google).'),
+        ]);
 }
 
 // ─── SEO meta override (per-post) ─────────────────────────────────────────────

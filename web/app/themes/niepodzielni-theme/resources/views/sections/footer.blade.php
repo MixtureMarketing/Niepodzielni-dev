@@ -148,6 +148,7 @@
         <div class="psy-container">
             <p>
                 &copy; {{ date('Y') }} Fundacja Niepodzielni |
+                <a href="{{ home_url('/pomoc-w-kryzysie/') }}" class="footer-crisis-link">Pomoc w kryzysie psychicznym</a> |
                 <a href="/polityka-prywatnosci/">Polityka Prywatności</a> |
                 <a href="/regulamin-rezerwacji-wizyt-stacjonarnie-i-wizyt-online/">Regulamin konsultacji</a> |
                 <a href="/statut-fundacji/">Statut fundacji</a> |
