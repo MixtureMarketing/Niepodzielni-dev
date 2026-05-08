@@ -11,8 +11,31 @@
 html {
   -webkit-text-size-adjust: none;
   text-size-adjust: none;
-  scroll-behavior: smooth;
   scrollbar-gutter: stable;
+}
+
+/* WCAG 2.3.3 — respect user preferences for reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* WCAG 2.4.7 + 2.4.13 — global focus-visible baseline.
+   Komponenty ze swoim własnym focus-visible (consent banner, ai-chat,
+   crisis hub) zachowują swój styl przez większą specyficzność. */
+*:focus { outline: none; }
+*:focus-visible {
+  outline: 3px solid var(--mix-color-brand-secondary);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 body {

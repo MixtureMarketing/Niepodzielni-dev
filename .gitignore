@@ -52,3 +52,5 @@ web/carbon-fields/
 trellis/.vault_pass
 trellis/vendor/
 trellis/*.retry
+# Chat transcripts (cross-session, do not commit)
+/[0-9]*.md
