@@ -68,7 +68,8 @@
             <div class="faq">
 
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Czym zajmuje się asystent zdrowienia?</div>
+                    {{-- WCAG 4.1.2 — accordion button --}}
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Czym zajmuje się asystent zdrowienia?</button>
                     <div class="faq__answer linkmenu">
                         <p>Asystent zdrowienia pełni rolę pomostu między pacjentem a personelem medycznym, ukazuje depresję lub inne zaburzenie psychiczne z perspektywy pacjenta. Do jego głównych zadań należą:</p>
                         <ul>
@@ -84,14 +85,16 @@
                 </div>
 
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Kim jest asystent zdrowienia?</div>
+                    {{-- WCAG 4.1.2 — accordion button --}}
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Kim jest asystent zdrowienia?</button>
                     <div class="faq__answer linkmenu">
                         <p>Asystent zdrowienia to osoba, która sama doświadczyła kryzysu psychicznego, przeszła proces terapii i zdrowienia, a następnie ukończyła specjalistyczne szkolenie. Dzięki własnym doświadczeniom wspiera innych w ich drodze do zdrowia psychicznego, inspiruje i dzieli się wiedzą, oferując wsparcie emocjonalne.</p>
                     </div>
                 </div>
 
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Jakie są wymagania, aby zostać asystentem zdrowienia?</div>
+                    {{-- WCAG 4.1.2 — accordion button --}}
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Jakie są wymagania, aby zostać asystentem zdrowienia?</button>
                     <div class="faq__answer linkmenu">
                         <p>Aby zostać asystentem zdrowienia, należy spełnić następujące kryteria:</p>
                         <ul>
@@ -104,7 +107,8 @@
                 </div>
 
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Jakie są korzyści z pracy z asystentem zdrowienia?</div>
+                    {{-- WCAG 4.1.2 — accordion button --}}
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Jakie są korzyści z pracy z asystentem zdrowienia?</button>
                     <div class="faq__answer linkmenu">
                         <ul>
                             <li><strong>Lepsze zrozumienie procesu zdrowienia</strong> – asystent może wyjaśnić pacjentowi różne aspekty leczenia, dzieląc się własnymi doświadczeniami.</li>
@@ -117,7 +121,8 @@
                 </div>
 
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Rola Asystenta Zdrowienia</div>
+                    {{-- WCAG 4.1.2 — accordion button --}}
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Rola Asystenta Zdrowienia</button>
                     <div class="faq__answer linkmenu">
                         <ul>
                             <li><strong>Poznać</strong> – przedstawić i omówić z pozostałym personelem perspektywę osoby chorującej. Zauważyć człowieka, a nie tylko jednostkę chorobową.</li>

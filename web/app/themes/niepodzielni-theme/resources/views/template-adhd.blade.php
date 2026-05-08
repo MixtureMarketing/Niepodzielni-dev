@@ -139,7 +139,8 @@
                 @endphp
                 @foreach($faqs as $faq)
                     <div class="faq__item">
-                        <div class="faq__question m_acordeon_head">{{ $faq['q'] }}</div>
+                        {{-- WCAG 4.1.2 — accordion button --}}
+                        <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">{{ $faq['q'] }}</button>
                         <div class="faq__answer linkmenu">
                             <p>{{ $faq['a'] }}</p>
                         </div>

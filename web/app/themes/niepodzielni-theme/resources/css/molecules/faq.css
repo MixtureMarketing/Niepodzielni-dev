@@ -31,15 +31,28 @@
 }
 
 .faq__question {
+    /* WCAG 4.1.2 — accordion button: reset native <button> styles */
+    background: none;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    color: var(--mix-color-text-dark);
+    width: 100%;
+    display: block;
     padding: 18px 52px 18px 24px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--mix-color-text-dark);
     cursor: pointer;
     user-select: none;
     position: relative;
     transition: background 0.2s, color 0.2s;
     line-height: 1.4;
+}
+
+/* WCAG 4.1.2 — accordion button: visible focus */
+.faq__question:focus-visible {
+    outline: 3px solid var(--mix-color-brand-secondary);
+    outline-offset: 2px;
 }
 
 /* Strzałka chevron */

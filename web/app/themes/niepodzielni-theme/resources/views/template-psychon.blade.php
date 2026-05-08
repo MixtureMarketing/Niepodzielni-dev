@@ -208,24 +208,25 @@
         <div class="psy-container">
             <h2 class="section-title section-title--center">FAQ — Najczęściej zadawane pytania</h2>
             <div class="faq faq--centered">
+                {{-- WCAG 4.1.2 — accordion button --}}
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Kiedy startuje 6. edycja PsychON?</div>
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Kiedy startuje 6. edycja PsychON?</button>
                     <div class="faq__answer linkmenu"><p>Termin startu 6. edycji zostanie ogłoszony wkrótce. Zapisz się do listy oczekujących, aby jako pierwsza/y otrzymać informację o rekrutacji.</p></div>
                 </div>
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Czy program odbywa się w całości online?</div>
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Czy program odbywa się w całości online?</button>
                     <div class="faq__answer linkmenu"><p>Tak, cały program PsychON odbywa się online. Spotkania grupowe, superwizje i dostęp do materiałów — wszystko na dedykowanej platformie.</p></div>
                 </div>
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Czy mogę zapłacić w ratach?</div>
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Czy mogę zapłacić w ratach?</button>
                     <div class="faq__answer linkmenu"><p>Tak, oferujemy możliwość rozłożenia płatności na raty. Szczegóły omawiamy indywidualnie podczas rozmowy kwalifikacyjnej.</p></div>
                 </div>
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Co się stanie, jeśli opuszczę jedno ze spotkań?</div>
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Co się stanie, jeśli opuszczę jedno ze spotkań?</button>
                     <div class="faq__answer linkmenu"><p>Wszystkie spotkania są nagrywane. Nagranie będzie dostępne na platformie w ciągu 48 godzin.</p></div>
                 </div>
                 <div class="faq__item">
-                    <div class="faq__question m_acordeon_head">Czy otrzymam certyfikat po ukończeniu programu?</div>
+                    <button type="button" class="faq__question m_acordeon_head" aria-expanded="false">Czy otrzymam certyfikat po ukończeniu programu?</button>
                     <div class="faq__answer linkmenu"><p>Tak, uczestnicy, którzy ukończą program, otrzymują certyfikat PsychON potwierdzający udział i zdobyte kompetencje.</p></div>
                 </div>
             </div>
