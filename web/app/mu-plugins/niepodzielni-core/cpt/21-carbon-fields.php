@@ -100,7 +100,29 @@ function np_cf_register_all_fields(): void
     np_cf_warsztaty_grupy();
     np_cf_wydarzenia();
     np_cf_aktualnosci();
+    np_cf_seo_meta();
     np_cf_theme_options();
+}
+
+// ─── SEO meta override (per-post) ─────────────────────────────────────────────
+// Pozwala redaktorom nadpisać domyślny <title> i meta description z motywu.
+// Wartości czytane przez np_seo_meta() w themes/niepodzielni-theme/app/seo.php.
+
+function np_cf_seo_meta(): void
+{
+    Container::make('post_meta', 'np_seo_meta', __('SEO', 'niepodzielni'))
+        ->where('post_type', 'IN', ['psycholog', 'warsztaty', 'grupy-wsparcia', 'wydarzenia', 'aktualnosci', 'post', 'page'])
+        ->set_context('normal')
+        ->set_priority('low')
+        ->add_fields([
+            Field::make('text', 'seo_title', __('SEO Title', 'niepodzielni'))
+                ->set_help_text('Override domyślnego <title>. Zalecane ≤ 60 znaków.')
+                ->set_attribute('maxLength', 70),
+
+            Field::make('textarea', 'seo_description', __('Meta description', 'niepodzielni'))
+                ->set_help_text('Override meta description. Zalecane 120–160 znaków.')
+                ->set_rows(3),
+        ]);
 }
 
 // ─── Theme Options ────────────────────────────────────────────────────────────

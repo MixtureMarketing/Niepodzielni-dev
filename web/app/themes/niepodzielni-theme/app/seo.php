@@ -59,6 +59,24 @@ function np_seo_meta(): array
         $url = (string) home_url('/');
     }
 
+    // Carbon Fields override (seo_title / seo_description) — priorytet redaktora
+    if ($post_id) {
+        $custom_title = (string) get_post_meta($post_id, '_seo_title', true);
+        if (! $custom_title) {
+            $custom_title = (string) get_post_meta($post_id, 'seo_title', true);
+        }
+        $custom_desc = (string) get_post_meta($post_id, '_seo_description', true);
+        if (! $custom_desc) {
+            $custom_desc = (string) get_post_meta($post_id, 'seo_description', true);
+        }
+        if ($custom_title !== '') {
+            $title = $custom_title;
+        }
+        if ($custom_desc !== '') {
+            $desc = mb_strimwidth(wp_strip_all_tags($custom_desc), 0, 200, '…');
+        }
+    }
+
     return compact('title', 'desc', 'image', 'type', 'url');
 }
 
@@ -143,6 +161,106 @@ function np_seo_price(string $raw): float
 {
     return (float) preg_replace('/[^0-9.]/', '', $raw);
 }
+
+// ── Section A0 — Canonical link ─────────────────────────────────────────────
+// Priority 1 — emit <link rel="canonical"> on every public page.
+// Uses dynamic home_url()/get_permalink() — future-proof dla migracji niepodzielni.com.
+
+add_action('wp_head', function () {
+    if (is_search()) {
+        return; // search pages noindex; canonical pomijamy
+    }
+
+    $canonical = '';
+    if (is_singular()) {
+        $canonical = (string) get_permalink();
+    } elseif (is_post_type_archive()) {
+        $obj = get_queried_object();
+        if ($obj && isset($obj->name)) {
+            $canonical = (string) get_post_type_archive_link($obj->name);
+        }
+    } elseif (is_tax() || is_category() || is_tag()) {
+        $term = get_queried_object();
+        if ($term && ! is_wp_error($term)) {
+            $link = get_term_link($term);
+            if (! is_wp_error($link)) {
+                $canonical = (string) $link;
+            }
+        }
+    } elseif (is_front_page() || is_home()) {
+        $canonical = (string) home_url('/');
+    } else {
+        $request = isset($GLOBALS['wp']->request) ? (string) $GLOBALS['wp']->request : '';
+        $canonical = (string) home_url('/' . ltrim($request, '/'));
+    }
+
+    if (! $canonical) {
+        return;
+    }
+
+    // Strip non-canonical query params
+    $canonical = remove_query_arg(
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'konsultacje', 'magic_token', 'rvw_email', '_wpnonce', 'fbclid', 'gclid'],
+        $canonical
+    );
+
+    echo '<link rel="canonical" href="' . esc_url($canonical) . '">' . "\n";
+}, 1);
+
+// ── Section A1 — Meta robots noindex dla search/panel/utm-only ──────────────
+
+add_action('wp_head', function () {
+    if (is_search() || is_404()
+        || is_page_template('views/template-panel-logowanie.blade.php')
+        || is_page_template('views/template-panel-dashboard.blade.php')
+        || is_page_template('template-panel-logowanie.blade.php')
+        || is_page_template('template-panel-dashboard.blade.php')
+    ) {
+        echo '<meta name="robots" content="noindex,follow">' . "\n";
+        return;
+    }
+
+    if (isset($_GET['konsultacje']) || isset($_GET['magic_token'])) {
+        echo '<meta name="robots" content="noindex,follow">' . "\n";
+    }
+}, 2);
+
+// ── Section A2 — document_title_parts — strategy + brand suffix ─────────────
+
+add_filter('document_title_parts', function (array $parts) {
+    $brand = 'Fundacja Niepodzielni';
+
+    if (is_singular('psycholog')) {
+        $pid   = (int) get_the_ID();
+        $name  = get_the_title($pid);
+        $specs = wp_get_post_terms($pid, 'specjalizacja', ['fields' => 'names']);
+        $parts['title'] = $name . (! empty($specs) && ! is_wp_error($specs) ? ' — ' . $specs[0] : '');
+        $parts['site']  = $brand;
+    } elseif (is_singular(['warsztaty', 'grupy-wsparcia'])) {
+        $pid   = (int) get_the_ID();
+        $title = get_the_title($pid);
+        $data  = (string) get_post_meta($pid, 'data', true);
+        $parts['title'] = $title;
+        if ($data) {
+            $ts = strtotime($data);
+            if ($ts) {
+                $parts['title'] .= ' — ' . date_i18n('j F Y', $ts);
+            }
+        }
+        $parts['site'] = $brand;
+    } elseif (is_singular('aktualnosci') || is_singular('post')) {
+        $parts['title']   = get_the_title();
+        $parts['tagline'] = 'Aktualności';
+        $parts['site']    = $brand;
+    } elseif (is_post_type_archive('psycholog')) {
+        $parts['title'] = 'Psycholodzy w Polsce';
+        $parts['site']  = $brand;
+    }
+
+    return $parts;
+});
+
+add_filter('document_title_separator', fn () => '|');
 
 // ── Section A — meta description + Open Graph + Twitter Cards ────────────────
 // Priority 1 — runs before most plugins; covers every page type.
@@ -248,6 +366,24 @@ add_action('wp_head', function () {
                     'https://www.tiktok.com/@fundacjaniepodzielni',
                     'https://pl.linkedin.com/company/fundacja-niepodzielni',
                 ],
+                'identifier' => [
+                    [
+                        '@type'      => 'PropertyValue',
+                        'propertyID' => 'KRS',
+                        'value'      => '0000973514',
+                    ],
+                    [
+                        '@type'      => 'PropertyValue',
+                        'propertyID' => 'NIP',
+                        'value'      => '7812036026',
+                    ],
+                    [
+                        '@type'      => 'PropertyValue',
+                        'propertyID' => 'REGON',
+                        'value'      => '522108288',
+                    ],
+                ],
+                'nonprofitStatus' => 'NonprofitType',
             ],
         ],
     ];
