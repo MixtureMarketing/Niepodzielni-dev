@@ -88,7 +88,7 @@
 }
 
 .mega-menu-list li a:hover {
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
 }
 
 .mega-menu-more {
@@ -190,7 +190,7 @@
 .mega-menu-list li a.mega-menu-more {
     font-size: 13px;
     font-weight: 800;
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     text-decoration: underline !important;
     letter-spacing: 1px;
 }

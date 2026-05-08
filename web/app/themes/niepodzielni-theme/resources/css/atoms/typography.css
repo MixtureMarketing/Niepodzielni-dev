@@ -74,13 +74,13 @@ p {
 
 /* Przywrócenie wyglądu linków w treści */
 a {
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     text-decoration: none;
     transition: color var(--mix-transition-fast);
 }
 
 a:hover {
-    color: var(--mix-color-brand-primary-hover);
+    color: var(--mix-color-brand-primary-accessible-hover);
 }
 
 /* Przywrócenie list punktowanych (wypunktowań) */

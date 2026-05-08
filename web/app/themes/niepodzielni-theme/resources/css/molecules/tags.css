@@ -13,8 +13,8 @@
 }
 
 .attribute-tag {
-    border: 1px solid var(--mix-color-brand-primary);
-    color: var(--mix-color-brand-primary) !important;
+    border: 1px solid var(--mix-color-brand-primary-accessible);
+    color: var(--mix-color-brand-primary-accessible) !important;
     background-color: var(--mix-color-background-light);
     padding: 4px 10px;
     border-radius: var(--mix-radius-large);
@@ -67,7 +67,7 @@
 }
 
 .product-current__tag {
-    color: var(--mix-color-brand-primary) !important;
+    color: var(--mix-color-brand-primary-accessible) !important;
 }
 
 @media (max-width: 762px) {

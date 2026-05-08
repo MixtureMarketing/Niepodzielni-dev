@@ -69,13 +69,13 @@
 .page-content__body li { margin-bottom: 0.4em; }
 
 .page-content__body a {
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     text-decoration: underline;
     text-underline-offset: 3px;
 }
 
 .page-content__body a:hover {
-    color: var(--mix-color-brand-primary-hover);
+    color: var(--mix-color-brand-primary-accessible-hover);
 }
 
 .page-content__body strong,

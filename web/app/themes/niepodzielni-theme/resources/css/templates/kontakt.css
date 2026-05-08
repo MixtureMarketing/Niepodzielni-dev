@@ -45,7 +45,7 @@
 }
 .kontakt-icon {
     flex-shrink: 0;
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     margin-top: 2px;
 }
 .kontakt-info__legal {
@@ -97,7 +97,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
     text-decoration: none;
     font-size: 14px;
     font-weight: 600;
@@ -166,7 +166,7 @@
     color: #555;
     cursor: pointer;
 }
-.kontakt-form__checkbox a { color: var(--mix-color-brand-primary); }
+.kontakt-form__checkbox a { color: var(--mix-color-brand-primary-accessible); }
 
 /* Notices */
 .kontakt-form-notice {

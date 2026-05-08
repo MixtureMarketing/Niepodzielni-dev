@@ -128,9 +128,9 @@ select.form-field__input:focus {
 }
 
 .form-field__radio-label:has(.form-field__radio:checked) {
-    border-color: var(--mix-color-brand-primary);
+    border-color: var(--mix-color-brand-primary-accessible);
     background: rgba(1, 190, 74, 0.07);
-    color: var(--mix-color-brand-primary);
+    color: var(--mix-color-brand-primary-accessible);
 }
 
 .form-field__radio-label:hover {
@@ -194,7 +194,7 @@ select.form-field__input:focus {
     font-weight: var(--mix-font-weight-semibold, 600);
     border: none;
     border-radius: var(--mix-radius-small);
-    background: var(--mix-color-brand-primary);
+    background: var(--mix-color-brand-primary-accessible);
     color: #fff;
     cursor: pointer;
     transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
@@ -204,7 +204,7 @@ select.form-field__input:focus {
 
 .niepodzielni-form [type="submit"]:hover,
 .contact-form-wrapper [type="submit"]:hover {
-    background: #01a848;
+    background: var(--mix-color-brand-primary-accessible-hover);
     box-shadow: 0 4px 12px rgba(1, 190, 74, 0.3);
 }
 
