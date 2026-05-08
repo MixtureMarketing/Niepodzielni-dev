@@ -254,14 +254,21 @@ class NiepodzielniForms {
         if (field.type === 'hidden') return true;
 
         const wrapper  = field.closest('.form-field');
-        const errorEl  = wrapper?.querySelector('.field-error');
+        // WCAG 4.1.3 — preferowane id-based lookup; fallback do .field-error w wrapperze
+        const errorEl  = document.getElementById(`${field.name}-error`) || wrapper?.querySelector('.field-error');
         const isValid  = field.checkValidity();
 
         field.classList.toggle('is-invalid', ! isValid);
         field.classList.toggle('is-valid',     isValid && field.value !== '');
+        field.setAttribute('aria-invalid', String(! isValid));
 
+        // Anti-spam SR: emituj zmianę tylko przy transition stanu (valid <-> invalid)
         if (errorEl) {
-            errorEl.textContent = isValid ? '' : this.#getValidityMessage(field);
+            const previouslyHadError = errorEl.textContent !== '';
+            const newMessage = isValid ? '' : this.#getValidityMessage(field);
+            if (previouslyHadError !== !isValid || (newMessage && errorEl.textContent !== newMessage)) {
+                errorEl.textContent = newMessage;
+            }
         }
 
         return isValid;
@@ -271,8 +278,9 @@ class NiepodzielniForms {
         if (field.checkValidity()) {
             field.classList.remove('is-invalid');
             field.classList.toggle('is-valid', field.value !== '');
-            const errorEl = field.closest('.form-field')?.querySelector('.field-error');
-            if (errorEl) errorEl.textContent = '';
+            field.setAttribute('aria-invalid', 'false');
+            const errorEl = document.getElementById(`${field.name}-error`) || field.closest('.form-field')?.querySelector('.field-error');
+            if (errorEl && errorEl.textContent) errorEl.textContent = '';
         }
     }
 

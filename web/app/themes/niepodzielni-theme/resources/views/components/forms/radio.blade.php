@@ -7,15 +7,16 @@
     'hint'     => null,
 ])
 
-<div class="form-field">
-    <span class="form-field__label">
+{{-- WCAG 1.3.1 / 3.3.2 — radio group musi być w fieldset/legend --}}
+<fieldset class="form-field form-field--radio">
+    <legend class="form-field__label">
         {!! $label !!}
         @if($required)
             <span class="form-field__required" aria-hidden="true">*</span>
         @endif
-    </span>
+    </legend>
 
-    <div class="form-field__radio-group">
+    <div class="form-field__radio-group" role="radiogroup" aria-describedby="{{ $name }}-error{{ $hint ? ' ' . $name . '-hint' : '' }}">
         @foreach($options as $val => $text)
             <label class="form-field__radio-label">
                 <input
@@ -24,7 +25,7 @@
                     value="{{ $val }}"
                     class="form-field__radio"
                     {{ (string)$val === (string)$value ? 'checked' : '' }}
-                    @if($required) required @endif
+                    @if($required) required aria-required="true" @endif
                     {{ $attributes }}
                 >
                 <span>{{ $text }}</span>
@@ -33,8 +34,8 @@
     </div>
 
     @if($hint)
-        <span class="form-field__hint">{{ $hint }}</span>
+        <span id="{{ $name }}-hint" class="form-field__hint">{{ $hint }}</span>
     @endif
 
-    <span class="field-error" role="alert"></span>
-</div>
+    <span id="{{ $name }}-error" class="field-error" aria-live="polite"></span>
+</fieldset>

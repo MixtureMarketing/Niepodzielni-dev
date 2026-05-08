@@ -114,7 +114,9 @@
             data-max-digits="{{ $initMaxDigits }}"
             data-groups="{{ implode(',', $initGroups) }}"
             maxlength="{{ $initMaxLength }}"
-            @if($required) required @endif
+            aria-invalid="false"
+            aria-describedby="{{ $name }}-error{{ $hint ? ' ' . $name . '-hint' : '' }}"
+            @if($required) required aria-required="true" @endif
             @if($initPlaceholder) placeholder="{{ $initPlaceholder }}" @endif
             data-phone-input
             {{ $attributes }}
@@ -122,8 +124,8 @@
     </div>
 
     @if($hint)
-        <span class="form-field__hint">{{ $hint }}</span>
+        <span id="{{ $name }}-hint" class="form-field__hint">{{ $hint }}</span>
     @endif
 
-    <span class="field-error" role="alert"></span>
+    <span id="{{ $name }}-error" class="field-error" aria-live="polite"></span>
 </div>
