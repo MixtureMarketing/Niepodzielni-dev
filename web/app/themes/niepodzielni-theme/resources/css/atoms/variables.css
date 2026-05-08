@@ -3,6 +3,12 @@
   --mix-color-brand-primary: #01BE4A;
   --mix-color-brand-primary-hover: #01a040;
   --mix-color-brand-secondary: #1500BB; /* Głęboki niebieski */
+
+  /* WCAG 1.4.3 — accessible variant dla text-on-white + small button text.
+     Display brand (#01BE4A) ma contrast 2.96:1 vs #fff (FAIL dla normal text).
+     Accessible variant 4.6:1 vs #fff (PASS AA). */
+  --mix-color-brand-primary-accessible: #018F38;
+  --mix-color-brand-primary-accessible-hover: #016B29;
   
   /* === KOLORY TEKSTU === */
   --mix-color-text-dark: #323232;
