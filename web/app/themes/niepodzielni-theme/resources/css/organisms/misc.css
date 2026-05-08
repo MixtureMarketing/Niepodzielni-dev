@@ -1,4 +1,18 @@
 /* --- OSTATECZNA WERSJA KODU AKORDEONU --- */
+/* WCAG 4.1.2 — accordion button: reset native <button> styles globalnie */
+.m_acordeon_head {
+    background: none;
+    border: none;
+    text-align: inherit;
+    font: inherit;
+    color: inherit;
+    width: 100%;
+}
+.m_acordeon_head:focus-visible {
+    outline: 3px solid var(--mix-color-brand-secondary);
+    outline-offset: 2px;
+}
+
 @media (max-width: 1000px) {
     .m_acordeon_head {
         cursor: pointer;
