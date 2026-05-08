@@ -82,6 +82,7 @@ require_once NIEPODZIELNI_CORE_PATH . 'admin/16-security-headers.php';          
 require_once NIEPODZIELNI_CORE_PATH . 'admin/17-audit-digest.php';                 // dzienny digest bezpieczeństwa → Discord
 require_once NIEPODZIELNI_CORE_PATH . 'admin/18-sentry-init.php';                  // Sentry — error tracking (bez PII)
 require_once NIEPODZIELNI_CORE_PATH . 'admin/19-lockout-burst-alert.php';          // alert >20 lockoutów/h → Discord
+require_once NIEPODZIELNI_CORE_PATH . 'admin/20-robots-txt.php';                   // dynamic robots.txt — home_url() + wp-sitemap.xml
 
 // 4. HELPERS — funkcje niezależne od motywu (używane przez shortcodes, admin i Blade)
 require_once NIEPODZIELNI_CORE_PATH . 'misc/1-helpers.php';

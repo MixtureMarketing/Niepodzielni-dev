@@ -15,7 +15,7 @@
             <p class="hero-tax-desc">Przekaż 1,5% na rzecz fundacji Niepodzielni!</p>
             <div class="hero-tax-actions">
                 <a href="/15-2/" class="psy-btn psy-btn-green">DOWIEDZ SIĘ WIĘCEJ</a>
-                <span class="hero-tax-krs">KRS: 0000270261</span>
+                <span class="hero-tax-krs">KRS: 0000973514</span>
             </div>
         </div>
     </div>
