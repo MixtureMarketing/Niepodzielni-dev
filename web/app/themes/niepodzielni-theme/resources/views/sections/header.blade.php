@@ -49,6 +49,12 @@ if ($posts_items === false) {
         {{-- NAVIGATION RIGHT --}}
         <div class="header-actions">
 
+            {{-- CRISIS HUB — wyraźny, ale nieinwazyjny link do pomocy w kryzysie. --}}
+            <a href="{{ home_url('/pomoc-w-kryzysie/') }}" class="header-crisis-link" aria-label="Pomoc w kryzysie psychicznym">
+                <span class="header-crisis-link__icon" aria-hidden="true">!</span>
+                <span class="header-crisis-link__label">Pomoc w kryzysie</span>
+            </a>
+
             {{-- WIDGET UMÓW SIĘ --}}
             @include('partials.shortcodes.widget-umow-sie')
 

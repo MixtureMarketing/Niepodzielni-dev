@@ -36,6 +36,7 @@
 @import './organisms/forms.css';
 @import './organisms/reviews.css';
 @import './organisms/consent-banner.css';
+@import './organisms/related-articles.css';
 
 /* Molecules — listing cards */
 @import './molecules/listing-cards.css';

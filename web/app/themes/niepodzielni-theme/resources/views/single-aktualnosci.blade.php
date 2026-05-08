@@ -54,4 +54,6 @@
   </div>
 </div>
 
+@include('partials.related-articles')
+
 @endsection

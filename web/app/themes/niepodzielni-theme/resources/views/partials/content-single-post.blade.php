@@ -37,3 +37,5 @@
     {!! wp_kses_post(get_the_content()) !!}
   </div>
 </div>
+
+@include('partials.related-articles')

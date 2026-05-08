@@ -721,29 +721,114 @@ add_action('wp_head', function () {
         . '</script>' . "\n";
 }, 5);
 
-// ── Section F — NewsArticle for aktualnosci + post ────────────────────────────
+// ── Section F — Article schema for aktualnosci + post ────────────────────────
 // Priority 5 — singular aktualnosci or post only.
+// MedicalScholarlyArticle dla psychoedukacji (YMYL: zdrowie psychiczne); fallback NewsArticle.
+
+/**
+ * Czy bieżący wpis jest treścią medyczno-psychoedukacyjną?
+ * Heurystyka: tag/kategoria "psychoedukacja" lub taksonomia "temat".
+ */
+function np_seo_is_medical_article(int $post_id): bool
+{
+    if (has_tag('psychoedukacja', $post_id) || has_category('psychoedukacja', $post_id)) {
+        return true;
+    }
+
+    $tematy = get_the_terms($post_id, 'temat');
+    if (is_array($tematy) && ! empty($tematy)) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Buduje obiekt Person dla autora/recenzenta z CPT psycholog.
+ *
+ * @return array<string, mixed>|null
+ */
+function np_seo_psycholog_person(int $psycholog_id): ?array
+{
+    $post = get_post($psycholog_id);
+    if (! $post || $post->post_type !== 'psycholog') {
+        return null;
+    }
+
+    return [
+        '@type' => 'Person',
+        '@id'   => get_permalink($psycholog_id) . '#person',
+        'name'  => get_the_title($psycholog_id),
+        'url'   => (string) get_permalink($psycholog_id),
+    ];
+}
 
 add_action('wp_head', function () {
     if (! is_singular('aktualnosci') && ! is_singular('post')) {
         return;
     }
 
-    $pid = get_the_ID();
+    $pid = (int) get_the_ID();
+
+    $is_medical = np_seo_is_medical_article($pid);
+    $type       = $is_medical ? 'MedicalScholarlyArticle' : 'NewsArticle';
 
     $schema = [
         '@context'      => 'https://schema.org',
-        '@type'         => 'NewsArticle',
+        '@type'         => $type,
         '@id'           => get_permalink($pid) . '#article',
         'headline'      => mb_strimwidth(get_the_title(), 0, 110, '…'),
         'datePublished' => get_the_date('c', $pid),
         'dateModified'  => get_the_modified_date('c', $pid),
-        'author'        => ['@id' => home_url('/#organization')],
         'publisher'     => ['@id' => home_url('/#organization')],
         'url'           => get_permalink($pid),
         'inLanguage'    => 'pl',
         'isPartOf'      => ['@id' => home_url('/#website')],
     ];
+
+    // Author — preferuj Carbon Field _author_psycholog_id (E-E-A-T trust signal).
+    $author_psycholog_raw = get_post_meta($pid, '_author_psycholog_id', true);
+    $author_psycholog_id  = is_array($author_psycholog_raw) && ! empty($author_psycholog_raw)
+        ? (int) ($author_psycholog_raw[0]['id'] ?? 0)
+        : 0;
+
+    if ($author_psycholog_id > 0) {
+        $author_obj = np_seo_psycholog_person($author_psycholog_id);
+        if ($author_obj) {
+            $schema['author'] = $author_obj;
+        }
+    }
+
+    if (! isset($schema['author'])) {
+        $schema['author'] = ['@id' => home_url('/#organization')];
+    }
+
+    // MedicalScholarlyArticle — dodaj reviewedBy + about (MedicalCondition)
+    if ($is_medical) {
+        $reviewer_raw = get_post_meta($pid, '_medical_reviewer_psycholog_id', true);
+        $reviewer_id  = is_array($reviewer_raw) && ! empty($reviewer_raw)
+            ? (int) ($reviewer_raw[0]['id'] ?? 0)
+            : 0;
+
+        if ($reviewer_id > 0) {
+            $reviewer_obj = np_seo_psycholog_person($reviewer_id);
+            if ($reviewer_obj) {
+                $schema['reviewedBy'] = $reviewer_obj;
+            }
+        }
+
+        // about: MedicalCondition na podstawie pierwszego termu z taksonomii "temat"
+        $tematy = get_the_terms($pid, 'temat');
+        if (is_array($tematy) && ! empty($tematy)) {
+            $first = $tematy[0];
+            if (! is_wp_error($first)) {
+                $schema['about'] = [
+                    '@type' => 'MedicalCondition',
+                    'name'  => $first->name,
+                ];
+            }
+        }
+    }
 
     $excerpt = get_the_excerpt($pid) ?: get_the_content(null, false, $pid);
     $desc    = mb_strimwidth(wp_strip_all_tags($excerpt), 0, 160, '…');
@@ -849,3 +934,111 @@ add_action('wp_head', function () {
         . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
         . '</script>' . "\n";
 }, 5);
+
+// ── Section H — FAQPage schema for pages with faq_items (Carbon Field) ───────
+// Priority 6 — singular pages only; emituje gdy CF complex faq_items niepuste.
+
+add_action('wp_head', function () {
+    if (! is_singular('page')) {
+        return;
+    }
+
+    if (! function_exists('carbon_get_post_meta')) {
+        return;
+    }
+
+    $pid       = (int) get_the_ID();
+    $faq_items = (array) carbon_get_post_meta($pid, 'faq_items');
+
+    if (empty($faq_items)) {
+        return;
+    }
+
+    $main_entity = [];
+    foreach ($faq_items as $item) {
+        $q = trim((string) ($item['question'] ?? ''));
+        $a = trim(wp_strip_all_tags((string) ($item['answer'] ?? '')));
+        if ($q === '' || $a === '') {
+            continue;
+        }
+        $main_entity[] = [
+            '@type'          => 'Question',
+            'name'           => $q,
+            'acceptedAnswer' => [
+                '@type' => 'Answer',
+                'text'  => $a,
+            ],
+        ];
+    }
+
+    if (empty($main_entity)) {
+        return;
+    }
+
+    $schema = [
+        '@context'   => 'https://schema.org',
+        '@type'      => 'FAQPage',
+        '@id'        => get_permalink($pid) . '#faq',
+        'mainEntity' => $main_entity,
+    ];
+
+    echo '<script type="application/ld+json">'
+        . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+        . '</script>' . "\n";
+}, 6);
+
+// ── Section I — HowTo schema for crisis hub (template-pomoc-kryzys) ──────────
+// Priority 6 — emituje na stronie z templatem pomocy w kryzysie.
+// Treść kroków odpowiada partials/crisis/checklist.blade.php.
+
+add_action('wp_head', function () {
+    if (! is_page_template('template-pomoc-kryzys.blade.php')
+        && ! is_page_template('views/template-pomoc-kryzys.blade.php')
+    ) {
+        return;
+    }
+
+    $schema = [
+        '@context'    => 'https://schema.org',
+        '@type'       => 'HowTo',
+        '@id'         => (string) get_permalink() . '#howto',
+        'name'        => 'Co zrobić w kryzysie psychicznym',
+        'description' => 'Pięć kroków, które pomagają, gdy potrzebujesz wsparcia w kryzysie psychicznym.',
+        'step'        => [
+            [
+                '@type'    => 'HowToStep',
+                'position' => 1,
+                'name'     => 'Zadzwoń pod numer wsparcia',
+                'text'     => 'Zadzwoń pod jeden z numerów telefonów zaufania: 112 (alarmowy), 116 111 (dzieci i młodzież), 800 70 22 22 (dorośli w kryzysie). Nie musisz wiedzieć, co powiedzieć — osoba po drugiej stronie pomoże Ci nazwać emocje.',
+            ],
+            [
+                '@type'    => 'HowToStep',
+                'position' => 2,
+                'name'     => 'Zadbaj o bezpośrednie bezpieczeństwo',
+                'text'     => 'Jeśli masz przy sobie przedmioty, którymi możesz sobie zrobić krzywdę, oddaj je komuś bliskiemu lub przenieś poza zasięg. Przejdź do innego pomieszczenia.',
+            ],
+            [
+                '@type'    => 'HowToStep',
+                'position' => 3,
+                'name'     => 'Skontaktuj się z kimś bliskim',
+                'text'     => 'Napisz lub zadzwoń do osoby, której ufasz. Sama obecność innego człowieka — nawet przez telefon — pomaga przejść przez najtrudniejszy moment.',
+            ],
+            [
+                '@type'    => 'HowToStep',
+                'position' => 4,
+                'name'     => 'Udaj się na oddział ratunkowy lub psychiatryczny',
+                'text'     => 'Jeśli nie możesz lub nie chcesz dzwonić, pojedź do najbliższego szpitala. Możesz też zadzwonić pod 112 i poprosić o pomoc w transporcie.',
+            ],
+            [
+                '@type'    => 'HowToStep',
+                'position' => 5,
+                'name'     => 'Zaplanuj kolejny krok',
+                'text'     => 'Po przejściu najtrudniejszego momentu umów się na konsultację u psychologa lub psychiatry. Specjalistę znajdziesz w katalogu Niepodzielnych lub przez dopasowywarkę (matchmaker).',
+            ],
+        ],
+    ];
+
+    echo '<script type="application/ld+json">'
+        . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+        . '</script>' . "\n";
+}, 6);
