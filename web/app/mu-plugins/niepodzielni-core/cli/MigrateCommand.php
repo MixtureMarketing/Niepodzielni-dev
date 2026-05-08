@@ -298,6 +298,107 @@ class MigrateCommand
     }
 
     /**
+     * Konwertuje wszystkie tabele utf8mb3 → utf8mb4_unicode_520_ci.
+     *
+     * KRYTYCZNE: wymaga pełnego backupu DB przed --yes. ALTER TABLE blokuje
+     * tabelę na czas konwersji. wp-config.php musi mieć DB_CHARSET=utf8mb4
+     * i DB_COLLATE=utf8mb4_unicode_520_ci (pre-flight check przy --yes).
+     *
+     * ## OPTIONS
+     *
+     * [--dry-run]
+     * : Pokaż listę tabel do konwersji, nie modyfikuj DB.
+     *
+     * [--yes]
+     * : Wykonaj realne ALTER TABLE. Wymagany backup DB przed.
+     *
+     * ## EXAMPLES
+     *
+     *     wp np migrate charset-utf8mb4 --dry-run
+     *     wp np migrate charset-utf8mb4 --yes
+     *
+     * @param  array<int, string>     $args
+     * @param  array<string, mixed>   $assocArgs
+     */
+    public function charset_utf8mb4(array $args, array $assocArgs): void
+    {
+        $dryRun = (bool) (\WP_CLI\Utils\get_flag_value($assocArgs, 'dry-run', false));
+        $yes = (bool) (\WP_CLI\Utils\get_flag_value($assocArgs, 'yes', false));
+
+        if (! $dryRun && ! $yes) {
+            \WP_CLI::error('Musisz przekazać --dry-run (preview) lub --yes (wykonaj).');
+        }
+        if ($dryRun && $yes) {
+            \WP_CLI::error('Sprzeczne flagi: --dry-run i --yes nie mogą wystąpić jednocześnie.');
+        }
+
+        // Pre-flight: wp-config DB_CHARSET / DB_COLLATE.
+        if ($yes) {
+            if (defined('DB_CHARSET') && DB_CHARSET !== 'utf8mb4') {
+                \WP_CLI::error(
+                    'Pre-flight: DB_CHARSET musi być "utf8mb4" w wp-config.php przed migracją. Aktualnie: '
+                    . (string) DB_CHARSET,
+                );
+            }
+            if (defined('DB_COLLATE') && DB_COLLATE !== '' && DB_COLLATE !== 'utf8mb4_unicode_520_ci') {
+                \WP_CLI::warning(
+                    'Pre-flight: DB_COLLATE w wp-config = "' . (string) DB_COLLATE
+                    . '". Zalecane: "utf8mb4_unicode_520_ci" (zgodne z migratorem).',
+                );
+            }
+        }
+
+        $file = $this->migrationsDir . '/2026-05-charset-utf8mb4.php';
+        if (! file_exists($file)) {
+            \WP_CLI::error("Brak pliku migracji: {$file}");
+        }
+        require_once $file;
+
+        $fn = '\\Niepodzielni\\Core\\Migrations\\np_migration_2026_05_charset_utf8mb4';
+        if (! function_exists($fn)) {
+            \WP_CLI::error("Plik {$file} nie definiuje funkcji {$fn}.");
+        }
+
+        if ($yes) {
+            \WP_CLI::warning('Tryb --yes: WYKONUJĘ ALTER TABLE na wszystkich utf8mb3 tabelach. Upewnij się, że masz świeży backup DB!');
+        } else {
+            \WP_CLI::line('Tryb --dry-run: pokażę listę tabel do konwersji.');
+        }
+
+        $result = $fn(['dry_run' => $dryRun, 'yes' => $yes]);
+
+        $status = (string) ($result['status'] ?? 'unknown');
+        $message = (string) ($result['message'] ?? '');
+        $duration = (float) ($result['duration_ms'] ?? 0);
+        /** @var array<int,string> $tables */
+        $tables = (array) ($result['tables'] ?? []);
+        /** @var array<int,string> $failed */
+        $failed = (array) ($result['failed'] ?? []);
+
+        \WP_CLI::line('');
+        \WP_CLI::line('→ 2026-05-charset-utf8mb4');
+        \WP_CLI::line('  status:   ' . $status);
+        \WP_CLI::line('  message:  ' . $message);
+        \WP_CLI::line(sprintf('  duration: %.2f ms', $duration));
+        \WP_CLI::line('  tables:   ' . count($tables));
+        foreach ($tables as $t) {
+            \WP_CLI::line('    - ' . $t);
+        }
+        if (count($failed) > 0) {
+            \WP_CLI::line('  failed:   ' . count($failed));
+            foreach ($failed as $t) {
+                \WP_CLI::line('    ! ' . $t);
+            }
+        }
+
+        if ($status === 'error') {
+            \WP_CLI::halt(1);
+        }
+
+        \WP_CLI::success('Gotowe (' . $status . ').');
+    }
+
+    /**
      * Konwertuje nazwę pliku na slug funkcji.
      * `2026-05-add-postmeta-index.php` → `2026_05_add_postmeta_index`
      */
