@@ -14,7 +14,9 @@
             id="{{ $name }}"
             class="form-field__checkbox"
             value="on"
-            @if($required) required @endif
+            aria-invalid="false"
+            aria-describedby="{{ $name }}-error{{ $hint ? ' ' . $name . '-hint' : '' }}"
+            @if($required) required aria-required="true" @endif
             @if($checked)  checked  @endif
             {{ $attributes }}
         />
@@ -27,8 +29,8 @@
     </label>
 
     @if($hint)
-        <span class="form-field__hint">{{ $hint }}</span>
+        <span id="{{ $name }}-hint" class="form-field__hint">{{ $hint }}</span>
     @endif
 
-    <span class="field-error" role="alert"></span>
+    <span id="{{ $name }}-error" class="field-error" aria-live="polite"></span>
 </div>
