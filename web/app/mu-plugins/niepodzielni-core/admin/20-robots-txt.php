@@ -22,6 +22,14 @@ add_filter('robots_txt', function ($output, $public) {
     $sitemap_url = home_url('/wp-sitemap.xml');
 
     $lines = [];
+
+    // Content Signals (https://contentsignals.org/) — preferencje użycia treści
+    // przez AI crawlerów. ai-train=no = nie używaj do trenowania modeli;
+    // search=yes = OK indeksować dla wyszukiwania; ai-input=yes = OK używać
+    // on-the-fly gdy ktoś pyta AI o pomoc psychologiczną (live retrieval).
+    $lines[] = '# Content Signals — AI usage preferences (https://contentsignals.org)';
+    $lines[] = 'Content-Signal: ai-train=no, search=yes, ai-input=yes';
+    $lines[] = '';
     $lines[] = 'User-agent: *';
     $lines[] = 'Disallow: /wp-admin/';
     $lines[] = 'Disallow: /wp-login.php';
